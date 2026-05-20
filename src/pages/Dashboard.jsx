@@ -78,7 +78,7 @@ export default function Dashboard() {
     <div>
       {/* Saudação */}
       <div style={{ marginBottom: 24 }}>
-        <p style={{ color: 'var(--text2)', fontSize: 13' }}>
+        <p style={{ color: 'var(--text2)', fontSize: 13 }}>
           {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
         </p>
         <h2 style={{ fontSize: 22, marginTop: 2 }}>Olá, {perfil?.nome?.split(' ')[0]} 👋</h2>

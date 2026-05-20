@@ -61,7 +61,7 @@ export default function Gastos() {
 
       {/* Total */}
       <div className="card" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: 'var(--text2)', fontSize: 13' }}>Total de gastos</span>
+        <span style={{ color: 'var(--text2)', fontSize: 13 }}>Total de gastos</span>
         <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--red)' }}>{fmt(total)}</span>
       </div>
 
