@@ -1,27 +1,43 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar, LogOut } from 'lucide-react'
+import {
+  LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar,
+  LogOut, MoreHorizontal, X, PieChart, Target, Landmark, PiggyBank, Settings,
+} from 'lucide-react'
 import { useState } from 'react'
 
-const nav = [
+// Itens fixos da barra inferior (uso diário)
+const navPrincipal = [
   { to: '/', label: 'Início', icon: LayoutDashboard, exact: true },
-  { to: '/entradas', label: 'Entradas', icon: TrendingUp },
   { to: '/gastos', label: 'Gastos', icon: TrendingDown },
+  { to: '/entradas', label: 'Entradas', icon: TrendingUp },
   { to: '/cartoes', label: 'Cartões', icon: CreditCard },
-  { to: '/contas-fixas', label: 'Fixas', icon: FileText },
-  { to: '/parcelamentos', label: 'Parcelas', icon: Layers },
+]
+
+// Itens do menu "Mais"
+const navMais = [
+  { to: '/resumo', label: 'Resumo', icon: PieChart },
+  { to: '/orcamento', label: 'Orçamento', icon: Target },
+  { to: '/contas', label: 'Contas', icon: Landmark },
+  { to: '/contas-fixas', label: 'Contas fixas', icon: FileText },
+  { to: '/parcelamentos', label: 'Parcelamentos', icon: Layers },
   { to: '/projecao', label: 'Projeção', icon: Calendar },
+  { to: '/cofrinhos', label: 'Cofrinhos', icon: PiggyBank },
+  { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
 export default function Layout() {
   const { perfil, logout } = useAuth()
   const navigate = useNavigate()
-  const [menuOpen, setMenuOpen] = useState(false)
+  const location = useLocation()
+  const [mais, setMais] = useState(false)
 
   async function handleLogout() {
     await logout()
     navigate('/login')
   }
+
+  const maisAtivo = navMais.some(n => location.pathname === n.to)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: 480, margin: '0 auto', position: 'relative' }}>
@@ -47,7 +63,7 @@ export default function Layout() {
 
       {/* Nav bottom */}
       <nav style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, background: 'var(--bg2)', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-around', padding: '8px 0 env(safe-area-inset-bottom)', zIndex: 10 }}>
-        {nav.map(({ to, label, icon: Icon, exact }) => (
+        {navPrincipal.map(({ to, label, icon: Icon, exact }) => (
           <NavLink
             key={to}
             to={to}
@@ -56,15 +72,55 @@ export default function Layout() {
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
               fontSize: 10, fontWeight: 500, padding: '4px 8px',
               color: isActive ? 'var(--accent)' : 'var(--text3)',
-              textDecoration: 'none', transition: 'color 0.15s',
-              flex: 1,
+              textDecoration: 'none', transition: 'color 0.15s', flex: 1,
             })}
           >
             <Icon size={20} strokeWidth={1.8} />
             {label}
           </NavLink>
         ))}
+        <button
+          onClick={() => setMais(true)}
+          style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+            fontSize: 10, fontWeight: 500, padding: '4px 8px', flex: 1,
+            color: maisAtivo ? 'var(--accent)' : 'var(--text3)',
+          }}
+        >
+          <MoreHorizontal size={20} strokeWidth={1.8} />
+          Mais
+        </button>
       </nav>
+
+      {/* Sheet "Mais" */}
+      {mais && (
+        <div className="modal-overlay" onClick={() => setMais(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 18 }}>Mais</h2>
+              <button onClick={() => setMais(false)}><X size={20} color="var(--text2)" /></button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {navMais.map(({ to, label, icon: Icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setMais(false)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '14px',
+                    borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+                    background: 'var(--bg)', color: 'var(--text)', textDecoration: 'none',
+                    fontSize: 14, fontWeight: 500,
+                  }}
+                >
+                  <Icon size={18} color="var(--accent)" strokeWidth={1.9} />
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

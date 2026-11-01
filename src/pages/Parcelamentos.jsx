@@ -4,12 +4,13 @@ import { supabase } from '../lib/supabase'
 import { format, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Plus, Trash2, Layers } from 'lucide-react'
+import { useCategorias } from '../hooks/useCategorias'
 
 const fmt = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const cats = { mercado: '🛒', transporte: '⛽', saude: '💊', alimentacao: '🍔', vestuario: '👕', lazer: '🎉', eletronico: '📱', moveis: '🛋️', outros: '📦' }
 
 export default function Parcelamentos() {
   const { perfil } = useAuth()
+  const { categorias, emojiDe } = useCategorias()
   const [parcelamentos, setParcelamentos] = useState([])
   const [cartoes, setCartoes] = useState([])
   const [modal, setModal] = useState(false)
@@ -47,7 +48,7 @@ export default function Parcelamentos() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 style={{ fontSize: 20 }}>Parcelamentos</h2>
-        <button onClick={() => setModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: '#0f0f0f', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 700, fontFamily: 'Syne' }}>
+        <button onClick={() => setModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: 'var(--on-accent)', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 700, fontFamily: 'Syne' }}>
           <Plus size={16} /> Novo
         </button>
       </div>
@@ -61,7 +62,7 @@ export default function Parcelamentos() {
             <div key={p.id} className="card" style={{ marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 22 }}>{cats[p.categoria] || '📦'}</span>
+                  <span style={{ fontSize: 22 }}>{emojiDe(p.categoria)}</span>
                   <div>
                     <p style={{ fontWeight: 600, fontSize: 15 }}>{p.descricao}</p>
                     <p style={{ fontSize: 12, color: 'var(--text2)' }}>{p.cartoes?.nome || 'Sem cartão'}</p>
@@ -104,7 +105,7 @@ export default function Parcelamentos() {
               <div className="form-group">
                 <label>Categoria</label>
                 <select value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}>
-                  {Object.entries(cats).map(([v, e]) => <option key={v} value={v}>{e} {v}</option>)}
+                  {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
                 </select>
               </div>
               <div className="form-group"><label>1ª parcela em</label><input type="date" value={form.data_primeira_parcela} onChange={e => setForm(p => ({ ...p, data_primeira_parcela: e.target.value }))} /></div>

@@ -5,13 +5,13 @@ import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import BotaoVoz from '../components/BotaoVoz'
+import { useCategorias } from '../hooks/useCategorias'
 
-const categorias = ['mercado','transporte','saude','alimentacao','vestuario','lazer','outros']
-const cats = { mercado: '🛒', transporte: '⛽', saude: '💊', alimentacao: '🍔', vestuario: '👕', lazer: '🎉', outros: '📦' }
 const fmt = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 export default function Gastos() {
   const { perfil } = useAuth()
+  const { categorias, emojiDe } = useCategorias()
   const [mes, setMes] = useState(new Date())
   const [gastos, setGastos] = useState([])
   const [cartoes, setCartoes] = useState([])
@@ -71,7 +71,7 @@ export default function Gastos() {
       ) : gastos.map(g => (
         <div key={g.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22 }}>{cats[g.categoria] || '📦'}</span>
+            <span style={{ fontSize: 22 }}>{emojiDe(g.categoria)}</span>
             <div>
               <p style={{ fontSize: 14, fontWeight: 500 }}>{g.descricao}</p>
               <p style={{ fontSize: 11, color: 'var(--text3)' }}>
@@ -107,7 +107,7 @@ export default function Gastos() {
               <div className="form-group">
                 <label>Categoria</label>
                 <select value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}>
-                  {categorias.map(c => <option key={c} value={c}>{cats[c]} {c}</option>)}
+                  {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
                 </select>
               </div>
               <div className="form-group">

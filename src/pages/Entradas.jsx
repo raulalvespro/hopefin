@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
+import { format, startOfMonth, endOfMonth, subMonths, addMonths, getDaysInMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Plus, Trash2, RefreshCw } from 'lucide-react'
 
@@ -11,6 +11,8 @@ export default function Entradas() {
   const { perfil } = useAuth()
   const [mes, setMes] = useState(new Date())
   const [entradas, setEntradas] = useState([])
+  const [pendentes, setPendentes] = useState([])
+  const [lancando, setLancando] = useState(false)
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ descricao: '', valor: '', tipo: 'avulso', recorrente: false, data: format(new Date(), 'yyyy-MM-dd') })
   const [loading, setLoading] = useState(true)
@@ -19,11 +21,39 @@ export default function Entradas() {
 
   async function carregar() {
     setLoading(true)
+    const gid = perfil.grupo_id
     const inicio = format(startOfMonth(mes), 'yyyy-MM-dd')
     const fim = format(endOfMonth(mes), 'yyyy-MM-dd')
-    const { data } = await supabase.from('entradas').select('*, usuarios(nome)').eq('grupo_id', perfil.grupo_id).gte('data', inicio).lte('data', fim).order('data', { ascending: false })
+    const iniAnt = format(startOfMonth(subMonths(mes, 1)), 'yyyy-MM-dd')
+    const fimAnt = format(endOfMonth(subMonths(mes, 1)), 'yyyy-MM-dd')
+
+    const [{ data }, { data: recAnt }] = await Promise.all([
+      supabase.from('entradas').select('*, usuarios(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim).order('data', { ascending: false }),
+      supabase.from('entradas').select('*').eq('grupo_id', gid).eq('recorrente', true).gte('data', iniAnt).lte('data', fimAnt),
+    ])
     setEntradas(data || [])
+
+    // Recorrentes do mês passado que ainda não existem no mês atual (mesma descrição + pessoa)
+    const chavesAtuais = new Set((data || []).map(e => `${e.descricao}|${e.usuario_id}`))
+    setPendentes((recAnt || []).filter(r => !chavesAtuais.has(`${r.descricao}|${r.usuario_id}`)))
     setLoading(false)
+  }
+
+  async function lancarRecorrentes() {
+    if (pendentes.length === 0) return
+    setLancando(true)
+    const diasNoMes = getDaysInMonth(mes)
+    const novas = pendentes.map(r => {
+      const dia = Math.min(parseInt(r.data.slice(8, 10)), diasNoMes)
+      return {
+        descricao: r.descricao, valor: r.valor, tipo: r.tipo, recorrente: true,
+        data: format(new Date(mes.getFullYear(), mes.getMonth(), dia), 'yyyy-MM-dd'),
+        grupo_id: perfil.grupo_id, usuario_id: r.usuario_id,
+      }
+    })
+    await supabase.from('entradas').insert(novas)
+    setLancando(false)
+    carregar()
   }
 
   async function salvar() {
@@ -54,6 +84,27 @@ export default function Entradas() {
         <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--accent)' }}>{fmt(total)}</span>
       </div>
 
+      {/* Banner de recorrentes pendentes */}
+      {pendentes.length > 0 && (
+        <div className="card" style={{ marginBottom: 16, background: 'var(--accent-dim)', borderColor: 'var(--accent)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+            <RefreshCw size={18} color="var(--accent2)" style={{ marginTop: 2, flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                {pendentes.length} {pendentes.length === 1 ? 'entrada recorrente' : 'entradas recorrentes'} para lançar
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+                {pendentes.map(p => p.descricao).join(', ')} — total {fmt(pendentes.reduce((s, p) => s + Number(p.valor), 0))}
+              </p>
+            </div>
+          </div>
+          <button onClick={lancarRecorrentes} disabled={lancando}
+            style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 700, fontFamily: 'Syne', opacity: lancando ? 0.6 : 1 }}>
+            {lancando ? 'Lançando...' : `Lançar em ${format(mes, 'MMMM', { locale: ptBR })}`}
+          </button>
+        </div>
+      )}
+
       {loading ? <div className="empty-state">Carregando...</div> : entradas.length === 0 ? (
         <div className="empty-state">Nenhuma entrada neste mês</div>
       ) : entradas.map(e => (
@@ -75,7 +126,7 @@ export default function Entradas() {
         </div>
       ))}
 
-      <button onClick={() => setModal(true)} style={{ position: 'fixed', bottom: 80, right: 20, width: 56, height: 56, borderRadius: '50%', background: 'var(--accent)', color: '#0f0f0f', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 24px rgba(200,245,90,0.3)', zIndex: 50 }}>
+      <button onClick={() => setModal(true)} style={{ position: 'fixed', bottom: 80, right: 20, width: 56, height: 56, borderRadius: '50%', background: 'var(--accent)', color: 'var(--on-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(16,185,129,0.35)', zIndex: 50 }}>
         <Plus size={24} />
       </button>
 

@@ -2,11 +2,13 @@ import { useState, useCallback } from 'react'
 import { Mic, MicOff, X, Check, Loader } from 'lucide-react'
 import { useVoz, interpretarFala } from '../hooks/useVoz'
 import { useAuth } from '../contexts/AuthContext'
+import { useCategorias } from '../hooks/useCategorias'
 import { supabase } from '../lib/supabase'
 import { format } from 'date-fns'
 
 export default function BotaoVoz({ onSalvo }) {
   const { perfil } = useAuth()
+  const { categorias } = useCategorias()
   const [aberto, setAberto] = useState(false)
   const [fala, setFala] = useState('')
   const [interpretado, setInterpretado] = useState(null)
@@ -61,7 +63,6 @@ export default function BotaoVoz({ onSalvo }) {
   }
 
   const fmt = v => v?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-  const cats = { mercado: '🛒', transporte: '⛽', saude: '💊', alimentacao: '🍔', vestuario: '👕', lazer: '🎉', outros: '📦' }
 
   return (
     <>
@@ -69,7 +70,7 @@ export default function BotaoVoz({ onSalvo }) {
       {!aberto && (
         <button
           onClick={() => setAberto(true)}
-          style={{ position: 'fixed', bottom: 80, right: 20, width: 56, height: 56, borderRadius: '50%', background: 'var(--accent)', color: '#0f0f0f', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 24px rgba(200,245,90,0.3)', zIndex: 50 }}
+          style={{ position: 'fixed', bottom: 80, right: 20, width: 56, height: 56, borderRadius: '50%', background: 'var(--accent)', color: 'var(--on-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(16,185,129,0.35)', zIndex: 50 }}
         >
           <Mic size={24} strokeWidth={2} />
         </button>
@@ -133,8 +134,8 @@ export default function BotaoVoz({ onSalvo }) {
                   <div className="form-group">
                     <label>Categoria</label>
                     <select value={interpretado.categoria} onChange={e => setInterpretado(p => ({ ...p, categoria: e.target.value }))}>
-                      {Object.entries(cats).map(([v, emoji]) => (
-                        <option key={v} value={v}>{emoji} {v}</option>
+                      {categorias.map(c => (
+                        <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>
                       ))}
                     </select>
                   </div>

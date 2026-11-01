@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Plus, Trash2 } from 'lucide-react'
+import { useCategorias } from '../hooks/useCategorias'
 
-const categorias = ['moradia','transporte','saude','educacao','lazer','assinatura','outros']
-const catEmoji = { moradia: '🏠', transporte: '🚗', saude: '💊', educacao: '📚', lazer: '🎉', assinatura: '📱', outros: '📋' }
 const fmt = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 export default function ContasFixas() {
   const { perfil } = useAuth()
+  const { categorias, emojiDe } = useCategorias()
   const [contas, setContas] = useState([])
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ nome: '', valor: '', dia_vencimento: '', categoria: 'outros', alerta_dias: 3 })
@@ -39,7 +39,7 @@ export default function ContasFixas() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 style={{ fontSize: 20 }}>Contas fixas</h2>
-        <button onClick={() => setModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: '#0f0f0f', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 700, fontFamily: 'Syne' }}>
+        <button onClick={() => setModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: 'var(--on-accent)', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 700, fontFamily: 'Syne' }}>
           <Plus size={16} /> Nova
         </button>
       </div>
@@ -53,7 +53,7 @@ export default function ContasFixas() {
         : contas.map(c => (
           <div key={c.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 22 }}>{catEmoji[c.categoria] || '📋'}</span>
+              <span style={{ fontSize: 22 }}>{emojiDe(c.categoria)}</span>
               <div>
                 <p style={{ fontSize: 14, fontWeight: 500 }}>{c.nome}</p>
                 <p style={{ fontSize: 12, color: 'var(--text2)' }}>Vence dia {c.dia_vencimento} · alerta {c.alerta_dias} dias antes</p>
@@ -79,7 +79,7 @@ export default function ContasFixas() {
               <div className="form-group">
                 <label>Categoria</label>
                 <select value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}>
-                  {categorias.map(c => <option key={c} value={c}>{catEmoji[c]} {c}</option>)}
+                  {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
                 </select>
               </div>
               <div className="form-group"><label>Alertar X dias antes</label><input type="number" min="1" max="30" value={form.alerta_dias} onChange={e => setForm(p => ({ ...p, alerta_dias: e.target.value }))} /></div>

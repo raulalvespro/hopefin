@@ -3,20 +3,56 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts'
+import { useCategorias } from '../hooks/useCategorias'
 
 const fmt = v => Number(v||0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const cats = { mercado: '🛒', transporte: '⛽', saude: '💊', alimentacao: '🍔', vestuario: '👕', lazer: '🎉', assinatura: '📱', outros: '📦' }
-const CORES = ['#c8f55a','#60a5fa','#ff6b6b','#fbbf24','#a78bfa','#34d399','#f87171','#38bdf8']
+const fmtCurto = v => {
+  const n = Number(v||0)
+  if (Math.abs(n) >= 1000) return `${(n/1000).toFixed(1).replace('.0','')}k`
+  return String(Math.round(n))
+}
+const CORES = ['#10b981','#3b82f6','#ef4444','#f59e0b','#8b5cf6','#14b8a6','#ec4899','#0ea5e9']
 
 export default function Resumo() {
   const { perfil } = useAuth()
+  const { emojiDe } = useCategorias()
   const [mes, setMes] = useState(new Date())
   const [dados, setDados] = useState(null)
   const [dadosAnt, setDadosAnt] = useState(null)
+  const [historico, setHistorico] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil, mes])
+
+  // Tendência dos últimos 6 meses (entradas, saídas, saldo)
+  async function carregarHistorico() {
+    const gid = perfil.grupo_id
+    const inicioJanela = format(startOfMonth(subMonths(mes, 5)), 'yyyy-MM-dd')
+    const fimJanela = format(endOfMonth(mes), 'yyyy-MM-dd')
+
+    const [{ data: gastos }, { data: entradas }, { data: parcelas }, { data: fixas }, { data: assinaturas }] = await Promise.all([
+      supabase.from('gastos').select('valor, data').eq('grupo_id', gid).gte('data', inicioJanela).lte('data', fimJanela),
+      supabase.from('entradas').select('valor, data').eq('grupo_id', gid).gte('data', inicioJanela).lte('data', fimJanela),
+      supabase.from('parcelas').select('valor, data_vencimento').eq('grupo_id', gid).gte('data_vencimento', inicioJanela).lte('data_vencimento', fimJanela),
+      supabase.from('contas_fixas').select('valor').eq('grupo_id', gid).eq('ativo', true),
+      supabase.from('assinaturas').select('valor').eq('grupo_id', gid).eq('ativo', true),
+    ])
+    const fixoMensal = (fixas||[]).reduce((s,f) => s+Number(f.valor), 0) + (assinaturas||[]).reduce((s,a) => s+Number(a.valor), 0)
+
+    const buckets = {}
+    for (let i = 5; i >= 0; i--) {
+      const m = subMonths(mes, i)
+      const key = format(m, 'yyyy-MM')
+      buckets[key] = { key, label: format(m, 'MMM', { locale: ptBR }).replace('.',''), entradas: 0, saidas: fixoMensal }
+    }
+    ;(entradas||[]).forEach(e => { const k = e.data.slice(0,7); if (buckets[k]) buckets[k].entradas += Number(e.valor) })
+    ;(gastos||[]).forEach(g => { const k = g.data.slice(0,7); if (buckets[k]) buckets[k].saidas += Number(g.valor) })
+    ;(parcelas||[]).forEach(p => { const k = p.data_vencimento.slice(0,7); if (buckets[k]) buckets[k].saidas += Number(p.valor) })
+
+    return Object.values(buckets).map(b => ({ ...b, saldo: b.entradas - b.saidas }))
+  }
 
   async function carregarMes(data) {
     const inicio = format(startOfMonth(data), 'yyyy-MM-dd')
@@ -57,8 +93,8 @@ export default function Resumo() {
 
   async function carregar() {
     setLoading(true)
-    const [d, dAnt] = await Promise.all([carregarMes(mes), carregarMes(subMonths(mes, 1))])
-    setDados(d); setDadosAnt(dAnt)
+    const [d, dAnt, hist] = await Promise.all([carregarMes(mes), carregarMes(subMonths(mes, 1)), carregarHistorico()])
+    setDados(d); setDadosAnt(dAnt); setHistorico(hist)
     setLoading(false)
   }
 
@@ -115,6 +151,41 @@ export default function Resumo() {
         </div>
       </div>
 
+      {/* Tendência dos últimos 6 meses */}
+      {historico.length > 0 && (
+        <div className="card" style={{ marginBottom:20 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+            <TrendingUp size={18} color="var(--accent)" />
+            <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Tendência (6 meses)</p>
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={historico} margin={{ top:4, right:8, left:-16, bottom:0 }}>
+              <defs>
+                <linearGradient id="gEnt" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gSai" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize:11, fill:'var(--text2)' }} tickLine={false} axisLine={false} style={{ textTransform:'capitalize' }} />
+              <YAxis tick={{ fontSize:11, fill:'var(--text3)' }} tickLine={false} axisLine={false} tickFormatter={fmtCurto} width={44} />
+              <Tooltip
+                formatter={(v, n) => [fmt(v), n]}
+                labelStyle={{ color:'var(--text)', fontWeight:600, textTransform:'capitalize' }}
+                contentStyle={{ background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:10, fontSize:12, boxShadow:'var(--shadow-sm)' }}
+              />
+              <Legend wrapperStyle={{ fontSize:12 }} iconType="circle" />
+              <Area type="monotone" dataKey="entradas" name="Entradas" stroke="#10b981" strokeWidth={2.5} fill="url(#gEnt)" dot={{ r:2.5, fill:'#10b981' }} />
+              <Area type="monotone" dataKey="saidas" name="Saídas" stroke="#ef4444" strokeWidth={2.5} fill="url(#gSai)" dot={{ r:2.5, fill:'#ef4444' }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {/* Detalhamento saídas */}
       <div className="card" style={{ marginBottom:20 }}>
         <p style={{ fontSize:13, color:'var(--text2)', marginBottom:14 }}>Composição das saídas</p>
@@ -149,7 +220,7 @@ export default function Resumo() {
             return (
               <div key={cat} style={{ marginBottom:12 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, marginBottom:5 }}>
-                  <span>{cats[cat]||'📦'} {cat}</span>
+                  <span>{emojiDe(cat)} {cat}</span>
                   <span style={{ fontWeight:500 }}>{fmt(valor)} <span style={{ color:'var(--text3)', fontSize:11 }}>({pctTotal}%)</span></span>
                 </div>
                 <div style={{ background:'var(--bg3)', borderRadius:4, height:8, overflow:'hidden' }}>

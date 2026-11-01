@@ -12,6 +12,8 @@ import Parcelamentos from './pages/Parcelamentos'
 import Projecao from './pages/Projecao'
 import Cofrinhos from './pages/Cofrinhos'
 import Resumo from './pages/Resumo'
+import Orcamento from './pages/Orcamento'
+import Contas from './pages/Contas'
 import Configuracoes from './pages/Configuracoes'
 import Layout from './components/Layout'
 
@@ -43,6 +45,8 @@ export default function App() {
         <Route path="parcelamentos" element={<Parcelamentos />} />
         <Route path="projecao" element={<Projecao />} />
         <Route path="cofrinhos" element={<Cofrinhos />} />
+        <Route path="orcamento" element={<Orcamento />} />
+        <Route path="contas" element={<Contas />} />
         <Route path="configuracoes" element={<Configuracoes />} />
       </Route>
     </Routes>

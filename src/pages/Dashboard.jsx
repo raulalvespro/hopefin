@@ -6,9 +6,11 @@ import { ptBR } from 'date-fns/locale'
 import { TrendingUp, TrendingDown, Wallet, Bell, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import BotaoVoz from '../components/BotaoVoz'
+import { useCategorias } from '../hooks/useCategorias'
 
 export default function Dashboard() {
   const { perfil } = useAuth()
+  const { emojiDe } = useCategorias()
   const navigate = useNavigate()
   const [dados, setDados] = useState({ entradas: 0, gastos: 0, parcelas: 0, fixas: 0 })
   const [alertas, setAlertas] = useState([])
@@ -69,8 +71,6 @@ export default function Dashboard() {
 
   const saldo = dados.entradas - dados.gastos - dados.fixas
   const fmt = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-
-  const cats = { mercado: '🛒', transporte: '⛽', saude: '💊', alimentacao: '🍔', vestuario: '👕', lazer: '🎉', outros: '📦' }
 
   if (loading) return <div className="empty-state">Carregando...</div>
 
@@ -153,7 +153,7 @@ export default function Dashboard() {
         ) : ultimosGastos.map(g => (
           <div key={g.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 20 }}>{cats[g.categoria] || '📦'}</span>
+              <span style={{ fontSize: 20 }}>{emojiDe(g.categoria)}</span>
               <div>
                 <p style={{ fontSize: 14, fontWeight: 500 }}>{g.descricao}</p>
                 <p style={{ fontSize: 12, color: 'var(--text2)' }}>{format(new Date(g.data + 'T12:00:00'), 'dd/MM', { locale: ptBR })}</p>
