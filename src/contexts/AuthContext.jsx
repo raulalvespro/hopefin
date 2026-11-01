@@ -11,50 +11,119 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) carregarPerfil(session.user.id)
+      if (session?.user) carregarPerfil(session.user)
       else setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      if (session?.user) carregarPerfil(session.user.id)
+      if (session?.user) carregarPerfil(session.user)
       else { setPerfil(null); setLoading(false) }
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  async function carregarPerfil(userId) {
-    const { data } = await supabase.from('usuarios').select('*, grupos(*)').eq('id', userId).single()
-    setPerfil(data)
+  // Carrega o perfil do usuário. Se ainda não existir linha em `usuarios`
+  // (ex: primeiro login via Google ou após confirmar e-mail), cria a partir
+  // dos metadados guardados no cadastro — inclusive criando/entrando no grupo.
+  async function carregarPerfil(authUser) {
+    setLoading(true)
+    let perfilRow = await buscarPerfil(authUser.id)
+
+    if (!perfilRow) {
+      const md = authUser.user_metadata || {}
+      const nome = md.nome || authUser.email?.split('@')[0] || 'Usuário'
+
+      let grupoId = null
+      if (md.codigo_grupo) {
+        const { data: g } = await supabase
+          .from('grupos').select('id').eq('codigo', md.codigo_grupo.trim()).maybeSingle()
+        grupoId = g?.id ?? null
+      } else if (md.nome_grupo) {
+        const { data: g } = await supabase
+          .from('grupos').insert({ nome: md.nome_grupo }).select().single()
+        grupoId = g?.id ?? null
+      }
+
+      await supabase.from('usuarios').insert({
+        id: authUser.id, nome, email: authUser.email, grupo_id: grupoId,
+      })
+      perfilRow = await buscarPerfil(authUser.id)
+    }
+
+    setPerfil(perfilRow)
     setLoading(false)
+  }
+
+  async function buscarPerfil(userId) {
+    const { data } = await supabase
+      .from('usuarios').select('*, grupos(*)').eq('id', userId).maybeSingle()
+    return data
   }
 
   async function login(email, senha) {
     return supabase.auth.signInWithPassword({ email, password: senha })
   }
 
-  async function cadastrar(nome, email, senha, grupoId = null, nomeGrupo = null) {
-    const { data, error } = await supabase.auth.signUp({ email, password: senha })
+  // tipo 'novo'      -> cadastrar(nome, email, senha, null, nomeGrupo)
+  // tipo 'existente' -> cadastrar(nome, email, senha, codigoGrupo, null)
+  // A criação/entrada no grupo acontece em carregarPerfil (quando há sessão),
+  // usando os metadados abaixo — assim funciona com ou sem confirmação de e-mail.
+  async function cadastrar(nome, email, senha, codigoGrupo = null, nomeGrupo = null) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: senha,
+      options: {
+        data: {
+          nome,
+          nome_grupo: nomeGrupo || null,
+          codigo_grupo: codigoGrupo || null,
+        },
+      },
+    })
     if (error) return { error }
-    if (!data.user) return { error: { message: 'Erro ao criar usuário' } }
-
-    let gId = grupoId
-    if (!grupoId && nomeGrupo) {
-      const { data: g } = await supabase.from('grupos').insert({ nome: nomeGrupo }).select().single()
-      gId = g?.id
-    }
-
-    await supabase.from('usuarios').insert({ id: data.user.id, nome, email, grupo_id: gId })
     return { data }
+  }
+
+  // Cria um novo grupo e vincula o usuário logado (fluxo da tela EscolhaGrupo).
+  async function criarGrupo(nome) {
+    if (!user) return { error: { message: 'Sem sessão ativa' } }
+    const { data: g, error } = await supabase
+      .from('grupos').insert({ nome }).select().single()
+    if (error) return { error }
+    const { error: e2 } = await supabase
+      .from('usuarios').update({ grupo_id: g.id }).eq('id', user.id)
+    if (e2) return { error: e2 }
+    await carregarPerfil(user)
+    return { data: g }
+  }
+
+  // Entra num grupo existente a partir do código curto compartilhado.
+  async function entrarGrupo(codigo) {
+    if (!user) return { error: { message: 'Sem sessão ativa' } }
+    const { data: g } = await supabase
+      .from('grupos').select('id').eq('codigo', codigo.trim()).maybeSingle()
+    if (!g) return { error: { message: 'Código inválido' } }
+    const { error: e2 } = await supabase
+      .from('usuarios').update({ grupo_id: g.id }).eq('id', user.id)
+    if (e2) return { error: e2 }
+    await carregarPerfil(user)
+    return { data: g }
   }
 
   async function logout() {
     await supabase.auth.signOut()
   }
 
+  // Logado, perfil carregado, mas ainda sem grupo -> precisa escolher/criar grupo.
+  const precisaGrupo = !!user && !!perfil && !perfil.grupo_id
+
   return (
-    <AuthContext.Provider value={{ user, perfil, loading, login, cadastrar, logout, carregarPerfil }}>
+    <AuthContext.Provider value={{
+      user, perfil, loading, precisaGrupo,
+      login, cadastrar, criarGrupo, entrarGrupo, logout, carregarPerfil,
+    }}>
       {children}
     </AuthContext.Provider>
   )

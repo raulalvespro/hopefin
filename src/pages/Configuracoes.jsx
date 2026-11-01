@@ -6,7 +6,7 @@ export default function Configuracoes() {
   const { perfil } = useAuth()
   const [copiado, setCopiado] = useState(false)
 
-  const codigoGrupo = perfil?.grupo_id || ''
+  const codigoGrupo = perfil?.grupos?.codigo || ''
 
   function copiar() {
     navigator.clipboard.writeText(codigoGrupo)
