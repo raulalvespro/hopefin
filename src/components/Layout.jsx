@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-do
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar,
-  LogOut, MoreHorizontal, X, PieChart, Target, Landmark, PiggyBank, Settings,
+  LogOut, MoreHorizontal, X, Target, PiggyBank, Settings,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -16,9 +16,7 @@ const navPrincipal = [
 
 // Itens do menu "Mais"
 const navMais = [
-  { to: '/resumo', label: 'Resumo', icon: PieChart },
   { to: '/orcamento', label: 'Orçamento', icon: Target },
-  { to: '/contas', label: 'Contas', icon: Landmark },
   { to: '/contas-fixas', label: 'Contas fixas', icon: FileText },
   { to: '/parcelamentos', label: 'Parcelamentos', icon: Layers },
   { to: '/projecao', label: 'Projeção', icon: Calendar },

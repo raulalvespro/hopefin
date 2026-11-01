@@ -1,129 +1,212 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { format, startOfMonth, endOfMonth, isWithinInterval, addDays } from 'date-fns'
+import { format, startOfMonth, endOfMonth, subMonths, addMonths, addDays, isSameMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { TrendingUp, TrendingDown, Wallet, Bell, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, TrendingUp, Bell, PieChart as PieIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import {
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
+  PieChart, Pie, Cell,
+} from 'recharts'
 import BotaoVoz from '../components/BotaoVoz'
 import { useCategorias } from '../hooks/useCategorias'
+
+const fmt = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const fmtCurto = v => {
+  const n = Number(v || 0)
+  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(1).replace('.0', '')}k`
+  return String(Math.round(n))
+}
+const CORES = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b', '#8b5cf6', '#14b8a6', '#ec4899', '#0ea5e9']
 
 export default function Dashboard() {
   const { perfil } = useAuth()
   const { emojiDe } = useCategorias()
   const navigate = useNavigate()
-  const [dados, setDados] = useState({ entradas: 0, gastos: 0, parcelas: 0, fixas: 0 })
+  const [mes, setMes] = useState(new Date())
+  const [dados, setDados] = useState(null)
+  const [dadosAnt, setDadosAnt] = useState(null)
+  const [historico, setHistorico] = useState([])
   const [alertas, setAlertas] = useState([])
-  const [ultimosGastos, setUltimosGastos] = useState([])
   const [loading, setLoading] = useState(true)
-  const mesAtual = format(new Date(), 'MMMM yyyy', { locale: ptBR })
 
-  useEffect(() => {
-    if (perfil?.grupo_id) carregarDados()
-  }, [perfil])
+  const ehMesAtual = isSameMonth(mes, new Date())
 
-  async function carregarDados() {
-    const hoje = new Date()
-    const inicio = format(startOfMonth(hoje), 'yyyy-MM-dd')
-    const fim = format(endOfMonth(hoje), 'yyyy-MM-dd')
+  useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil, mes])
+
+  // Tendência dos últimos 6 meses (entradas, saídas, saldo)
+  async function carregarHistorico() {
+    const gid = perfil.grupo_id
+    const inicioJanela = format(startOfMonth(subMonths(mes, 5)), 'yyyy-MM-dd')
+    const fimJanela = format(endOfMonth(mes), 'yyyy-MM-dd')
+
+    const [{ data: gastos }, { data: entradas }, { data: parcelas }, { data: fixas }, { data: assinaturas }] = await Promise.all([
+      supabase.from('gastos').select('valor, data').eq('grupo_id', gid).gte('data', inicioJanela).lte('data', fimJanela),
+      supabase.from('entradas').select('valor, data').eq('grupo_id', gid).gte('data', inicioJanela).lte('data', fimJanela),
+      supabase.from('parcelas').select('valor, data_vencimento').eq('grupo_id', gid).gte('data_vencimento', inicioJanela).lte('data_vencimento', fimJanela),
+      supabase.from('contas_fixas').select('valor').eq('grupo_id', gid).eq('ativo', true),
+      supabase.from('assinaturas').select('valor').eq('grupo_id', gid).eq('ativo', true),
+    ])
+    const fixoMensal = (fixas || []).reduce((s, f) => s + Number(f.valor), 0) + (assinaturas || []).reduce((s, a) => s + Number(a.valor), 0)
+
+    const buckets = {}
+    for (let i = 5; i >= 0; i--) {
+      const m = subMonths(mes, i)
+      const key = format(m, 'yyyy-MM')
+      buckets[key] = { key, label: format(m, 'MMM', { locale: ptBR }).replace('.', ''), entradas: 0, saidas: fixoMensal }
+    }
+    ;(entradas || []).forEach(e => { const k = e.data.slice(0, 7); if (buckets[k]) buckets[k].entradas += Number(e.valor) })
+    ;(gastos || []).forEach(g => { const k = g.data.slice(0, 7); if (buckets[k]) buckets[k].saidas += Number(g.valor) })
+    ;(parcelas || []).forEach(p => { const k = p.data_vencimento.slice(0, 7); if (buckets[k]) buckets[k].saidas += Number(p.valor) })
+
+    return Object.values(buckets).map(b => ({ ...b, saldo: b.entradas - b.saidas }))
+  }
+
+  async function carregarMes(data) {
+    const inicio = format(startOfMonth(data), 'yyyy-MM-dd')
+    const fim = format(endOfMonth(data), 'yyyy-MM-dd')
     const gid = perfil.grupo_id
 
-    const [{ data: entradas }, { data: gastos }, { data: parcelas }, { data: fixas }, { data: cartoes }] = await Promise.all([
+    const [{ data: gastos }, { data: entradas }, { data: fixas }, { data: parcelas }, { data: assinaturas }] = await Promise.all([
+      supabase.from('gastos').select('id, descricao, valor, categoria, data, usuarios(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
       supabase.from('entradas').select('valor').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
-      supabase.from('gastos').select('*').eq('grupo_id', gid).gte('data', inicio).lte('data', fim).order('data', { ascending: false }),
-      supabase.from('parcelas').select('valor').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim).eq('paga', false),
+      supabase.from('contas_fixas').select('valor').eq('grupo_id', gid).eq('ativo', true),
+      supabase.from('parcelas').select('valor').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
+      supabase.from('assinaturas').select('valor').eq('grupo_id', gid).eq('ativo', true),
+    ])
+
+    const totalEntradas = (entradas || []).reduce((s, e) => s + Number(e.valor), 0)
+    const totalGastos = (gastos || []).reduce((s, g) => s + Number(g.valor), 0)
+    const totalFixas = (fixas || []).reduce((s, f) => s + Number(f.valor), 0)
+    const totalParcelas = (parcelas || []).reduce((s, p) => s + Number(p.valor), 0)
+    const totalAssint = (assinaturas || []).reduce((s, a) => s + Number(a.valor), 0)
+    const totalSaidas = totalGastos + totalFixas + totalParcelas + totalAssint
+    const saldo = totalEntradas - totalSaidas
+
+    const porCategoria = {}
+    ;(gastos || []).forEach(g => { porCategoria[g.categoria] = (porCategoria[g.categoria] || 0) + Number(g.valor) })
+
+    const porPessoa = {}
+    ;(gastos || []).forEach(g => {
+      const nome = g.usuarios?.nome?.split(' ')[0] || 'Desconhecido'
+      porPessoa[nome] = (porPessoa[nome] || 0) + Number(g.valor)
+    })
+
+    return { totalEntradas, totalGastos, totalFixas, totalParcelas, totalAssint, totalSaidas, saldo, porCategoria, porPessoa, gastos: gastos || [] }
+  }
+
+  // Vencimentos próximos (só faz sentido no mês corrente)
+  async function carregarAlertas() {
+    const gid = perfil.grupo_id
+    const hoje = new Date()
+    const [{ data: fixas }, { data: cartoes }] = await Promise.all([
       supabase.from('contas_fixas').select('valor, nome, dia_vencimento, alerta_dias').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('cartoes').select('nome, dia_vencimento, alerta_dias').eq('grupo_id', gid).eq('ativo', true),
     ])
-
-    const totalEntradas = (entradas || []).reduce((s, e) => s + e.valor, 0)
-    const totalGastos = (gastos || []).reduce((s, g) => s + g.valor, 0)
-    const totalParcelas = (parcelas || []).reduce((s, p) => s + p.valor, 0)
-    const totalFixas = (fixas || []).reduce((s, f) => s + f.valor, 0)
-
-    setDados({ entradas: totalEntradas, gastos: totalGastos + totalParcelas, parcelas: totalParcelas, fixas: totalFixas })
-    setUltimosGastos((gastos || []).slice(0, 5))
-
-    // Alertas de vencimento
     const alertasGerados = []
     const mesN = hoje.getMonth()
-    const anoN = hoje.getFullYear();
-
-    (fixas || []).forEach(f => {
+    const anoN = hoje.getFullYear()
+    ;(fixas || []).forEach(f => {
       const venc = new Date(anoN, mesN, f.dia_vencimento)
       const limite = addDays(hoje, f.alerta_dias || 3)
-      if (venc >= hoje && venc <= limite) {
-        alertasGerados.push({ tipo: 'fixa', nome: f.nome, data: venc, valor: f.valor })
-      }
-    });
-
-    (cartoes || []).forEach(c => {
+      if (venc >= hoje && venc <= limite) alertasGerados.push({ tipo: 'fixa', nome: f.nome, data: venc, valor: f.valor })
+    })
+    ;(cartoes || []).forEach(c => {
       const venc = new Date(anoN, mesN, c.dia_vencimento)
       const limite = addDays(hoje, c.alerta_dias || 3)
-      if (venc >= hoje && venc <= limite) {
-        alertasGerados.push({ tipo: 'cartao', nome: `Fatura ${c.nome}`, data: venc })
-      }
+      if (venc >= hoje && venc <= limite) alertasGerados.push({ tipo: 'cartao', nome: `Fatura ${c.nome}`, data: venc })
     })
+    return alertasGerados
+  }
 
-    setAlertas(alertasGerados)
+  async function carregar() {
+    setLoading(true)
+    const [d, dAnt, hist, alrt] = await Promise.all([
+      carregarMes(mes),
+      carregarMes(subMonths(mes, 1)),
+      carregarHistorico(),
+      ehMesAtual ? carregarAlertas() : Promise.resolve([]),
+    ])
+    setDados(d); setDadosAnt(dAnt); setHistorico(hist); setAlertas(alrt)
     setLoading(false)
   }
 
-  const saldo = dados.entradas - dados.gastos - dados.fixas
-  const fmt = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', flexDirection: 'column', gap: 12 }}>
+      <div style={{ width: 32, height: 32, border: '3px solid var(--border2)', borderTop: '3px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
 
-  if (loading) return <div className="empty-state">Carregando...</div>
+  const varEntradas = dadosAnt?.totalEntradas > 0 ? ((dados.totalEntradas - dadosAnt.totalEntradas) / dadosAnt.totalEntradas * 100).toFixed(0) : null
+  const varGastos = dadosAnt?.totalSaidas > 0 ? ((dados.totalSaidas - dadosAnt.totalSaidas) / dadosAnt.totalSaidas * 100).toFixed(0) : null
+
+  const catEntries = Object.entries(dados.porCategoria).sort((a, b) => b[1] - a[1])
+  const maxCat = catEntries[0]?.[1] || 1
+  const pessoaEntries = Object.entries(dados.porPessoa).sort((a, b) => b[1] - a[1])
+  const totalPessoas = pessoaEntries.reduce((s, [, v]) => s + v, 0)
+
+  // Distribuição da renda: quanto de tudo que entrou vai para cada categoria/bloco
+  const baseRenda = Math.max(dados.totalEntradas, dados.totalSaidas, 1)
+  const distribuicao = []
+  catEntries.forEach(([cat, valor]) => distribuicao.push({ nome: cat, valor, rotulo: `${emojiDe(cat)} ${cat}` }))
+  if (dados.totalFixas > 0) distribuicao.push({ nome: 'Contas fixas', valor: dados.totalFixas, rotulo: '🧾 Contas fixas' })
+  if (dados.totalParcelas > 0) distribuicao.push({ nome: 'Parcelas', valor: dados.totalParcelas, rotulo: '💳 Parcelas' })
+  if (dados.totalAssint > 0) distribuicao.push({ nome: 'Assinaturas', valor: dados.totalAssint, rotulo: '📺 Assinaturas' })
+  const sobra = dados.totalEntradas - dados.totalSaidas
+  if (sobra > 0) distribuicao.push({ nome: 'Disponível', valor: sobra, rotulo: '✅ Disponível', sobra: true })
+
+  const ultimosGastos = [...dados.gastos].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 5)
 
   return (
     <div>
       {/* Saudação */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 20 }}>
         <p style={{ color: 'var(--text2)', fontSize: 13 }}>
           {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
         </p>
         <h2 style={{ fontSize: 22, marginTop: 2 }}>Olá, {perfil?.nome?.split(' ')[0]} 👋</h2>
       </div>
 
-      {/* Saldo do mês */}
-      <div className="card" style={{ marginBottom: 16, background: saldo >= 0 ? 'var(--accent-dim)' : 'var(--red-dim)', borderColor: saldo >= 0 ? 'var(--accent)' : 'var(--red)' }}>
-        <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Saldo em {mesAtual}</p>
-        <p style={{ fontSize: 32, fontFamily: 'Syne', fontWeight: 700, color: saldo >= 0 ? 'var(--accent)' : 'var(--red)' }}>{fmt(saldo)}</p>
+      {/* Navegação de mês */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <button onClick={() => setMes(m => subMonths(m, 1))}><ChevronLeft size={20} color="var(--text2)" /></button>
+        <h3 style={{ fontSize: 15, textTransform: 'capitalize' }}>{format(mes, "MMMM 'de' yyyy", { locale: ptBR })}</h3>
+        <button onClick={() => setMes(m => addMonths(m, 1))}><ChevronRight size={20} color="var(--text2)" /></button>
       </div>
 
-      {/* Cards resumo */}
+      {/* Saldo do mês */}
+      <div className="card" style={{ marginBottom: 16, background: dados.saldo >= 0 ? 'var(--accent-dim)' : 'var(--red-dim)', borderColor: dados.saldo >= 0 ? 'var(--accent)' : 'var(--red)' }}>
+        <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Saldo do mês</p>
+        <p style={{ fontSize: 34, fontFamily: 'Syne', fontWeight: 700, color: dados.saldo >= 0 ? 'var(--accent)' : 'var(--red)' }}>{fmt(dados.saldo)}</p>
+        {dadosAnt && <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>Mês anterior: {fmt(dadosAnt.saldo)}</p>}
+      </div>
+
+      {/* Comparativo entradas/saídas */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
         <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            <TrendingUp size={15} color="var(--accent)" />
-            <span style={{ fontSize: 12, color: 'var(--text2)' }}>Entradas</span>
-          </div>
-          <p style={{ fontSize: 18, fontFamily: 'Syne', fontWeight: 700, color: 'var(--accent)' }}>{fmt(dados.entradas)}</p>
+          <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Entradas</p>
+          <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--accent)' }}>{fmt(dados.totalEntradas)}</p>
+          {varEntradas !== null && (
+            <p style={{ fontSize: 12, marginTop: 4, color: varEntradas >= 0 ? 'var(--accent)' : 'var(--red)' }}>
+              {varEntradas >= 0 ? '▲' : '▼'} {Math.abs(varEntradas)}% vs mês ant.
+            </p>
+          )}
         </div>
         <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            <TrendingDown size={15} color="var(--red)" />
-            <span style={{ fontSize: 12, color: 'var(--text2)' }}>Gastos</span>
-          </div>
-          <p style={{ fontSize: 18, fontFamily: 'Syne', fontWeight: 700, color: 'var(--red)' }}>{fmt(dados.gastos)}</p>
-        </div>
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            <Wallet size={15} color="var(--blue)" />
-            <span style={{ fontSize: 12, color: 'var(--text2)' }}>Contas fixas</span>
-          </div>
-          <p style={{ fontSize: 18, fontFamily: 'Syne', fontWeight: 700, color: 'var(--blue)' }}>{fmt(dados.fixas)}</p>
-        </div>
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            <Wallet size={15} color="var(--amber)" />
-            <span style={{ fontSize: 12, color: 'var(--text2)' }}>Parcelas</span>
-          </div>
-          <p style={{ fontSize: 18, fontFamily: 'Syne', fontWeight: 700, color: 'var(--amber)' }}>{fmt(dados.parcelas)}</p>
+          <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Saídas totais</p>
+          <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--red)' }}>{fmt(dados.totalSaidas)}</p>
+          {varGastos !== null && (
+            <p style={{ fontSize: 12, marginTop: 4, color: varGastos <= 0 ? 'var(--accent)' : 'var(--red)' }}>
+              {varGastos >= 0 ? '▲' : '▼'} {Math.abs(varGastos)}% vs mês ant.
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Alertas */}
-      {alertas.length > 0 && (
+      {/* Vencimentos próximos (mês corrente) */}
+      {ehMesAtual && alertas.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <h3 style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
             <Bell size={14} color="var(--amber)" /> Vencimentos próximos
@@ -132,11 +215,158 @@ export default function Dashboard() {
             <div key={i} className="card" style={{ marginBottom: 8, borderColor: 'var(--amber)', background: 'var(--amber-dim)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <p style={{ fontWeight: 500, fontSize: 14 }}>{a.nome}</p>
-                <p style={{ fontSize: 12, color: 'var(--text2)' }}>Vence {format(a.data, "dd/MM", { locale: ptBR })}</p>
+                <p style={{ fontSize: 12, color: 'var(--text2)' }}>Vence {format(a.data, 'dd/MM', { locale: ptBR })}</p>
               </div>
               {a.valor && <p style={{ color: 'var(--amber)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(a.valor)}</p>}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pizza: para onde vai a renda */}
+      {distribuicao.length > 0 && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <PieIcon size={18} color="var(--accent)" />
+            <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Para onde vai a renda</p>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
+            {dados.totalEntradas > 0 ? `% sobre ${fmt(dados.totalEntradas)} de entradas` : 'Sem entradas no mês — % sobre o total de saídas'}
+          </p>
+          <ResponsiveContainer width="100%" height={210}>
+            <PieChart>
+              <Pie data={distribuicao} dataKey="valor" nameKey="rotulo" cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={2} stroke="none">
+                {distribuicao.map((d, i) => (
+                  <Cell key={i} fill={d.sobra ? 'var(--border2)' : CORES[i % CORES.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(v, n) => [`${fmt(v)} (${Math.round((v / baseRenda) * 100)}%)`, n]}
+                contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12, boxShadow: 'var(--shadow-sm)' }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{ marginTop: 8 }}>
+            {distribuicao.map((d, i) => {
+              const pct = Math.round((d.valor / baseRenda) * 100)
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13, padding: '4px 0' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 3, background: d.sobra ? 'var(--border2)' : CORES[i % CORES.length], display: 'inline-block' }} />
+                    {d.rotulo}
+                  </span>
+                  <span style={{ fontWeight: 500 }}>{fmt(d.valor)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pct}%)</span></span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Tendência dos últimos 6 meses */}
+      {historico.length > 0 && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <TrendingUp size={18} color="var(--accent)" />
+            <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Tendência (6 meses)</p>
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={historico} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gEnt" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gSai" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text2)' }} tickLine={false} axisLine={false} style={{ textTransform: 'capitalize' }} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--text3)' }} tickLine={false} axisLine={false} tickFormatter={fmtCurto} width={44} />
+              <Tooltip
+                formatter={(v, n) => [fmt(v), n]}
+                labelStyle={{ color: 'var(--text)', fontWeight: 600, textTransform: 'capitalize' }}
+                contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12, boxShadow: 'var(--shadow-sm)' }}
+              />
+              <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" />
+              <Area type="monotone" dataKey="entradas" name="Entradas" stroke="#10b981" strokeWidth={2.5} fill="url(#gEnt)" dot={{ r: 2.5, fill: '#10b981' }} />
+              <Area type="monotone" dataKey="saidas" name="Saídas" stroke="#ef4444" strokeWidth={2.5} fill="url(#gSai)" dot={{ r: 2.5, fill: '#ef4444' }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Composição das saídas */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Composição das saídas</p>
+        {[
+          ['Gastos variáveis', dados.totalGastos, 'var(--red)'],
+          ['Contas fixas', dados.totalFixas, 'var(--blue)'],
+          ['Assinaturas', dados.totalAssint, 'var(--purple)'],
+          ['Parcelas', dados.totalParcelas, 'var(--amber)'],
+        ].map(([label, valor, cor]) => {
+          const pct = dados.totalSaidas > 0 ? Math.round((valor / dados.totalSaidas) * 100) : 0
+          return valor > 0 ? (
+            <div key={label} style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
+                <span>{label}</span>
+                <span style={{ fontWeight: 500 }}>{fmt(valor)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pct}%)</span></span>
+              </div>
+              <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                <div style={{ width: `${pct}%`, height: '100%', background: cor, borderRadius: 4, transition: 'width 0.4s' }} />
+              </div>
+            </div>
+          ) : null
+        })}
+      </div>
+
+      {/* Gastos por categoria (barras) */}
+      {catEntries.length > 0 && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Gastos por categoria</p>
+          {catEntries.map(([cat, valor], i) => {
+            const pct = Math.round((valor / maxCat) * 100)
+            const pctTotal = dados.totalGastos > 0 ? Math.round((valor / dados.totalGastos) * 100) : 0
+            return (
+              <div key={cat} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
+                  <span>{emojiDe(cat)} {cat}</span>
+                  <span style={{ fontWeight: 500 }}>{fmt(valor)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pctTotal}%)</span></span>
+                </div>
+                <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: CORES[i % CORES.length], borderRadius: 4, transition: 'width 0.4s' }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Gastos por pessoa */}
+      {pessoaEntries.length > 0 && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Gastos por pessoa</p>
+          {pessoaEntries.map(([nome, valor], i) => {
+            const pct = totalPessoas > 0 ? Math.round((valor / totalPessoas) * 100) : 0
+            return (
+              <div key={nome} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 28, height: 28, borderRadius: '50%', background: CORES[i % CORES.length] + '33', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: CORES[i % CORES.length] }}>
+                      {nome[0].toUpperCase()}
+                    </span>
+                    {nome}
+                  </span>
+                  <span style={{ fontWeight: 500 }}>{fmt(valor)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pct}%)</span></span>
+                </div>
+                <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: CORES[i % CORES.length], borderRadius: 4 }} />
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -149,7 +379,7 @@ export default function Dashboard() {
           </button>
         </div>
         {ultimosGastos.length === 0 ? (
-          <div className="empty-state">Nenhum gasto este mês</div>
+          <div className="empty-state">Nenhum gasto neste mês</div>
         ) : ultimosGastos.map(g => (
           <div key={g.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -164,8 +394,37 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {/* Comparativo vs mês anterior */}
+      {dadosAnt && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Comparativo com mês anterior</p>
+          {[
+            ['Entradas', dados.totalEntradas, dadosAnt.totalEntradas, true],
+            ['Gastos variáveis', dados.totalGastos, dadosAnt.totalGastos, false],
+            ['Total saídas', dados.totalSaidas, dadosAnt.totalSaidas, false],
+            ['Saldo', dados.saldo, dadosAnt.saldo, true],
+          ].map(([label, atual, anterior, maiorEBom]) => {
+            const diff = atual - anterior
+            const bom = maiorEBom ? diff >= 0 : diff <= 0
+            return (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 13, color: 'var(--text2)' }}>{label}</span>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: 14, fontWeight: 500, fontFamily: 'Syne' }}>{fmt(atual)}</p>
+                  {diff !== 0 && (
+                    <p style={{ fontSize: 11, color: bom ? 'var(--accent)' : 'var(--red)' }}>
+                      {diff > 0 ? '+' : ''}{fmt(diff)} vs ant.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Botão de voz flutuante */}
-      <BotaoVoz onSalvo={carregarDados} />
+      <BotaoVoz onSalvo={carregar} />
     </div>
   )
 }

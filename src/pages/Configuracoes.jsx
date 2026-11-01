@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { Copy, Check, Users } from 'lucide-react'
+import { Copy, Check, Users, Tags, ChevronRight } from 'lucide-react'
 
 export default function Configuracoes() {
   const { perfil } = useAuth()
@@ -35,6 +36,18 @@ export default function Configuracoes() {
         </div>
         <p style={{ fontSize:12, color:'var(--text3)' }}>Grupo: {perfil?.grupos?.nome}</p>
       </div>
+
+      {/* Categorias */}
+      <Link to="/categorias" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <Tags size={18} color="var(--accent)" />
+          <div>
+            <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Categorias</p>
+            <p style={{ fontSize:12, color:'var(--text2)' }}>Criar e editar as categorias de gastos</p>
+          </div>
+        </div>
+        <ChevronRight size={18} color="var(--text3)" />
+      </Link>
 
       {/* Info do usuário */}
       <div className="card">

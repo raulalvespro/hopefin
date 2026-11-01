@@ -11,9 +11,8 @@ import ContasFixas from './pages/ContasFixas'
 import Parcelamentos from './pages/Parcelamentos'
 import Projecao from './pages/Projecao'
 import Cofrinhos from './pages/Cofrinhos'
-import Resumo from './pages/Resumo'
 import Orcamento from './pages/Orcamento'
-import Contas from './pages/Contas'
+import Categorias from './pages/Categorias'
 import Configuracoes from './pages/Configuracoes'
 import Layout from './components/Layout'
 
@@ -37,7 +36,6 @@ export default function App() {
       <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/" element={<RotaProtegida><Layout /></RotaProtegida>}>
         <Route index element={<Dashboard />} />
-        <Route path="resumo" element={<Resumo />} />
         <Route path="gastos" element={<Gastos />} />
         <Route path="entradas" element={<Entradas />} />
         <Route path="cartoes" element={<Cartoes />} />
@@ -46,7 +44,7 @@ export default function App() {
         <Route path="projecao" element={<Projecao />} />
         <Route path="cofrinhos" element={<Cofrinhos />} />
         <Route path="orcamento" element={<Orcamento />} />
-        <Route path="contas" element={<Contas />} />
+        <Route path="categorias" element={<Categorias />} />
         <Route path="configuracoes" element={<Configuracoes />} />
       </Route>
     </Routes>
