@@ -10,6 +10,7 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts'
 import BotaoVoz from '../components/BotaoVoz'
+import Onboarding from '../components/Onboarding'
 import { useCategorias } from '../hooks/useCategorias'
 
 const fmt = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -212,6 +213,8 @@ export default function Dashboard() {
         </p>
         <h2 style={{ fontSize: 22, marginTop: 2 }}>Olá, {perfil?.nome?.split(' ')[0]} 👋</h2>
       </div>
+
+      <Onboarding />
 
       {/* Navegação de mês */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
