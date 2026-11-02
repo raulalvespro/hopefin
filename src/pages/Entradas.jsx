@@ -3,18 +3,25 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths, getDaysInMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, Trash2, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, RefreshCw } from 'lucide-react'
+import { useDb } from '../hooks/useDb'
+import { useToast } from '../contexts/ToastContext'
+import { fmt, fmtData, hojeISO } from '../lib/format'
 
-const fmt = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const novoForm = () => ({ descricao: '', valor: '', tipo: 'avulso', recorrente: false, data: hojeISO() })
 
 export default function Entradas() {
   const { perfil } = useAuth()
+  const run = useDb()
+  const { toast } = useToast()
   const [mes, setMes] = useState(new Date())
   const [entradas, setEntradas] = useState([])
   const [pendentes, setPendentes] = useState([])
   const [lancando, setLancando] = useState(false)
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ descricao: '', valor: '', tipo: 'avulso', recorrente: false, data: format(new Date(), 'yyyy-MM-dd') })
+  const [editando, setEditando] = useState(null)
+  const [form, setForm] = useState(novoForm())
+  const [salvando, setSalvando] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil, mes])
@@ -33,7 +40,6 @@ export default function Entradas() {
     ])
     setEntradas(data || [])
 
-    // Recorrentes do mês passado que ainda não existem no mês atual (mesma descrição + pessoa)
     const chavesAtuais = new Set((data || []).map(e => `${e.descricao}|${e.usuario_id}`))
     setPendentes((recAnt || []).filter(r => !chavesAtuais.has(`${r.descricao}|${r.usuario_id}`)))
     setLoading(false)
@@ -51,22 +57,54 @@ export default function Entradas() {
         grupo_id: perfil.grupo_id, usuario_id: r.usuario_id,
       }
     })
-    await supabase.from('entradas').insert(novas)
+    const { error } = await run(supabase.from('entradas').insert(novas), { ok: 'Recorrentes lançadas' })
     setLancando(false)
-    carregar()
+    if (!error) carregar()
+  }
+
+  function abrirNovo() {
+    setEditando(null); setForm(novoForm()); setModal(true)
+  }
+
+  function editar(e) {
+    setEditando(e.id)
+    setForm({ descricao: e.descricao, valor: String(e.valor), tipo: e.tipo, recorrente: e.recorrente, data: e.data })
+    setModal(true)
+  }
+
+  function fecharModal() {
+    setModal(false); setEditando(null); setForm(novoForm())
   }
 
   async function salvar() {
-    if (!form.descricao || !form.valor) return
-    await supabase.from('entradas').insert({ ...form, valor: parseFloat(form.valor), grupo_id: perfil.grupo_id, usuario_id: perfil.id })
-    setModal(false); setForm({ descricao: '', valor: '', tipo: 'avulso', recorrente: false, data: format(new Date(), 'yyyy-MM-dd') })
-    carregar()
+    if (!form.descricao || !form.valor) { toast('Preencha descrição e valor.', 'erro'); return }
+    const valor = parseFloat(form.valor)
+    if (!(valor > 0)) { toast('Informe um valor válido.', 'erro'); return }
+    setSalvando(true)
+
+    if (editando) {
+      const { error } = await run(
+        supabase.from('entradas').update({ descricao: form.descricao, valor, tipo: form.tipo, recorrente: form.recorrente, data: form.data }).eq('id', editando),
+        { ok: 'Entrada atualizada' }
+      )
+      setSalvando(false)
+      if (error) return
+      fecharModal(); carregar(); return
+    }
+
+    const { error } = await run(
+      supabase.from('entradas').insert({ descricao: form.descricao, valor, tipo: form.tipo, recorrente: form.recorrente, data: form.data, grupo_id: perfil.grupo_id, usuario_id: perfil.id }),
+      { ok: 'Entrada adicionada' }
+    )
+    setSalvando(false)
+    if (error) return
+    fecharModal(); carregar()
   }
 
   async function excluir(id) {
     if (!confirm('Excluir esta entrada?')) return
-    await supabase.from('entradas').delete().eq('id', id)
-    carregar()
+    const { error } = await run(supabase.from('entradas').delete().eq('id', id), { ok: 'Entrada excluída' })
+    if (!error) carregar()
   }
 
   const total = entradas.reduce((s, e) => s + e.valor, 0)
@@ -114,26 +152,27 @@ export default function Entradas() {
             <div>
               <p style={{ fontSize: 14, fontWeight: 500 }}>{e.descricao}</p>
               <p style={{ fontSize: 11, color: 'var(--text3)' }}>
-                {format(new Date(e.data + 'T12:00:00'), 'dd/MM')} · {e.tipo === 'fixo' ? 'Fixo' : 'Avulso'} · {e.usuarios?.nome?.split(' ')[0]}
+                {fmtData(e.data, 'dd/MM')} · {e.tipo === 'fixo' ? 'Fixo' : 'Avulso'} · {e.usuarios?.nome?.split(' ')[0]}
                 {e.recorrente && <span style={{ marginLeft: 6 }}><RefreshCw size={10} /></span>}
               </p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ color: 'var(--accent)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(e.valor)}</span>
+            <button onClick={() => editar(e)}><Pencil size={14} color="var(--text3)" /></button>
             <button onClick={() => excluir(e.id)}><Trash2 size={15} color="var(--text3)" /></button>
           </div>
         </div>
       ))}
 
-      <button onClick={() => setModal(true)} style={{ position: 'fixed', bottom: 80, right: 20, width: 56, height: 56, borderRadius: '50%', background: 'var(--accent)', color: 'var(--on-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(16,185,129,0.35)', zIndex: 50 }}>
+      <button onClick={abrirNovo} style={{ position: 'fixed', bottom: 80, right: 20, width: 56, height: 56, borderRadius: '50%', background: 'var(--accent)', color: 'var(--on-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(16,185,129,0.35)', zIndex: 50 }}>
         <Plus size={24} />
       </button>
 
       {modal && (
-        <div className="modal-overlay" onClick={() => setModal(false)}>
+        <div className="modal-overlay" onClick={fecharModal}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: 18, marginBottom: 20 }}>Nova entrada</h2>
+            <h2 style={{ fontSize: 18, marginBottom: 20 }}>{editando ? 'Editar entrada' : 'Nova entrada'}</h2>
             <div className="form-group"><label>Descrição</label><input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Salário, Freelance..." /></div>
             <div className="form-row">
               <div className="form-group"><label>Valor</label><input type="number" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
@@ -155,8 +194,10 @@ export default function Entradas() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-ghost" style={{ flex: 1 }} onClick={() => setModal(false)}>Cancelar</button>
-              <button className="btn-primary" style={{ flex: 1 }} onClick={salvar}>Salvar</button>
+              <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharModal}>Cancelar</button>
+              <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} onClick={salvar} disabled={salvando}>
+                {salvando ? 'Salvando...' : 'Salvar'}
+              </button>
             </div>
           </div>
         </div>

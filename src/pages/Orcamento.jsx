@@ -5,12 +5,13 @@ import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Target, Pencil, Trash2 } from 'lucide-react'
 import { useCategorias } from '../hooks/useCategorias'
-
-const fmt = v => Number(v||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' })
+import { useDb } from '../hooks/useDb'
+import { fmt } from '../lib/format'
 
 export default function Orcamento() {
   const { perfil } = useAuth()
   const { categorias, emojiDe } = useCategorias()
+  const run = useDb()
   const [mes, setMes] = useState(new Date())
   const [orcamentos, setOrcamentos] = useState([])
   const [gastosPorCat, setGastosPorCat] = useState({})
@@ -37,16 +38,23 @@ export default function Orcamento() {
 
   async function salvar() {
     if (!modal?.categoria || !modal.valor) return
-    await supabase.from('orcamentos').upsert(
-      { grupo_id: perfil.grupo_id, categoria: modal.categoria, valor: parseFloat(modal.valor) },
-      { onConflict: 'grupo_id,categoria' }
+    const { error } = await run(
+      supabase.from('orcamentos').upsert(
+        { grupo_id: perfil.grupo_id, categoria: modal.categoria, valor: parseFloat(modal.valor) },
+        { onConflict: 'grupo_id,categoria' }
+      ),
+      { ok: 'Teto definido' }
     )
+    if (error) return
     setModal(null); carregar()
   }
 
   async function excluir(categoria) {
-    await supabase.from('orcamentos').delete().eq('grupo_id', perfil.grupo_id).eq('categoria', categoria)
-    carregar()
+    const { error } = await run(
+      supabase.from('orcamentos').delete().eq('grupo_id', perfil.grupo_id).eq('categoria', categoria),
+      { ok: 'Teto removido' }
+    )
+    if (!error) carregar()
   }
 
   const mapOrc = Object.fromEntries(orcamentos.map(o => [o.categoria, Number(o.valor)]))

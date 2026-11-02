@@ -1,36 +1,69 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Pencil } from 'lucide-react'
 import { useCategorias } from '../hooks/useCategorias'
+import { useDb } from '../hooks/useDb'
+import { useToast } from '../contexts/ToastContext'
+import { fmt } from '../lib/format'
 
-const fmt = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const novoForm = () => ({ nome: '', valor: '', dia_vencimento: '', categoria: 'outros', alerta_dias: 3 })
 
 export default function ContasFixas() {
   const { perfil } = useAuth()
   const { categorias, emojiDe } = useCategorias()
+  const run = useDb()
+  const { toast } = useToast()
   const [contas, setContas] = useState([])
+  const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ nome: '', valor: '', dia_vencimento: '', categoria: 'outros', alerta_dias: 3 })
+  const [editando, setEditando] = useState(null)
+  const [form, setForm] = useState(novoForm())
+  const [salvando, setSalvando] = useState(false)
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil])
 
   async function carregar() {
+    setLoading(true)
     const { data } = await supabase.from('contas_fixas').select('*').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('dia_vencimento')
     setContas(data || [])
+    setLoading(false)
+  }
+
+  function abrirNovo() {
+    setEditando(null); setForm(novoForm()); setModal(true)
+  }
+
+  function editar(c) {
+    setEditando(c.id)
+    setForm({ nome: c.nome, valor: String(c.valor), dia_vencimento: String(c.dia_vencimento ?? ''), categoria: c.categoria || 'outros', alerta_dias: c.alerta_dias ?? 3 })
+    setModal(true)
+  }
+
+  function fecharModal() {
+    setModal(false); setEditando(null); setForm(novoForm())
   }
 
   async function salvar() {
-    if (!form.nome || !form.valor || !form.dia_vencimento) return
-    await supabase.from('contas_fixas').insert({ ...form, valor: parseFloat(form.valor), dia_vencimento: parseInt(form.dia_vencimento), alerta_dias: parseInt(form.alerta_dias), grupo_id: perfil.grupo_id })
-    setModal(false); setForm({ nome: '', valor: '', dia_vencimento: '', categoria: 'outros', alerta_dias: 3 })
-    carregar()
+    if (!form.nome || !form.valor || !form.dia_vencimento) { toast('Preencha nome, valor e dia.', 'erro'); return }
+    const payload = {
+      nome: form.nome, valor: parseFloat(form.valor), dia_vencimento: parseInt(form.dia_vencimento),
+      categoria: form.categoria, alerta_dias: parseInt(form.alerta_dias),
+    }
+    setSalvando(true)
+    const op = editando
+      ? run(supabase.from('contas_fixas').update(payload).eq('id', editando), { ok: 'Conta atualizada' })
+      : run(supabase.from('contas_fixas').insert({ ...payload, grupo_id: perfil.grupo_id }), { ok: 'Conta fixa criada' })
+    const { error } = await op
+    setSalvando(false)
+    if (error) return
+    fecharModal(); carregar()
   }
 
   async function excluir(id) {
     if (!confirm('Excluir esta conta fixa?')) return
-    await supabase.from('contas_fixas').update({ ativo: false }).eq('id', id)
-    carregar()
+    const { error } = await run(supabase.from('contas_fixas').update({ ativo: false }).eq('id', id), { ok: 'Conta removida' })
+    if (!error) carregar()
   }
 
   const total = contas.reduce((s, c) => s + c.valor, 0)
@@ -39,7 +72,7 @@ export default function ContasFixas() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 style={{ fontSize: 20 }}>Contas fixas</h2>
-        <button onClick={() => setModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: 'var(--on-accent)', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 700, fontFamily: 'Syne' }}>
+        <button onClick={abrirNovo} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: 'var(--on-accent)', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 700, fontFamily: 'Syne' }}>
           <Plus size={16} /> Nova
         </button>
       </div>
@@ -49,7 +82,8 @@ export default function ContasFixas() {
         <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--blue)' }}>{fmt(total)}</span>
       </div>
 
-      {contas.length === 0 ? <div className="empty-state">Nenhuma conta fixa cadastrada</div>
+      {loading ? <div className="empty-state">Carregando...</div>
+        : contas.length === 0 ? <div className="empty-state">Nenhuma conta fixa cadastrada</div>
         : contas.map(c => (
           <div key={c.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -61,15 +95,16 @@ export default function ContasFixas() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ color: 'var(--blue)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(c.valor)}</span>
+              <button onClick={() => editar(c)}><Pencil size={14} color="var(--text3)" /></button>
               <button onClick={() => excluir(c.id)}><Trash2 size={15} color="var(--text3)" /></button>
             </div>
           </div>
         ))}
 
       {modal && (
-        <div className="modal-overlay" onClick={() => setModal(false)}>
+        <div className="modal-overlay" onClick={fecharModal}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: 18, marginBottom: 20 }}>Nova conta fixa</h2>
+            <h2 style={{ fontSize: 18, marginBottom: 20 }}>{editando ? 'Editar conta fixa' : 'Nova conta fixa'}</h2>
             <div className="form-group"><label>Nome</label><input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Aluguel, Netflix..." /></div>
             <div className="form-row">
               <div className="form-group"><label>Valor</label><input type="number" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
@@ -85,8 +120,10 @@ export default function ContasFixas() {
               <div className="form-group"><label>Alertar X dias antes</label><input type="number" min="1" max="30" value={form.alerta_dias} onChange={e => setForm(p => ({ ...p, alerta_dias: e.target.value }))} /></div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-ghost" style={{ flex: 1 }} onClick={() => setModal(false)}>Cancelar</button>
-              <button className="btn-primary" style={{ flex: 1 }} onClick={salvar}>Salvar</button>
+              <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharModal}>Cancelar</button>
+              <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} onClick={salvar} disabled={salvando}>
+                {salvando ? 'Salvando...' : 'Salvar'}
+              </button>
             </div>
           </div>
         </div>

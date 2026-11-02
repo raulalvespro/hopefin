@@ -3,21 +3,27 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, Trash2, Layers } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Trash2, Layers, Pencil } from 'lucide-react'
 import BotaoVoz from '../components/BotaoVoz'
 import { useCategorias } from '../hooks/useCategorias'
+import { useDb } from '../hooks/useDb'
+import { useToast } from '../contexts/ToastContext'
+import { fmt, fmtData, hojeISO } from '../lib/format'
 
-const fmt = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', data: format(new Date(), 'yyyy-MM-dd') })
+const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', data: hojeISO() })
 
 export default function Gastos() {
   const { perfil } = useAuth()
   const { categorias, emojiDe } = useCategorias()
+  const run = useDb()
+  const { toast } = useToast()
   const [mes, setMes] = useState(new Date())
   const [itens, setItens] = useState([])
   const [cartoes, setCartoes] = useState([])
   const [modal, setModal] = useState(false)
+  const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(novoForm())
+  const [salvando, setSalvando] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes() } }, [perfil, mes])
@@ -36,6 +42,7 @@ export default function Gastos() {
     const gastosItens = (gastos || []).map(g => ({
       id: 'g-' + g.id, rawId: g.id, tipo: 'gasto',
       descricao: g.descricao, valor: Number(g.valor), categoria: g.categoria, data: g.data,
+      tipo_pagamento: g.tipo_pagamento, cartao_id: g.cartao_id,
       origem: g.cartoes?.nome || g.tipo_pagamento, pessoa: g.usuarios?.nome?.split(' ')[0],
     }))
     const parcelasItens = (parcelas || []).map(p => ({
@@ -54,35 +61,77 @@ export default function Gastos() {
     setCartoes(data || [])
   }
 
-  async function salvar() {
-    if (!form.descricao || !form.valor) return
-    const valor = parseFloat(form.valor)
-    const ehParcelado = form.parcelado
+  function abrirNovo() {
+    setEditando(null); setForm(novoForm()); setModal(true)
+  }
 
-    if (ehParcelado) {
-      const n = parseInt(form.num_parcelas)
-      if (!n || n < 2) { alert('Para parcelar, informe 2 ou mais parcelas.'); return }
-      const vParcela = parseFloat((valor / n).toFixed(2))
-      // Grava um parcelamento; o trigger gera as parcelas automaticamente
-      await supabase.from('parcelamentos').insert({
-        descricao: form.descricao, valor_total: valor, num_parcelas: n, valor_parcela: vParcela,
-        cartao_id: form.cartao_id || null, categoria: form.categoria,
-        data_primeira_parcela: form.data, grupo_id: perfil.grupo_id, usuario_id: perfil.id,
-      })
-    } else {
-      await supabase.from('gastos').insert({
-        descricao: form.descricao, valor, categoria: form.categoria,
-        tipo_pagamento: form.tipo_pagamento, cartao_id: form.cartao_id || null,
-        data: form.data, grupo_id: perfil.grupo_id, usuario_id: perfil.id,
-      })
+  function editarGasto(it) {
+    setEditando(it.rawId)
+    setForm({
+      descricao: it.descricao, valor: String(it.valor), categoria: it.categoria,
+      tipo_pagamento: it.tipo_pagamento || 'cartao', cartao_id: it.cartao_id || '',
+      parcelado: false, num_parcelas: '', data: it.data,
+    })
+    setModal(true)
+  }
+
+  function fecharModal() {
+    setModal(false); setEditando(null); setForm(novoForm())
+  }
+
+  async function salvar() {
+    if (!form.descricao || !form.valor) { toast('Preencha descrição e valor.', 'erro'); return }
+    const valor = parseFloat(form.valor)
+    if (!(valor > 0)) { toast('Informe um valor válido.', 'erro'); return }
+    setSalvando(true)
+
+    // Edição: só gastos à vista
+    if (editando) {
+      const { error } = await run(
+        supabase.from('gastos').update({
+          descricao: form.descricao, valor, categoria: form.categoria,
+          tipo_pagamento: form.tipo_pagamento, cartao_id: form.cartao_id || null, data: form.data,
+        }).eq('id', editando),
+        { ok: 'Gasto atualizado' }
+      )
+      setSalvando(false)
+      if (error) return
+      fecharModal(); carregar(); return
     }
-    setModal(false); setForm(novoForm()); carregar()
+
+    if (form.parcelado) {
+      const n = parseInt(form.num_parcelas)
+      if (!n || n < 2) { setSalvando(false); toast('Para parcelar, informe 2 ou mais parcelas.', 'erro'); return }
+      const vParcela = parseFloat((valor / n).toFixed(2))
+      const { error } = await run(
+        supabase.from('parcelamentos').insert({
+          descricao: form.descricao, valor_total: valor, num_parcelas: n, valor_parcela: vParcela,
+          cartao_id: form.cartao_id || null, categoria: form.categoria,
+          data_primeira_parcela: form.data, grupo_id: perfil.grupo_id, usuario_id: perfil.id,
+        }),
+        { ok: `Parcelamento criado (${n}x)` }
+      )
+      setSalvando(false)
+      if (error) return
+    } else {
+      const { error } = await run(
+        supabase.from('gastos').insert({
+          descricao: form.descricao, valor, categoria: form.categoria,
+          tipo_pagamento: form.tipo_pagamento, cartao_id: form.cartao_id || null,
+          data: form.data, grupo_id: perfil.grupo_id, usuario_id: perfil.id,
+        }),
+        { ok: 'Gasto adicionado' }
+      )
+      setSalvando(false)
+      if (error) return
+    }
+    fecharModal(); carregar()
   }
 
   async function excluir(id) {
     if (!confirm('Excluir este gasto?')) return
-    await supabase.from('gastos').delete().eq('id', id)
-    carregar()
+    const { error } = await run(supabase.from('gastos').delete().eq('id', id), { ok: 'Gasto excluído' })
+    if (!error) carregar()
   }
 
   const total = itens.reduce((s, it) => s + it.valor, 0)
@@ -121,31 +170,34 @@ export default function Gastos() {
                 )}
               </p>
               <p style={{ fontSize: 11, color: 'var(--text3)' }}>
-                {format(new Date(it.data + 'T12:00:00'), 'dd/MM')} · {it.origem} · {it.pessoa}
+                {fmtData(it.data, 'dd/MM')} · {it.origem} · {it.pessoa}
               </p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ color: 'var(--red)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(it.valor)}</span>
-            {it.tipo === 'gasto'
-              ? <button onClick={() => excluir(it.rawId)}><Trash2 size={15} color="var(--text3)" /></button>
-              : <Layers size={15} color="var(--text3)" />}
+            {it.tipo === 'gasto' ? (
+              <>
+                <button onClick={() => editarGasto(it)}><Pencil size={14} color="var(--text3)" /></button>
+                <button onClick={() => excluir(it.rawId)}><Trash2 size={15} color="var(--text3)" /></button>
+              </>
+            ) : <Layers size={15} color="var(--text3)" />}
           </div>
         </div>
       ))}
 
       {/* Botão adicionar manual */}
-      <button onClick={() => setModal(true)} style={{ position: 'fixed', bottom: 80, left: 20, width: 48, height: 48, borderRadius: '50%', background: 'var(--bg3)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+      <button onClick={abrirNovo} style={{ position: 'fixed', bottom: 80, left: 20, width: 48, height: 48, borderRadius: '50%', background: 'var(--bg3)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
         <Plus size={22} color="var(--text)" />
       </button>
 
       <BotaoVoz onSalvo={carregar} />
 
-      {/* Modal novo gasto */}
+      {/* Modal novo/editar gasto */}
       {modal && (
-        <div className="modal-overlay" onClick={() => setModal(false)}>
+        <div className="modal-overlay" onClick={fecharModal}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: 18, marginBottom: 20 }}>Novo gasto</h2>
+            <h2 style={{ fontSize: 18, marginBottom: 20 }}>{editando ? 'Editar gasto' : 'Novo gasto'}</h2>
             <div className="form-group"><label>Descrição</label><input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Mercado Extra" /></div>
             <div className="form-row">
               <div className="form-group"><label>{form.parcelado ? 'Valor total' : 'Valor'}</label><input type="number" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
@@ -178,35 +230,39 @@ export default function Gastos() {
               </div>
             )}
 
-            {/* Toggle à vista / parcelado (qualquer forma de pagamento) */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[['À vista', false], ['Parcelado', true]].map(([label, val]) => (
-                  <button key={label} onClick={() => setForm(p => ({ ...p, parcelado: val }))}
-                    style={{ flex: 1, padding: '9px', borderRadius: 'var(--radius-sm)', border: `1px solid ${form.parcelado === val ? 'var(--accent)' : 'var(--border)'}`, background: form.parcelado === val ? 'var(--accent-dim)' : 'transparent', color: form.parcelado === val ? 'var(--accent2)' : 'var(--text2)', fontSize: 13, fontWeight: 600 }}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {form.parcelado && (
-                <div style={{ marginTop: 12 }}>
-                  <div className="form-group">
-                    <label>Nº de parcelas</label>
-                    <input type="number" min="2" value={form.num_parcelas} onChange={e => setForm(p => ({ ...p, num_parcelas: e.target.value }))} placeholder="Ex: 12" />
-                  </div>
-                  {form.valor && nParcelas >= 2 && (
-                    <p style={{ fontSize: 13, color: 'var(--accent2)', marginTop: -4 }}>
-                      {nParcelas}x de {fmt(parseFloat(form.valor) / nParcelas)}
-                      {!ehCartao && <span style={{ color: 'var(--text3)' }}> · via {form.tipo_pagamento}</span>}
-                    </p>
-                  )}
+            {/* Toggle à vista / parcelado — só ao criar (edição é só de gasto à vista) */}
+            {!editando && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[['À vista', false], ['Parcelado', true]].map(([label, val]) => (
+                    <button key={label} onClick={() => setForm(p => ({ ...p, parcelado: val }))}
+                      style={{ flex: 1, padding: '9px', borderRadius: 'var(--radius-sm)', border: `1px solid ${form.parcelado === val ? 'var(--accent)' : 'var(--border)'}`, background: form.parcelado === val ? 'var(--accent-dim)' : 'transparent', color: form.parcelado === val ? 'var(--accent2)' : 'var(--text2)', fontSize: 13, fontWeight: 600 }}>
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
+                {form.parcelado && (
+                  <div style={{ marginTop: 12 }}>
+                    <div className="form-group">
+                      <label>Nº de parcelas</label>
+                      <input type="number" min="2" value={form.num_parcelas} onChange={e => setForm(p => ({ ...p, num_parcelas: e.target.value }))} placeholder="Ex: 12" />
+                    </div>
+                    {form.valor && nParcelas >= 2 && (
+                      <p style={{ fontSize: 13, color: 'var(--accent2)', marginTop: -4 }}>
+                        {nParcelas}x de {fmt(parseFloat(form.valor) / nParcelas)}
+                        {!ehCartao && <span style={{ color: 'var(--text3)' }}> · via {form.tipo_pagamento}</span>}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-ghost" style={{ flex: 1 }} onClick={() => setModal(false)}>Cancelar</button>
-              <button className="btn-primary" style={{ flex: 1 }} onClick={salvar}>Salvar</button>
+              <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharModal}>Cancelar</button>
+              <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} onClick={salvar} disabled={salvando}>
+                {salvando ? 'Salvando...' : 'Salvar'}
+              </button>
             </div>
           </div>
         </div>

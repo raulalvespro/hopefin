@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useCategorias } from '../hooks/useCategorias'
+import { useDb } from '../hooks/useDb'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 
 const EMOJIS_SUGERIDOS = ['🛒','⛽','🍔','💊','🎉','👕','📱','🛋️','📺','🏠','📚','🚗','✈️','🐶','🎁','💇','🧾','💡','📦','❤️','🏥','🍺','☕','🎮']
@@ -9,6 +10,7 @@ const EMOJIS_SUGERIDOS = ['🛒','⛽','🍔','💊','🎉','👕','📱','🛋�
 export default function Categorias() {
   const { perfil } = useAuth()
   const { categorias, recarregar } = useCategorias()
+  const run = useDb()
   const [modal, setModal] = useState(null) // { id?, nome, emoji }
   const [salvando, setSalvando] = useState(false)
 
@@ -20,18 +22,19 @@ export default function Categorias() {
     const nome = modal.nome.trim().toLowerCase()
     if (!nome) return
     setSalvando(true)
-    if (modal.id) {
-      await supabase.from('categorias').update({ nome, emoji: modal.emoji }).eq('id', modal.id)
-    } else {
-      await supabase.from('categorias').insert({ nome, emoji: modal.emoji, ordem: 50, grupo_id: perfil.grupo_id })
-    }
-    setSalvando(false); setModal(null); recarregar()
+    const op = modal.id
+      ? run(supabase.from('categorias').update({ nome, emoji: modal.emoji }).eq('id', modal.id), { ok: 'Categoria atualizada', erro: 'Não foi possível salvar (nome já existe?)' })
+      : run(supabase.from('categorias').insert({ nome, emoji: modal.emoji, ordem: 50, grupo_id: perfil.grupo_id }), { ok: 'Categoria criada', erro: 'Não foi possível criar (nome já existe?)' })
+    const { error } = await op
+    setSalvando(false)
+    if (error) return
+    setModal(null); recarregar()
   }
 
   async function excluir(cat) {
     if (!confirm(`Excluir a categoria "${cat.nome}"? Lançamentos antigos ficam sem ícone, mas não são apagados.`)) return
-    await supabase.from('categorias').delete().eq('id', cat.id)
-    recarregar()
+    const { error } = await run(supabase.from('categorias').delete().eq('id', cat.id), { ok: 'Categoria excluída' })
+    if (!error) recarregar()
   }
 
   return (

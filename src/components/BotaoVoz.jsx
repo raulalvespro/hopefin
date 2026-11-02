@@ -3,12 +3,14 @@ import { Mic, MicOff, X, Check, Loader } from 'lucide-react'
 import { useVoz, interpretarFala } from '../hooks/useVoz'
 import { useAuth } from '../contexts/AuthContext'
 import { useCategorias } from '../hooks/useCategorias'
+import { useDb } from '../hooks/useDb'
 import { supabase } from '../lib/supabase'
 import { format } from 'date-fns'
 
 export default function BotaoVoz({ onSalvo }) {
   const { perfil } = useAuth()
   const { categorias } = useCategorias()
+  const run = useDb()
   const [aberto, setAberto] = useState(false)
   const [fala, setFala] = useState('')
   const [interpretado, setInterpretado] = useState(null)
@@ -38,7 +40,7 @@ export default function BotaoVoz({ onSalvo }) {
     if (!interpretado?.valor || !perfil?.grupo_id) return
     setSalvando(true)
 
-    await supabase.from('gastos').insert({
+    const { error } = await run(supabase.from('gastos').insert({
       grupo_id: perfil.grupo_id,
       usuario_id: perfil.id,
       descricao: interpretado.descricao,
@@ -47,9 +49,10 @@ export default function BotaoVoz({ onSalvo }) {
       tipo_pagamento: cartaoSelecionado ? 'cartao' : interpretado.tipoPagamento,
       cartao_id: cartaoSelecionado || null,
       data: format(new Date(), 'yyyy-MM-dd'),
-    })
+    }), { ok: 'Gasto registrado por voz' })
 
     setSalvando(false)
+    if (error) return
     setSucesso(true)
     setTimeout(() => {
       setSucesso(false); setAberto(false); setFala(''); setInterpretado(null); setCartaoSelecionado('')

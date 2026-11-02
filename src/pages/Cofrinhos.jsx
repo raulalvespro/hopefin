@@ -1,38 +1,67 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { format } from 'date-fns'
-import { Plus, Trash2, ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight } from 'lucide-react'
+import { Plus, Trash2, Pencil, ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight } from 'lucide-react'
+import { useDb } from '../hooks/useDb'
+import { useToast } from '../contexts/ToastContext'
+import { fmt, hojeISO } from '../lib/format'
 
-const fmt = v => Number(v||0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const tipos = { cofrinho: { label: 'Cofrinho', icon: '🐷', cor: 'var(--accent)' }, investimento: { label: 'Investimento', icon: '📈', cor: 'var(--blue)' }, reserva: { label: 'Reserva', icon: '🛡️', cor: 'var(--amber)' } }
+const novoForm = () => ({ nome: '', descricao: '', meta: '', tipo: 'cofrinho' })
 
 export default function Cofrinhos() {
   const { perfil } = useAuth()
+  const run = useDb()
+  const { toast } = useToast()
   const [cofrinhos, setCofrinhos] = useState([])
+  const [loading, setLoading] = useState(true)
   const [modalCofrinho, setModalCofrinho] = useState(false)
+  const [editando, setEditando] = useState(null)
   const [modalTransf, setModalTransf] = useState(null)
-  const [form, setForm] = useState({ nome: '', descricao: '', meta: '', tipo: 'cofrinho' })
-  const transfInicial = { modo: 'depositar', valor: '', descricao: '', data: format(new Date(), 'yyyy-MM-dd'), destinoId: '' }
+  const [form, setForm] = useState(novoForm())
+  const [salvando, setSalvando] = useState(false)
+  const transfInicial = { modo: 'depositar', valor: '', descricao: '', data: hojeISO(), destinoId: '' }
   const [formTransf, setFormTransf] = useState(transfInicial)
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil])
 
   async function carregar() {
+    setLoading(true)
     const { data } = await supabase.from('cofrinhos').select('*, transferencias(valor)').eq('grupo_id', perfil.grupo_id).order('criado_em')
-    // Calcula saldo atual somando transferências
+    // Saldo é derivado da soma das transferências (fonte única, evita dessincronizar)
     const com_saldo = (data || []).map(c => ({
       ...c,
       saldo_atual: (c.transferencias || []).reduce((s, t) => s + Number(t.valor), 0)
     }))
     setCofrinhos(com_saldo)
+    setLoading(false)
+  }
+
+  function abrirNovo() {
+    setEditando(null); setForm(novoForm()); setModalCofrinho(true)
+  }
+
+  function editar(c) {
+    setEditando(c.id)
+    setForm({ nome: c.nome, descricao: c.descricao || '', meta: c.meta != null ? String(c.meta) : '', tipo: c.tipo || 'cofrinho' })
+    setModalCofrinho(true)
+  }
+
+  function fecharCofrinho() {
+    setModalCofrinho(false); setEditando(null); setForm(novoForm())
   }
 
   async function salvarCofrinho() {
-    if (!form.nome) return
-    await supabase.from('cofrinhos').insert({ ...form, meta: form.meta ? parseFloat(form.meta) : null, grupo_id: perfil.grupo_id })
-    setModalCofrinho(false); setForm({ nome: '', descricao: '', meta: '', tipo: 'cofrinho' })
-    carregar()
+    if (!form.nome) { toast('Dê um nome ao cofre.', 'erro'); return }
+    const payload = { nome: form.nome, descricao: form.descricao, meta: form.meta ? parseFloat(form.meta) : null, tipo: form.tipo }
+    setSalvando(true)
+    const op = editando
+      ? run(supabase.from('cofrinhos').update(payload).eq('id', editando), { ok: 'Cofre atualizado' })
+      : run(supabase.from('cofrinhos').insert({ ...payload, grupo_id: perfil.grupo_id }), { ok: 'Cofre criado' })
+    const { error } = await op
+    setSalvando(false)
+    if (error) return
+    fecharCofrinho(); carregar()
   }
 
   function abrirTransf(cofre, modo) {
@@ -42,43 +71,44 @@ export default function Cofrinhos() {
 
   async function salvarTransferencia() {
     const valor = parseFloat(formTransf.valor)
-    if (!valor || valor <= 0 || !modalTransf) return
+    if (!valor || valor <= 0 || !modalTransf) { toast('Informe um valor válido.', 'erro'); return }
     const c = modalTransf
     const { modo, descricao, data } = formTransf
 
     if ((modo === 'sacar' || modo === 'transferir') && valor > c.saldo_atual) {
-      alert('Valor maior que o saldo disponível neste cofre.'); return
+      toast('Valor maior que o saldo disponível.', 'erro'); return
     }
     if (modo === 'transferir' && !formTransf.destinoId) {
-      alert('Escolha o cofre de destino.'); return
+      toast('Escolha o cofre de destino.', 'erro'); return
     }
 
     const base = { descricao, data, grupo_id: perfil.grupo_id, usuario_id: perfil.id }
+    setSalvando(true)
 
+    let op
     if (modo === 'depositar') {
-      await supabase.from('transferencias').insert({ ...base, valor, cofrinho_id: c.id })
-      await supabase.from('cofrinhos').update({ saldo_atual: c.saldo_atual + valor }).eq('id', c.id)
+      op = run(supabase.from('transferencias').insert({ ...base, valor, cofrinho_id: c.id }), { ok: 'Depósito registrado' })
     } else if (modo === 'sacar') {
-      await supabase.from('transferencias').insert({ ...base, valor: -valor, cofrinho_id: c.id, descricao: descricao || 'Saque' })
-      await supabase.from('cofrinhos').update({ saldo_atual: c.saldo_atual - valor }).eq('id', c.id)
-    } else if (modo === 'transferir') {
+      op = run(supabase.from('transferencias').insert({ ...base, valor: -valor, cofrinho_id: c.id, descricao: descricao || 'Saque' }), { ok: 'Saque registrado' })
+    } else {
       const destino = cofrinhos.find(x => x.id === formTransf.destinoId)
-      await supabase.from('transferencias').insert([
+      op = run(supabase.from('transferencias').insert([
         { ...base, valor: -valor, cofrinho_id: c.id, descricao: descricao || `Transferência → ${destino.nome}` },
         { ...base, valor, cofrinho_id: destino.id, descricao: descricao || `Transferência ← ${c.nome}` },
-      ])
-      await supabase.from('cofrinhos').update({ saldo_atual: c.saldo_atual - valor }).eq('id', c.id)
-      await supabase.from('cofrinhos').update({ saldo_atual: destino.saldo_atual + valor }).eq('id', destino.id)
+      ]), { ok: 'Transferência feita' })
     }
+    const { error } = await op
+    setSalvando(false)
+    if (error) return
 
     setModalTransf(null); setFormTransf(transfInicial)
     carregar()
   }
 
   async function excluir(id) {
-    if (!confirm('Excluir este cofre?')) return
-    await supabase.from('cofrinhos').delete().eq('id', id)
-    carregar()
+    if (!confirm('Excluir este cofre? As movimentações também serão removidas.')) return
+    const { error } = await run(supabase.from('cofrinhos').delete().eq('id', id), { ok: 'Cofre excluído' })
+    if (!error) carregar()
   }
 
   const totalCofrinhos = cofrinhos.reduce((s, c) => s + c.saldo_atual, 0)
@@ -87,7 +117,7 @@ export default function Cofrinhos() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 style={{ fontSize: 20 }}>Cofres & Investimentos</h2>
-        <button onClick={() => setModalCofrinho(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: 'var(--on-accent)', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 700, fontFamily: 'Syne' }}>
+        <button onClick={abrirNovo} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: 'var(--on-accent)', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 700, fontFamily: 'Syne' }}>
           <Plus size={16} /> Novo
         </button>
       </div>
@@ -97,7 +127,8 @@ export default function Cofrinhos() {
         <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--accent)' }}>{fmt(totalCofrinhos)}</span>
       </div>
 
-      {cofrinhos.length === 0 ? <div className="empty-state">Nenhum cofre criado ainda</div>
+      {loading ? <div className="empty-state">Carregando...</div>
+        : cofrinhos.length === 0 ? <div className="empty-state">Nenhum cofre criado ainda</div>
         : cofrinhos.map(c => {
           const t = tipos[c.tipo] || tipos.cofrinho
           const progresso = c.meta ? Math.min(100, Math.round((c.saldo_atual / c.meta) * 100)) : null
@@ -111,7 +142,10 @@ export default function Cofrinhos() {
                     <span style={{ fontSize: 11, background: 'var(--bg3)', color: 'var(--text2)', padding: '2px 8px', borderRadius: 10 }}>{t.label}</span>
                   </div>
                 </div>
-                <button onClick={() => excluir(c.id)}><Trash2 size={15} color="var(--text3)" /></button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button onClick={() => editar(c)}><Pencil size={14} color="var(--text3)" /></button>
+                  <button onClick={() => excluir(c.id)}><Trash2 size={15} color="var(--text3)" /></button>
+                </div>
               </div>
 
               <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 24, color: t.cor, marginBottom: 8 }}>{fmt(c.saldo_atual)}</p>
@@ -149,11 +183,11 @@ export default function Cofrinhos() {
           )
         })}
 
-      {/* Modal novo cofre */}
+      {/* Modal novo/editar cofre */}
       {modalCofrinho && (
-        <div className="modal-overlay" onClick={() => setModalCofrinho(false)}>
+        <div className="modal-overlay" onClick={fecharCofrinho}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: 18, marginBottom: 20 }}>Novo cofre</h2>
+            <h2 style={{ fontSize: 18, marginBottom: 20 }}>{editando ? 'Editar cofre' : 'Novo cofre'}</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 16 }}>
               {Object.entries(tipos).map(([v, t]) => (
                 <button key={v} onClick={() => setForm(p => ({ ...p, tipo: v }))}
@@ -166,8 +200,10 @@ export default function Cofrinhos() {
             <div className="form-group"><label>Descrição (opcional)</label><input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Para que serve este cofre?" /></div>
             <div className="form-group"><label>Meta (opcional)</label><input type="number" value={form.meta} onChange={e => setForm(p => ({ ...p, meta: e.target.value }))} placeholder="0,00" /></div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-ghost" style={{ flex: 1 }} onClick={() => setModalCofrinho(false)}>Cancelar</button>
-              <button className="btn-primary" style={{ flex: 1 }} onClick={salvarCofrinho}>Criar</button>
+              <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharCofrinho}>Cancelar</button>
+              <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} onClick={salvarCofrinho} disabled={salvando}>
+                {salvando ? 'Salvando...' : (editando ? 'Salvar' : 'Criar')}
+              </button>
             </div>
           </div>
         </div>
@@ -190,7 +226,6 @@ export default function Cofrinhos() {
             <h2 style={{ fontSize: 18, marginBottom: 6 }}>{titulo} {modalTransf.nome}</h2>
             <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16 }}>Saldo atual: {fmt(modalTransf.saldo_atual)}</p>
 
-            {/* Seletor de modo */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
               {modos.map(({ v, label, icon: Icon }) => (
                 <button key={v} onClick={() => setFormTransf(p => ({ ...p, modo: v }))}
@@ -218,7 +253,9 @@ export default function Cofrinhos() {
             <div className="form-group"><label>Data</label><input type="date" value={formTransf.data} onChange={e => setFormTransf(p => ({ ...p, data: e.target.value }))} /></div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-ghost" style={{ flex: 1 }} onClick={() => setModalTransf(null)}>Cancelar</button>
-              <button className="btn-primary" style={{ flex: 1 }} onClick={salvarTransferencia}>{cta}</button>
+              <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} onClick={salvarTransferencia} disabled={salvando}>
+                {salvando ? 'Salvando...' : cta}
+              </button>
             </div>
           </div>
         </div>
