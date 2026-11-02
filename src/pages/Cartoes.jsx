@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Plus, Trash2, Pencil } from 'lucide-react'
+import { Plus, Trash2, Pencil, X } from 'lucide-react'
 import { addMonths, subMonths, getDaysInMonth, format } from 'date-fns'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
-import { fmt, parseDataLocal } from '../lib/format'
+import { useCategorias } from '../hooks/useCategorias'
+import { fmt, fmtData, parseDataLocal } from '../lib/format'
 
 const bandeiras = { Visa: '💙', Mastercard: '🔴', Elo: '🟡', Amex: '🟢', Hipercard: '🔵' }
 const novoForm = () => ({ nome: '', bandeira: 'Visa', dia_fechamento: '', dia_vencimento: '', limite: '', alerta_dias: 3 })
 
-// Calcula fatura atual e próxima de um cartão a partir de gastos e parcelas
-function calcularFaturas(card, gastos, parcelas, hoje) {
+// Calcula fatura atual e próxima de um cartão a partir de gastos, parcelas e assinaturas
+function calcularFaturas(card, gastos, parcelas, assinaturas, hoje) {
   const diaF = card.dia_fechamento || 1
   const diaV = card.dia_vencimento || 10
   const clampDay = (y, m, d) => Math.min(d, getDaysInMonth(new Date(y, m, 1)))
@@ -35,18 +36,27 @@ function calcularFaturas(card, gastos, parcelas, hoje) {
 
   const inCycle = (d, abre, fecha) => d > abre && d <= fecha
   const sameMonth = (d, ref) => d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth()
-  const sumGastos = (abre, fecha) => gastos
-    .filter(g => g.cartao_id === card.id && inCycle(parseDataLocal(g.data), abre, fecha))
-    .reduce((s, g) => s + Number(g.valor), 0)
-  const sumParcelas = venc => parcelas
-    .filter(p => p.cartao_id === card.id && sameMonth(parseDataLocal(p.data_vencimento), venc))
-    .reduce((s, p) => s + Number(p.valor), 0)
+  // Itens (gastos + parcelas) que compõem a fatura de um ciclo.
+  const itensDe = (abre, fecha, venc) => {
+    const gs = gastos
+      .filter(g => g.cartao_id === card.id && inCycle(parseDataLocal(g.data), abre, fecha))
+      .map(g => ({ tipo: 'gasto', descricao: g.descricao, categoria: g.categoria, valor: Number(g.valor), data: g.data }))
+    const ps = parcelas
+      .filter(p => p.cartao_id === card.id && sameMonth(parseDataLocal(p.data_vencimento), venc))
+      .map(p => ({ tipo: 'parcela', descricao: p.descricao, valor: Number(p.valor), data: p.data_vencimento, numero: p.numero, total: p.total }))
+    return [...gs, ...ps].sort((a, b) => b.data.localeCompare(a.data))
+  }
+  // Assinaturas vinculadas ao cartão: cobrança mensal recorrente, entra em todo ciclo.
+  const assinItens = assinaturas
+    .filter(a => a.cartao_id === card.id)
+    .map(a => ({ tipo: 'assinatura', descricao: a.nome, valor: Number(a.valor), diaCobranca: a.dia_cobranca, recorrente: true }))
+  const atualItens = [...assinItens, ...itensDe(abreAtual, fechaAtual, vencAtual)]
+  const proxItens = [...assinItens, ...itensDe(abreProx, fechaProx, vencProx)]
+  const soma = arr => arr.reduce((s, x) => s + x.valor, 0)
 
   return {
-    atual: sumGastos(abreAtual, fechaAtual) + sumParcelas(vencAtual),
-    vencAtual,
-    prox: sumGastos(abreProx, fechaProx) + sumParcelas(vencProx),
-    vencProx,
+    atual: soma(atualItens), atualItens, vencAtual,
+    prox: soma(proxItens), proxItens, vencProx,
   }
 }
 
@@ -54,9 +64,12 @@ export default function Cartoes() {
   const { perfil } = useAuth()
   const run = useDb()
   const { toast } = useToast()
+  const { emojiDe } = useCategorias()
+  const [detalhe, setDetalhe] = useState(null)   // { card, f }
   const [cartoes, setCartoes] = useState([])
   const [gastos, setGastos] = useState([])
   const [parcelas, setParcelas] = useState([])
+  const [assinaturas, setAssinaturas] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
@@ -68,14 +81,16 @@ export default function Cartoes() {
   async function carregar() {
     setLoading(true)
     const gid = perfil.grupo_id
-    const [{ data: cs }, { data: gs }, { data: ps }] = await Promise.all([
+    const [{ data: cs }, { data: gs }, { data: ps }, { data: as }] = await Promise.all([
       supabase.from('cartoes').select('*').eq('grupo_id', gid).order('nome'),
-      supabase.from('gastos').select('valor, data, cartao_id').eq('grupo_id', gid).not('cartao_id', 'is', null),
-      supabase.from('parcelas').select('valor, data_vencimento, parcelamentos!inner(cartao_id)').eq('grupo_id', gid).eq('paga', false),
+      supabase.from('gastos').select('valor, data, cartao_id, descricao, categoria').eq('grupo_id', gid).not('cartao_id', 'is', null),
+      supabase.from('parcelas').select('valor, data_vencimento, numero, parcelamentos!inner(cartao_id, descricao, num_parcelas)').eq('grupo_id', gid).eq('paga', false),
+      supabase.from('assinaturas').select('nome, valor, dia_cobranca, cartao_id').eq('grupo_id', gid).eq('ativo', true).not('cartao_id', 'is', null),
     ])
     setCartoes(cs || [])
     setGastos(gs || [])
-    setParcelas((ps || []).map(p => ({ valor: p.valor, data_vencimento: p.data_vencimento, cartao_id: p.parcelamentos?.cartao_id })))
+    setAssinaturas(as || [])
+    setParcelas((ps || []).map(p => ({ valor: p.valor, data_vencimento: p.data_vencimento, cartao_id: p.parcelamentos?.cartao_id, descricao: p.parcelamentos?.descricao, numero: p.numero, total: p.parcelamentos?.num_parcelas })))
     setLoading(false)
   }
 
@@ -134,7 +149,7 @@ export default function Cartoes() {
       {loading ? <div className="empty-state">Carregando...</div>
         : cartoes.length === 0 ? <div className="empty-state">Nenhum cartão cadastrado</div>
         : cartoes.map(c => {
-          const f = calcularFaturas(c, gastos, parcelas, hoje)
+          const f = calcularFaturas(c, gastos, parcelas, assinaturas, hoje)
           const usoPct = c.limite ? Math.min(100, Math.round((f.atual / Number(c.limite)) * 100)) : null
           return (
             <div key={c.id} className="card" style={{ marginBottom: 10 }}>
@@ -152,10 +167,10 @@ export default function Cartoes() {
                 </div>
               </div>
 
-              {/* Fatura atual */}
-              <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg3)' }}>
+              {/* Fatura atual — clica para ver a composição */}
+              <button onClick={() => setDetalhe({ card: c, f })} style={{ width: '100%', textAlign: 'left', marginTop: 14, padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg3)', color: 'var(--text)', border: 'none' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span style={{ fontSize: 12, color: 'var(--text2)' }}>Fatura atual · vence {format(f.vencAtual, 'dd/MM')}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 4 }}>Fatura atual · vence {format(f.vencAtual, 'dd/MM')}</span>
                   <span style={{ fontSize: 20, fontWeight: 700, fontFamily: 'Syne', color: 'var(--text)' }}>{fmt(f.atual)}</span>
                 </div>
                 {c.limite && (
@@ -166,7 +181,8 @@ export default function Cartoes() {
                     <span style={{ fontSize: 11, color: 'var(--text3)' }}>{usoPct}% do limite de {fmt(c.limite)}</span>
                   </>
                 )}
-              </div>
+                <p style={{ fontSize: 11, color: 'var(--accent)', marginTop: 8 }}>Ver o que compõe esta fatura →</p>
+              </button>
 
               {/* Próxima fatura */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--text2)', padding: '0 2px' }}>
@@ -176,6 +192,49 @@ export default function Cartoes() {
             </div>
           )
         })}
+
+      {/* Modal: composição da fatura */}
+      {detalhe && (() => {
+        const { card, f } = detalhe
+        const Secao = ({ titulo, venc, total, itens }) => (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Syne' }}>{titulo} · vence {format(venc, 'dd/MM')}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, fontFamily: 'Syne' }}>{fmt(total)}</span>
+            </div>
+            {itens.length === 0 ? (
+              <p style={{ fontSize: 12, color: 'var(--text3)' }}>Nada lançado neste ciclo.</p>
+            ) : itens.map((it, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <span style={{ fontSize: 16 }}>{it.tipo === 'parcela' ? '💳' : it.tipo === 'assinatura' ? '📺' : emojiDe(it.categoria)}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {it.descricao || 'Sem descrição'}
+                      {it.tipo === 'parcela' && <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--blue)', padding: '1px 6px', borderRadius: 10 }}>{it.numero}/{it.total}x</span>}
+                      {it.tipo === 'assinatura' && <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--purple)', padding: '1px 6px', borderRadius: 10 }}>assinatura</span>}
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--text3)' }}>{it.tipo === 'assinatura' ? (it.diaCobranca ? `Todo dia ${it.diaCobranca}` : 'Mensal') : fmtData(it.data, 'dd/MM')}</p>
+                  </div>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--red)', flexShrink: 0 }}>{fmt(it.valor)}</span>
+              </div>
+            ))}
+          </div>
+        )
+        return (
+          <div className="modal-overlay" onClick={() => setDetalhe(null)}>
+            <div className="modal" onClick={e => e.stopPropagation()} style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+                <h2 style={{ fontSize: 18 }}>{bandeiras[card.bandeira] || '💳'} {card.nome}</h2>
+                <button onClick={() => setDetalhe(null)}><X size={20} color="var(--text2)" /></button>
+              </div>
+              <Secao titulo="Fatura atual" venc={f.vencAtual} total={f.atual} itens={f.atualItens} />
+              <Secao titulo="Próxima fatura" venc={f.vencProx} total={f.prox} itens={f.proxItens} />
+            </div>
+          </div>
+        )
+      })()}
 
       {modal && (
         <div className="modal-overlay" onClick={fecharModal}>

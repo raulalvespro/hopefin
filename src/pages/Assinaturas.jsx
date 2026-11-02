@@ -6,13 +6,14 @@ import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { fmt } from '../lib/format'
 
-const novoForm = () => ({ nome: '', valor: '', dia_cobranca: '' })
+const novoForm = () => ({ nome: '', valor: '', dia_cobranca: '', cartao_id: '' })
 
 export default function Assinaturas() {
   const { perfil } = useAuth()
   const run = useDb()
   const { toast } = useToast()
   const [itens, setItens] = useState([])
+  const [cartoes, setCartoes] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
@@ -23,15 +24,19 @@ export default function Assinaturas() {
 
   async function carregar() {
     setLoading(true)
-    const { data } = await supabase.from('assinaturas').select('*').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('dia_cobranca')
+    const [{ data }, { data: cs }] = await Promise.all([
+      supabase.from('assinaturas').select('*, cartoes(nome)').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('dia_cobranca'),
+      supabase.from('cartoes').select('id, nome').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('nome'),
+    ])
     setItens(data || [])
+    setCartoes(cs || [])
     setLoading(false)
   }
 
   function abrirNovo() { setEditando(null); setForm(novoForm()); setModal(true) }
   function editar(a) {
     setEditando(a.id)
-    setForm({ nome: a.nome, valor: String(a.valor), dia_cobranca: String(a.dia_cobranca ?? '') })
+    setForm({ nome: a.nome, valor: String(a.valor), dia_cobranca: String(a.dia_cobranca ?? ''), cartao_id: a.cartao_id || '' })
     setModal(true)
   }
   function fecharModal() { setModal(false); setEditando(null); setForm(novoForm()) }
@@ -42,6 +47,7 @@ export default function Assinaturas() {
       nome: form.nome,
       valor: parseFloat(form.valor),
       dia_cobranca: form.dia_cobranca ? parseInt(form.dia_cobranca) : null,
+      cartao_id: form.cartao_id || null,
     }
     setSalvando(true)
     const op = editando
@@ -86,7 +92,10 @@ export default function Assinaturas() {
               <span style={{ fontSize: 22 }}>📺</span>
               <div>
                 <p style={{ fontSize: 14, fontWeight: 500 }}>{a.nome}</p>
-                <p style={{ fontSize: 12, color: 'var(--text2)' }}>{a.dia_cobranca ? `Cobra dia ${a.dia_cobranca}` : 'Sem dia definido'}</p>
+                <p style={{ fontSize: 12, color: 'var(--text2)' }}>
+                  {a.dia_cobranca ? `Cobra dia ${a.dia_cobranca}` : 'Sem dia definido'}
+                  {a.cartoes?.nome && ` · ${a.cartoes.nome}`}
+                </p>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -105,6 +114,14 @@ export default function Assinaturas() {
             <div className="form-row">
               <div className="form-group"><label>Valor mensal</label><input type="number" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
               <div className="form-group"><label>Dia da cobrança</label><input type="number" min="1" max="31" value={form.dia_cobranca} onChange={e => setForm(p => ({ ...p, dia_cobranca: e.target.value }))} placeholder="Opcional" /></div>
+            </div>
+            <div className="form-group">
+              <label>Cobrada no cartão (opcional)</label>
+              <select value={form.cartao_id} onChange={e => setForm(p => ({ ...p, cartao_id: e.target.value }))}>
+                <option value="">Não vinculado a cartão</option>
+                {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+              <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>Se vincular, ela entra automaticamente na fatura do cartão — não precisa lançar como gasto.</p>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharModal}>Cancelar</button>
