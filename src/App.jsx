@@ -19,6 +19,7 @@ import Configuracoes from './pages/Configuracoes'
 import MeusDados from './pages/MeusDados'
 import Planos from './pages/Planos'
 import Fechamento from './pages/Fechamento'
+import Importar from './pages/Importar'
 import Layout from './components/Layout'
 
 function RotaProtegida({ children }) {
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="meus-dados" element={<MeusDados />} />
         <Route path="planos" element={<Planos />} />
         <Route path="fechamento" element={<Fechamento />} />
+        <Route path="importar" element={<Importar />} />
       </Route>
     </Routes>
   )
