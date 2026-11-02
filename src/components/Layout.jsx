@@ -5,6 +5,7 @@ import {
   LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat,
 } from 'lucide-react'
 import { useState } from 'react'
+import InstalarApp from './InstalarApp'
 
 // Itens fixos da barra inferior (uso diário)
 const navPrincipal = [
@@ -60,6 +61,9 @@ export default function Layout() {
       <main style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 100px' }}>
         <Outlet />
       </main>
+
+      {/* Banner instalar PWA */}
+      <InstalarApp />
 
       {/* Nav bottom */}
       <nav style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, background: 'var(--bg2)', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-around', padding: '8px 0 env(safe-area-inset-bottom)', zIndex: 10 }}>

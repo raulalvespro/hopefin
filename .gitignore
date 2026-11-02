@@ -4,6 +4,7 @@ node_modules/
 # Build
 dist/
 dist-ssr/
+dev-dist/
 *.local
 
 # Variáveis de ambiente (NUNCA commitar chaves)
