@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths, addDays, isSameMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, TrendingUp, Bell, PieChart as PieIcon } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
   PieChart, Pie, Cell,
@@ -24,7 +23,6 @@ const CORES = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b', '#8b5cf6', '#14b8a6',
 export default function Dashboard() {
   const { perfil } = useAuth()
   const { emojiDe } = useCategorias()
-  const navigate = useNavigate()
   const [mes, setMes] = useState(new Date())
   const [dados, setDados] = useState(null)
   const [dadosAnt, setDadosAnt] = useState(null)
@@ -201,8 +199,6 @@ export default function Dashboard() {
     if (o.assinatura > 0) partes.push(`assinatura ${fmt(o.assinatura)}`)
     return partes.length > 1 ? partes.join(' · ') : null
   }
-
-  const ultimosGastos = [...dados.gastos].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 5)
 
   return (
     <div>
@@ -455,30 +451,6 @@ export default function Dashboard() {
           })}
         </div>
       )}
-
-      {/* Últimos gastos */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <h3 style={{ fontSize: 14, color: 'var(--text2)' }}>Últimos gastos</h3>
-          <button onClick={() => navigate('/gastos')} style={{ fontSize: 12, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 2 }}>
-            Ver todos <ChevronRight size={13} />
-          </button>
-        </div>
-        {ultimosGastos.length === 0 ? (
-          <div className="empty-state">Nenhum gasto neste mês</div>
-        ) : ultimosGastos.map(g => (
-          <div key={g.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 20 }}>{emojiDe(g.categoria)}</span>
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 500 }}>{g.descricao}</p>
-                <p style={{ fontSize: 12, color: 'var(--text2)' }}>{format(new Date(g.data + 'T12:00:00'), 'dd/MM', { locale: ptBR })}</p>
-              </div>
-            </div>
-            <p style={{ color: 'var(--red)', fontWeight: 700, fontFamily: 'Syne' }}>-{fmt(g.valor)}</p>
-          </div>
-        ))}
-      </div>
 
       {/* Comparativo vs mês anterior */}
       {dadosAnt && (

@@ -3,7 +3,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, Trash2, Layers, Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Trash2, Layers, Pencil, CalendarCheck } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import BotaoVoz from '../components/BotaoVoz'
 import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
@@ -17,8 +18,10 @@ export default function Gastos() {
   const { categorias, emojiDe } = useCategorias()
   const run = useDb()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const [mes, setMes] = useState(new Date())
   const [itens, setItens] = useState([])
+  const [verTodos, setVerTodos] = useState(false)
   const [cartoes, setCartoes] = useState([])
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
@@ -30,6 +33,7 @@ export default function Gastos() {
 
   async function carregar() {
     setLoading(true)
+    setVerTodos(false)
     const gid = perfil.grupo_id
     const inicio = format(startOfMonth(mes), 'yyyy-MM-dd')
     const fim = format(endOfMonth(mes), 'yyyy-MM-dd')
@@ -147,16 +151,21 @@ export default function Gastos() {
         <button onClick={() => setMes(m => addMonths(m, 1))}><ChevronRight size={20} color="var(--text2)" /></button>
       </div>
 
-      {/* Total */}
-      <div className="card" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: 'var(--text2)', fontSize: 13 }}>Gastos + parcelas do mês</span>
-        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--red)' }}>{fmt(total)}</span>
-      </div>
+      {/* Total — clica para ver tudo que vence no mês */}
+      <button onClick={() => navigate('/contas-do-mes')} className="card" style={{ width: '100%', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', background: 'var(--bg2)', color: 'var(--text)' }}>
+        <span style={{ color: 'var(--text2)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <CalendarCheck size={15} color="var(--accent)" /> Gastos + parcelas do mês
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--red)' }}>{fmt(total)}</span>
+          <ChevronRight size={16} color="var(--text3)" />
+        </span>
+      </button>
 
       {/* Lista */}
       {loading ? <div className="empty-state">Carregando...</div> : itens.length === 0 ? (
         <div className="empty-state">Nenhum gasto neste mês</div>
-      ) : itens.map(it => (
+      ) : (verTodos ? itens : itens.slice(0, 10)).map(it => (
         <div key={it.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 22 }}>{emojiDe(it.categoria)}</span>
@@ -185,6 +194,14 @@ export default function Gastos() {
           </div>
         </div>
       ))}
+
+      {/* Ver todos / ver menos */}
+      {!loading && itens.length > 10 && (
+        <button onClick={() => setVerTodos(v => !v)}
+          style={{ width: '100%', padding: '10px', marginTop: 4, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--accent)', fontSize: 13, fontWeight: 600 }}>
+          {verTodos ? 'Ver menos' : `Ver todos (${itens.length})`}
+        </button>
+      )}
 
       {/* Botão adicionar manual */}
       <button onClick={abrirNovo} style={{ position: 'fixed', bottom: 80, left: 20, width: 48, height: 48, borderRadius: '50%', background: 'var(--bg3)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>

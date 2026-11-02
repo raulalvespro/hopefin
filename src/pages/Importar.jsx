@@ -71,6 +71,28 @@ export default function Importar() {
 
   function escolherArquivo() { inputRef.current?.click() }
 
+  // Gera um CSV-modelo no formato que o app lê melhor.
+  function baixarModelo() {
+    const linhas = [
+      'Data;Descrição;Valor',
+      '05/11/2026;Supermercado;-345,90',
+      '06/11/2026;Salário;5000,00',
+      '07/11/2026;Posto de combustível;-220,00',
+      '10/11/2026;Farmácia;-89,50',
+    ]
+    const csv = '﻿' + linhas.join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'modelo-hopefin.csv'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    toast('Modelo CSV baixado', 'ok')
+  }
+
   function aoSelecionar(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -173,11 +195,34 @@ export default function Importar() {
       <input ref={inputRef} type="file" accept=".csv,text/csv,text/plain" onChange={aoSelecionar} style={{ display: 'none' }} />
 
       {!celulas ? (
-        <button onClick={escolherArquivo} className="card" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '36px 20px', border: '1.5px dashed var(--border2)', background: 'var(--bg2)', color: 'var(--text2)' }}>
-          <Upload size={28} color="var(--accent)" />
-          <span style={{ fontWeight: 600, color: 'var(--text)' }}>Escolher arquivo CSV</span>
-          <span style={{ fontSize: 12 }}>Aceita separador ; , ou tabulação</span>
-        </button>
+        <>
+          <button onClick={escolherArquivo} className="card" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '36px 20px', border: '1.5px dashed var(--border2)', background: 'var(--bg2)', color: 'var(--text2)', marginBottom: 16 }}>
+            <Upload size={28} color="var(--accent)" />
+            <span style={{ fontWeight: 600, color: 'var(--text)' }}>Escolher arquivo CSV</span>
+            <span style={{ fontSize: 12 }}>Aceita separador ; , ou tabulação</span>
+          </button>
+
+          {/* Como preparar o arquivo */}
+          <div className="card">
+            <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 14, marginBottom: 8 }}>Para o app entender bem</p>
+            <p style={{ fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 12 }}>
+              O ideal é um CSV com três colunas nesta ordem: <strong>Data</strong>, <strong>Descrição</strong> e <strong>Valor</strong>.
+              Quase todo banco e cartão exporta extrato em CSV pelo app ou site — é só baixar e enviar aqui.
+            </p>
+            <ul style={{ fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.7, paddingLeft: 18, margin: '0 0 14px' }}>
+              <li><strong>Data</strong> no formato <code>dd/mm/aaaa</code> (ex: 05/11/2026)</li>
+              <li><strong>Valor</strong> com vírgula nos centavos (ex: 1.234,56)</li>
+              <li><strong>Negativo</strong> vira gasto; <strong>positivo</strong> vira entrada (ex: -89,50)</li>
+              <li>A 1ª linha pode ser o cabeçalho — o app detecta sozinho</li>
+            </ul>
+            <button onClick={baixarModelo} className="btn-ghost" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <FileSpreadsheet size={16} /> Baixar modelo CSV
+            </button>
+            <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 10, textAlign: 'center' }}>
+              Se o seu extrato vier com outras colunas, dá pra ajustar o que é o quê na próxima etapa.
+            </p>
+          </div>
+        </>
       ) : (
         <>
           {/* Mapeamento */}
