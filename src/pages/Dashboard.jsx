@@ -69,17 +69,25 @@ export default function Dashboard() {
     const fim = format(endOfMonth(data), 'yyyy-MM-dd')
     const gid = perfil.grupo_id
 
-    const [{ data: gastos }, { data: entradas }, { data: fixas }, { data: parcelas }, { data: assinaturas }] = await Promise.all([
+    const competencia = format(data, 'yyyy-MM')
+
+    const [{ data: gastos }, { data: entradas }, { data: fixas }, { data: parcelas }, { data: assinaturas }, { data: lancFixas }] = await Promise.all([
       supabase.from('gastos').select('id, descricao, valor, categoria, data, usuarios(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
       supabase.from('entradas').select('valor').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
-      supabase.from('contas_fixas').select('valor, categoria').eq('grupo_id', gid).eq('ativo', true),
+      supabase.from('contas_fixas').select('id, valor, categoria').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('parcelas').select('valor, parcelamentos(categoria)').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
       supabase.from('assinaturas').select('valor').eq('grupo_id', gid).eq('ativo', true),
+      supabase.from('fixas_lancamentos').select('conta_fixa_id, valor_real').eq('grupo_id', gid).eq('competencia', competencia),
     ])
+
+    // valor efetivo de cada conta fixa = real lançado no mês (se houver) senão o previsto
+    const realPorConta = {}
+    ;(lancFixas || []).forEach(l => { if (l.valor_real != null) realPorConta[l.conta_fixa_id] = Number(l.valor_real) })
+    const valorFixa = f => (f.id in realPorConta ? realPorConta[f.id] : Number(f.valor))
 
     const totalEntradas = (entradas || []).reduce((s, e) => s + Number(e.valor), 0)
     const totalGastos = (gastos || []).reduce((s, g) => s + Number(g.valor), 0)
-    const totalFixas = (fixas || []).reduce((s, f) => s + Number(f.valor), 0)
+    const totalFixas = (fixas || []).reduce((s, f) => s + valorFixa(f), 0)
     const totalParcelas = (parcelas || []).reduce((s, p) => s + Number(p.valor), 0)
     const totalAssint = (assinaturas || []).reduce((s, a) => s + Number(a.valor), 0)
     const totalSaidas = totalGastos + totalFixas + totalParcelas + totalAssint
@@ -98,7 +106,7 @@ export default function Dashboard() {
       porCategoriaUni[c].total += v
     }
     ;(gastos || []).forEach(g => addCat(g.categoria, 'gasto', Number(g.valor)))
-    ;(fixas || []).forEach(f => addCat(f.categoria, 'fixa', Number(f.valor)))
+    ;(fixas || []).forEach(f => addCat(f.categoria, 'fixa', valorFixa(f)))
     ;(parcelas || []).forEach(p => addCat(p.parcelamentos?.categoria, 'parcela', Number(p.valor)))
     ;(assinaturas || []).forEach(a => addCat('assinaturas', 'assinatura', Number(a.valor)))
 

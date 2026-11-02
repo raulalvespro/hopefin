@@ -55,14 +55,21 @@ export default function Projecao() {
     const gid = perfil.grupo_id
     const hoje = new Date()
     const janelaGastos = format(startOfMonth(subMonths(hoje, 2)), 'yyyy-MM-dd')
+    const compInicio = format(hoje, 'yyyy-MM')
+    const compFim = format(addMonths(hoje, 5), 'yyyy-MM')
 
-    const [{ data: fixas }, { data: entradas }, { data: parcelas }, { data: cartoes }, { data: gastosCartao }] = await Promise.all([
+    const [{ data: fixas }, { data: entradas }, { data: parcelas }, { data: cartoes }, { data: gastosCartao }, { data: lancFixas }] = await Promise.all([
       supabase.from('contas_fixas').select('*').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('entradas').select('*').eq('grupo_id', gid).eq('recorrente', true),
       supabase.from('parcelas').select('*, parcelamentos(descricao, categoria, cartao_id, cartoes(nome))').eq('grupo_id', gid).eq('paga', false).gte('data_vencimento', format(startOfMonth(hoje), 'yyyy-MM-dd')),
       supabase.from('cartoes').select('*').eq('grupo_id', gid).eq('ativo', true).order('nome'),
       supabase.from('gastos').select('valor, data, cartao_id').eq('grupo_id', gid).not('cartao_id', 'is', null).gte('data', janelaGastos),
+      supabase.from('fixas_lancamentos').select('competencia, conta_fixa_id, valor_real').eq('grupo_id', gid).gte('competencia', compInicio).lte('competencia', compFim),
     ])
+
+    // Real lançado por (competência|conta_fixa_id) — substitui o previsto quando existe
+    const realPorComp = {}
+    ;(lancFixas || []).forEach(l => { if (l.valor_real != null) realPorComp[`${l.competencia}|${l.conta_fixa_id}`] = Number(l.valor_real) })
 
     // Entradas recorrentes = uma ocorrência mensal por (descrição + pessoa), valor mais recente
     const recorrentesUnicas = {}
@@ -82,15 +89,22 @@ export default function Projecao() {
       cartao_id: p.parcelamentos?.cartao_id || null,
     }))
 
-    const totalFixas = (fixas || []).reduce((s, f) => s + Number(f.valor), 0)
     const resultado = []
 
     for (let i = 0; i < 6; i++) {
       const mes = addMonths(hoje, i)
       const anoV = mes.getFullYear()
       const mesV = mes.getMonth()
+      const comp = format(mes, 'yyyy-MM')
       const inicio = format(startOfMonth(mes), 'yyyy-MM-dd')
       const fim = format(endOfMonth(mes), 'yyyy-MM-dd')
+
+      // Contas fixas do mês: usa o real lançado na competência quando houver
+      const fixasMes = (fixas || []).map(f => {
+        const real = realPorComp[`${comp}|${f.id}`]
+        return { ...f, efetivo: real != null ? real : Number(f.valor), temReal: real != null }
+      })
+      const totalFixas = fixasMes.reduce((s, f) => s + f.efetivo, 0)
 
       // Parcelas FORA de cartão (ex: PIX da pós) que vencem no mês
       const parcelasFora = parcelasFlat.filter(p => !p.cartao_id && p.data_vencimento >= inicio && p.data_vencimento <= fim)
@@ -110,7 +124,7 @@ export default function Projecao() {
         mes,
         label: format(mes, "MMMM 'de' yyyy", { locale: ptBR }),
         entradas: totalEntradas,
-        fixas: fixas || [],
+        fixas: fixasMes,
         totalFixas,
         parcelasFora,
         totalParcelasFora,
@@ -179,8 +193,8 @@ export default function Projecao() {
                   </div>
                   {m.fixas.map(f => (
                     <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
-                      <span>{f.nome} <span style={{ color: 'var(--text3)', fontSize: 11 }}>· dia {f.dia_vencimento}</span></span>
-                      <span style={{ color: 'var(--text2)' }}>{fmt(f.valor)}</span>
+                      <span>{f.nome} <span style={{ color: 'var(--text3)', fontSize: 11 }}>· dia {f.dia_vencimento}{f.temReal ? ' · real' : ''}</span></span>
+                      <span style={{ color: f.temReal ? 'var(--accent)' : 'var(--text2)' }}>{fmt(f.efetivo)}</span>
                     </div>
                   ))}
                 </>
