@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-do
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar,
-  LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat,
+  LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat, ClipboardCheck,
 } from 'lucide-react'
 import { useState } from 'react'
 import InstalarApp from './InstalarApp'
@@ -22,6 +22,7 @@ const navMais = [
   { to: '/contas-do-mes', label: 'Contas do mês', icon: CalendarCheck },
   { to: '/parcelamentos', label: 'Parcelamentos', icon: Layers },
   { to: '/assinaturas', label: 'Assinaturas', icon: Repeat },
+  { to: '/fechamento', label: 'Fechamento', icon: ClipboardCheck },
   { to: '/projecao', label: 'Projeção', icon: Calendar },
   { to: '/cofrinhos', label: 'Cofrinhos', icon: PiggyBank },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
