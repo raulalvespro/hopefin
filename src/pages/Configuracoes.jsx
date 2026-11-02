@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTema } from '../contexts/ThemeContext'
-import { Copy, Check, Users, Tags, ChevronRight, Sun, Moon, Monitor, Palette } from 'lucide-react'
+import { Copy, Check, Users, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database } from 'lucide-react'
 
 const OPCOES_TEMA = [
   { v: 'auto', label: 'Automático', icon: Monitor },
@@ -78,6 +78,18 @@ export default function Configuracoes() {
           <div>
             <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Categorias</p>
             <p style={{ fontSize:12, color:'var(--text2)' }}>Criar e editar as categorias de gastos</p>
+          </div>
+        </div>
+        <ChevronRight size={18} color="var(--text3)" />
+      </Link>
+
+      {/* Meus dados (exportar / excluir) */}
+      <Link to="/meus-dados" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <Database size={18} color="var(--accent)" />
+          <div>
+            <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Meus dados</p>
+            <p style={{ fontSize:12, color:'var(--text2)' }}>Exportar um backup ou apagar seus dados</p>
           </div>
         </div>
         <ChevronRight size={18} color="var(--text3)" />
