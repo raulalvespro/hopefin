@@ -17,6 +17,7 @@ import Orcamento from './pages/Orcamento'
 import Categorias from './pages/Categorias'
 import Configuracoes from './pages/Configuracoes'
 import MeusDados from './pages/MeusDados'
+import Planos from './pages/Planos'
 import Layout from './components/Layout'
 
 function RotaProtegida({ children }) {
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="categorias" element={<Categorias />} />
         <Route path="configuracoes" element={<Configuracoes />} />
         <Route path="meus-dados" element={<MeusDados />} />
+        <Route path="planos" element={<Planos />} />
       </Route>
     </Routes>
   )

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTema } from '../contexts/ThemeContext'
-import { Copy, Check, Users, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database } from 'lucide-react'
+import { Copy, Check, Users, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles } from 'lucide-react'
 
 const OPCOES_TEMA = [
   { v: 'auto', label: 'Automático', icon: Monitor },
@@ -78,6 +78,18 @@ export default function Configuracoes() {
           <div>
             <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Categorias</p>
             <p style={{ fontSize:12, color:'var(--text2)' }}>Criar e editar as categorias de gastos</p>
+          </div>
+        </div>
+        <ChevronRight size={18} color="var(--text3)" />
+      </Link>
+
+      {/* Planos e assinatura */}
+      <Link to="/planos" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <Sparkles size={18} color="var(--accent)" />
+          <div>
+            <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Planos</p>
+            <p style={{ fontSize:12, color:'var(--text2)' }}>Conheça o plano Família e o que está incluso</p>
           </div>
         </div>
         <ChevronRight size={18} color="var(--text3)" />
