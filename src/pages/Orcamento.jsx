@@ -15,6 +15,7 @@ export default function Orcamento() {
   const [mes, setMes] = useState(new Date())
   const [orcamentos, setOrcamentos] = useState([])
   const [gastosPorCat, setGastosPorCat] = useState({})
+  const [compPorCat, setCompPorCat] = useState({})
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null) // { categoria, valor }
 
@@ -25,15 +26,38 @@ export default function Orcamento() {
     const gid = perfil.grupo_id
     const inicio = format(startOfMonth(mes), 'yyyy-MM-dd')
     const fim = format(endOfMonth(mes), 'yyyy-MM-dd')
-    const [{ data: orc }, { data: gastos }] = await Promise.all([
+    const [{ data: orc }, { data: gastos }, { data: fixas }, { data: parcelas }] = await Promise.all([
       supabase.from('orcamentos').select('*').eq('grupo_id', gid),
       supabase.from('gastos').select('categoria, valor').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
+      supabase.from('contas_fixas').select('categoria, valor').eq('grupo_id', gid).eq('ativo', true),
+      supabase.from('parcelas').select('valor, parcelamentos(categoria)').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
     ])
+    // Realizado por categoria = gasto variável + conta fixa + parcela (orçamento unificado)
     const porCat = {}
-    ;(gastos||[]).forEach(g => { porCat[g.categoria] = (porCat[g.categoria]||0) + Number(g.valor) })
+    const comp = {}
+    const add = (cat, campo, v) => {
+      const c = cat || 'outros'
+      porCat[c] = (porCat[c] || 0) + v
+      if (!comp[c]) comp[c] = { gasto: 0, fixa: 0, parcela: 0 }
+      comp[c][campo] += v
+    }
+    ;(gastos || []).forEach(g => add(g.categoria, 'gasto', Number(g.valor)))
+    ;(fixas || []).forEach(f => add(f.categoria, 'fixa', Number(f.valor)))
+    ;(parcelas || []).forEach(p => add(p.parcelamentos?.categoria, 'parcela', Number(p.valor)))
     setOrcamentos(orc || [])
     setGastosPorCat(porCat)
+    setCompPorCat(comp)
     setLoading(false)
+  }
+
+  const composicaoCat = c => {
+    const o = compPorCat[c]
+    if (!o) return null
+    const partes = []
+    if (o.gasto > 0) partes.push(`variável ${fmt(o.gasto)}`)
+    if (o.fixa > 0) partes.push(`fixa ${fmt(o.fixa)}`)
+    if (o.parcela > 0) partes.push(`parcela ${fmt(o.parcela)}`)
+    return partes.length > 1 ? partes.join(' · ') : null
   }
 
   async function salvar() {
@@ -88,6 +112,9 @@ export default function Orcamento() {
           <Target size={18} color="var(--accent)" />
           <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Orçamento do mês</p>
         </div>
+        <p style={{ fontSize:12, color:'var(--text3)', marginBottom:12 }}>
+          O realizado de cada categoria soma gasto variável, conta fixa e parcela.
+        </p>
         <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
           <span style={{ fontSize:13, color:'var(--text2)' }}>Gasto {fmt(totalGasto)} de {fmt(totalOrcado)}</span>
           <span style={{ fontSize:13, fontWeight:600, color: totalGasto>totalOrcado?'var(--red)':'var(--accent)' }}>
@@ -133,6 +160,9 @@ export default function Orcamento() {
               <div style={{ background:'var(--bg3)', borderRadius:4, height:7, overflow:'hidden' }}>
                 <div style={{ width:`${Math.min(100,pct)}%`, height:'100%', background: corBarra(pct), borderRadius:4, transition:'width 0.4s' }} />
               </div>
+            )}
+            {composicaoCat(cat) && (
+              <p style={{ fontSize:11, color:'var(--text3)', marginTop: limite?6:4 }}>{composicaoCat(cat)}</p>
             )}
           </div>
         )

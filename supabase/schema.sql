@@ -144,7 +144,23 @@ create table if not exists public.assinaturas (
   criado_em     timestamptz not null default now()
 );
 
+-- Lançamentos mensais das contas fixas (planejado × praticado)
+create table if not exists public.fixas_lancamentos (
+  id             uuid primary key default gen_random_uuid(),
+  grupo_id       uuid not null references public.grupos(id) on delete cascade,
+  conta_fixa_id  uuid not null references public.contas_fixas(id) on delete cascade,
+  competencia    text not null,                 -- 'YYYY-MM'
+  valor_previsto numeric(12,2) not null default 0,
+  valor_real     numeric(12,2),
+  pago           boolean not null default false,
+  data_pagamento date,
+  criado_em      timestamptz not null default now(),
+  atualizado_em  timestamptz not null default now(),
+  unique (conta_fixa_id, competencia)
+);
+
 -- ---------- ÍNDICES úteis ----------
+create index if not exists idx_fixas_lanc_grupo_comp     on public.fixas_lancamentos(grupo_id, competencia);
 create index if not exists idx_gastos_grupo_data        on public.gastos(grupo_id, data);
 create index if not exists idx_entradas_grupo_data       on public.entradas(grupo_id, data);
 create index if not exists idx_parcelas_grupo_venc       on public.parcelas(grupo_id, data_vencimento);
@@ -208,6 +224,12 @@ alter table public.parcelas       enable row level security;
 alter table public.cofrinhos      enable row level security;
 alter table public.transferencias enable row level security;
 alter table public.assinaturas    enable row level security;
+alter table public.fixas_lancamentos enable row level security;
+drop policy if exists fixas_lancamentos_todas on public.fixas_lancamentos;
+create policy fixas_lancamentos_todas on public.fixas_lancamentos
+  for all to authenticated
+  using (grupo_id = public.meu_grupo_id())
+  with check (grupo_id = public.meu_grupo_id());
 
 -- GRUPOS: qualquer autenticado pode ler (necessário p/ entrar via código) e criar.
 --         Atualiza só quem é do grupo.

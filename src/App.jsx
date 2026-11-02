@@ -8,6 +8,8 @@ import Gastos from './pages/Gastos'
 import Entradas from './pages/Entradas'
 import Cartoes from './pages/Cartoes'
 import ContasFixas from './pages/ContasFixas'
+import ContasDoMes from './pages/ContasDoMes'
+import Assinaturas from './pages/Assinaturas'
 import Parcelamentos from './pages/Parcelamentos'
 import Projecao from './pages/Projecao'
 import Cofrinhos from './pages/Cofrinhos'
@@ -40,6 +42,8 @@ export default function App() {
         <Route path="entradas" element={<Entradas />} />
         <Route path="cartoes" element={<Cartoes />} />
         <Route path="contas-fixas" element={<ContasFixas />} />
+        <Route path="contas-do-mes" element={<ContasDoMes />} />
+        <Route path="assinaturas" element={<Assinaturas />} />
         <Route path="parcelamentos" element={<Parcelamentos />} />
         <Route path="projecao" element={<Projecao />} />
         <Route path="cofrinhos" element={<Cofrinhos />} />

@@ -30,6 +30,7 @@ export default function Dashboard() {
   const [historico, setHistorico] = useState([])
   const [alertas, setAlertas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [visao, setVisao] = useState('categoria') // 'categoria' = tudo somado por categoria | 'natureza' = separa fixo/variável/parcela
 
   const ehMesAtual = isSameMonth(mes, new Date())
 
@@ -71,8 +72,8 @@ export default function Dashboard() {
     const [{ data: gastos }, { data: entradas }, { data: fixas }, { data: parcelas }, { data: assinaturas }] = await Promise.all([
       supabase.from('gastos').select('id, descricao, valor, categoria, data, usuarios(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
       supabase.from('entradas').select('valor').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
-      supabase.from('contas_fixas').select('valor').eq('grupo_id', gid).eq('ativo', true),
-      supabase.from('parcelas').select('valor').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
+      supabase.from('contas_fixas').select('valor, categoria').eq('grupo_id', gid).eq('ativo', true),
+      supabase.from('parcelas').select('valor, parcelamentos(categoria)').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
       supabase.from('assinaturas').select('valor').eq('grupo_id', gid).eq('ativo', true),
     ])
 
@@ -84,8 +85,22 @@ export default function Dashboard() {
     const totalSaidas = totalGastos + totalFixas + totalParcelas + totalAssint
     const saldo = totalEntradas - totalSaidas
 
+    // Visão por NATUREZA: categorias só dos gastos variáveis
     const porCategoria = {}
     ;(gastos || []).forEach(g => { porCategoria[g.categoria] = (porCategoria[g.categoria] || 0) + Number(g.valor) })
+
+    // Visão por CATEGORIA: soma gasto variável + conta fixa + parcela (+ assinatura) na mesma categoria
+    const porCategoriaUni = {}
+    const addCat = (cat, campo, v) => {
+      const c = cat || 'outros'
+      if (!porCategoriaUni[c]) porCategoriaUni[c] = { total: 0, gasto: 0, fixa: 0, parcela: 0, assinatura: 0 }
+      porCategoriaUni[c][campo] += v
+      porCategoriaUni[c].total += v
+    }
+    ;(gastos || []).forEach(g => addCat(g.categoria, 'gasto', Number(g.valor)))
+    ;(fixas || []).forEach(f => addCat(f.categoria, 'fixa', Number(f.valor)))
+    ;(parcelas || []).forEach(p => addCat(p.parcelamentos?.categoria, 'parcela', Number(p.valor)))
+    ;(assinaturas || []).forEach(a => addCat('assinaturas', 'assinatura', Number(a.valor)))
 
     const porPessoa = {}
     ;(gastos || []).forEach(g => {
@@ -93,7 +108,7 @@ export default function Dashboard() {
       porPessoa[nome] = (porPessoa[nome] || 0) + Number(g.valor)
     })
 
-    return { totalEntradas, totalGastos, totalFixas, totalParcelas, totalAssint, totalSaidas, saldo, porCategoria, porPessoa, gastos: gastos || [] }
+    return { totalEntradas, totalGastos, totalFixas, totalParcelas, totalAssint, totalSaidas, saldo, porCategoria, porCategoriaUni, porPessoa, gastos: gastos || [] }
   }
 
   // Vencimentos próximos (só faz sentido no mês corrente)
@@ -147,15 +162,36 @@ export default function Dashboard() {
   const pessoaEntries = Object.entries(dados.porPessoa).sort((a, b) => b[1] - a[1])
   const totalPessoas = pessoaEntries.reduce((s, [, v]) => s + v, 0)
 
-  // Distribuição da renda: quanto de tudo que entrou vai para cada categoria/bloco
+  // Visão por categoria (tudo somado): [cat, { total, gasto, fixa, parcela, assinatura }]
+  const catUniEntries = Object.entries(dados.porCategoriaUni).sort((a, b) => b[1].total - a[1].total)
+  const maxCatUni = catUniEntries[0]?.[1].total || 1
+
+  const emojiPara = cat => cat === 'assinaturas' ? '📺' : emojiDe(cat)
+  const nomeCategoria = cat => cat === 'assinaturas' ? 'Assinaturas' : cat
+
+  // Distribuição da renda: quanto de tudo que entrou vai para cada fatia
   const baseRenda = Math.max(dados.totalEntradas, dados.totalSaidas, 1)
-  const distribuicao = []
-  catEntries.forEach(([cat, valor]) => distribuicao.push({ nome: cat, valor, rotulo: `${emojiDe(cat)} ${cat}` }))
-  if (dados.totalFixas > 0) distribuicao.push({ nome: 'Contas fixas', valor: dados.totalFixas, rotulo: '🧾 Contas fixas' })
-  if (dados.totalParcelas > 0) distribuicao.push({ nome: 'Parcelas', valor: dados.totalParcelas, rotulo: '💳 Parcelas' })
-  if (dados.totalAssint > 0) distribuicao.push({ nome: 'Assinaturas', valor: dados.totalAssint, rotulo: '📺 Assinaturas' })
   const sobra = dados.totalEntradas - dados.totalSaidas
+  const distribuicao = []
+  if (visao === 'categoria') {
+    catUniEntries.forEach(([cat, o]) => distribuicao.push({ nome: cat, valor: o.total, rotulo: `${emojiPara(cat)} ${nomeCategoria(cat)}` }))
+  } else {
+    catEntries.forEach(([cat, valor]) => distribuicao.push({ nome: cat, valor, rotulo: `${emojiDe(cat)} ${cat}` }))
+    if (dados.totalFixas > 0) distribuicao.push({ nome: 'Contas fixas', valor: dados.totalFixas, rotulo: '🧾 Contas fixas' })
+    if (dados.totalParcelas > 0) distribuicao.push({ nome: 'Parcelas', valor: dados.totalParcelas, rotulo: '💳 Parcelas' })
+    if (dados.totalAssint > 0) distribuicao.push({ nome: 'Assinaturas', valor: dados.totalAssint, rotulo: '📺 Assinaturas' })
+  }
   if (sobra > 0) distribuicao.push({ nome: 'Disponível', valor: sobra, rotulo: '✅ Disponível', sobra: true })
+
+  // Rótulo de composição por natureza dentro de uma categoria (ex: "variável R$120 · fixa R$80")
+  const composicaoCat = o => {
+    const partes = []
+    if (o.gasto > 0) partes.push(`variável ${fmt(o.gasto)}`)
+    if (o.fixa > 0) partes.push(`fixa ${fmt(o.fixa)}`)
+    if (o.parcela > 0) partes.push(`parcela ${fmt(o.parcela)}`)
+    if (o.assinatura > 0) partes.push(`assinatura ${fmt(o.assinatura)}`)
+    return partes.length > 1 ? partes.join(' · ') : null
+  }
 
   const ultimosGastos = [...dados.gastos].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 5)
 
@@ -226,12 +262,25 @@ export default function Dashboard() {
       {/* Pizza: para onde vai a renda */}
       {distribuicao.length > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <PieIcon size={18} color="var(--accent)" />
-            <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Para onde vai a renda</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <PieIcon size={18} color="var(--accent)" />
+              <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Para onde vai a renda</p>
+            </div>
+            <div style={{ display: 'flex', background: 'var(--bg3)', borderRadius: 20, padding: 2 }}>
+              {[['categoria', 'Categoria'], ['natureza', 'Natureza']].map(([v, label]) => (
+                <button key={v} onClick={() => setVisao(v)}
+                  style={{ fontSize: 11, fontWeight: 600, padding: '5px 10px', borderRadius: 18, border: 'none',
+                    background: visao === v ? 'var(--accent)' : 'transparent', color: visao === v ? 'var(--on-accent)' : 'var(--text2)' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
-            {dados.totalEntradas > 0 ? `% sobre ${fmt(dados.totalEntradas)} de entradas` : 'Sem entradas no mês — % sobre o total de saídas'}
+            {visao === 'categoria'
+              ? 'Tudo somado por categoria (gasto, conta fixa e parcela juntos)'
+              : 'Separado por natureza (gastos variáveis, contas fixas, parcelas, assinaturas)'}
           </p>
           <ResponsiveContainer width="100%" height={210}>
             <PieChart>
@@ -322,26 +371,52 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Gastos por categoria (barras) */}
-      {catEntries.length > 0 && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Gastos por categoria</p>
-          {catEntries.map(([cat, valor], i) => {
-            const pct = Math.round((valor / maxCat) * 100)
-            const pctTotal = dados.totalGastos > 0 ? Math.round((valor / dados.totalGastos) * 100) : 0
-            return (
-              <div key={cat} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
-                  <span>{emojiDe(cat)} {cat}</span>
-                  <span style={{ fontWeight: 500 }}>{fmt(valor)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pctTotal}%)</span></span>
+      {/* Por categoria (barras) — respeita o toggle categoria/natureza */}
+      {visao === 'categoria' ? (
+        catUniEntries.length > 0 && (
+          <div className="card" style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Por categoria (tudo somado)</p>
+            {catUniEntries.map(([cat, o], i) => {
+              const pct = Math.round((o.total / maxCatUni) * 100)
+              const totalCatUni = dados.totalGastos + dados.totalFixas + dados.totalParcelas + dados.totalAssint
+              const pctTotal = totalCatUni > 0 ? Math.round((o.total / totalCatUni) * 100) : 0
+              const comp = composicaoCat(o)
+              return (
+                <div key={cat} style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
+                    <span>{emojiPara(cat)} {nomeCategoria(cat)}</span>
+                    <span style={{ fontWeight: 500 }}>{fmt(o.total)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pctTotal}%)</span></span>
+                  </div>
+                  <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: CORES[i % CORES.length], borderRadius: 4, transition: 'width 0.4s' }} />
+                  </div>
+                  {comp && <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{comp}</p>}
                 </div>
-                <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
-                  <div style={{ width: `${pct}%`, height: '100%', background: CORES[i % CORES.length], borderRadius: 4, transition: 'width 0.4s' }} />
+              )
+            })}
+          </div>
+        )
+      ) : (
+        catEntries.length > 0 && (
+          <div className="card" style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Gastos variáveis por categoria</p>
+            {catEntries.map(([cat, valor], i) => {
+              const pct = Math.round((valor / maxCat) * 100)
+              const pctTotal = dados.totalGastos > 0 ? Math.round((valor / dados.totalGastos) * 100) : 0
+              return (
+                <div key={cat} style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
+                    <span>{emojiDe(cat)} {cat}</span>
+                    <span style={{ fontWeight: 500 }}>{fmt(valor)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pctTotal}%)</span></span>
+                  </div>
+                  <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: CORES[i % CORES.length], borderRadius: 4, transition: 'width 0.4s' }} />
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        )
       )}
 
       {/* Gastos por pessoa */}
