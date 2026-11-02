@@ -1,10 +1,18 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { Copy, Check, Users, Tags, ChevronRight } from 'lucide-react'
+import { useTema } from '../contexts/ThemeContext'
+import { Copy, Check, Users, Tags, ChevronRight, Sun, Moon, Monitor, Palette } from 'lucide-react'
+
+const OPCOES_TEMA = [
+  { v: 'auto', label: 'Automático', icon: Monitor },
+  { v: 'light', label: 'Claro', icon: Sun },
+  { v: 'dark', label: 'Escuro', icon: Moon },
+]
 
 export default function Configuracoes() {
   const { perfil } = useAuth()
+  const { tema, setTema } = useTema()
   const [copiado, setCopiado] = useState(false)
 
   const codigoGrupo = perfil?.grupos?.codigo || ''
@@ -35,6 +43,32 @@ export default function Configuracoes() {
           </button>
         </div>
         <p style={{ fontSize:12, color:'var(--text3)' }}>Grupo: {perfil?.grupos?.nome}</p>
+      </div>
+
+      {/* Aparência / tema */}
+      <div className="card" style={{ marginBottom:16 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+          <Palette size={18} color="var(--accent)" />
+          <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Aparência</p>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+          {OPCOES_TEMA.map(({ v, label, icon: Icon }) => {
+            const ativo = tema === v
+            return (
+              <button key={v} onClick={() => setTema(v)}
+                style={{
+                  display:'flex', flexDirection:'column', alignItems:'center', gap:6, padding:'14px 8px',
+                  borderRadius:'var(--radius-sm)', fontSize:12, fontWeight:600,
+                  border:`1.5px solid ${ativo ? 'var(--accent)' : 'var(--border2)'}`,
+                  background: ativo ? 'var(--accent-dim)' : 'var(--bg3)',
+                  color: ativo ? 'var(--accent)' : 'var(--text2)',
+                }}>
+                <Icon size={20} />
+                {label}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Categorias */}

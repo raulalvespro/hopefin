@@ -37,6 +37,57 @@
   --radius-lg: 16px;
 }
 
+/* ===== Tema escuro ===== */
+/* Paleta escura reutilizada: forçada via [data-theme="dark"] e no modo automático (sem atributo) quando o sistema é escuro */
+:root[data-theme="dark"] {
+  --bg: #0b1120;
+  --bg2: #111a2e;
+  --bg3: #1b253b;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.15);
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #6b7a90;
+  --accent: #10b981;
+  --accent2: #0ea371;
+  --accent-dim: rgba(16,185,129,0.20);
+  --on-accent: #04241b;
+  --red: #f87171;
+  --red-dim: rgba(248,113,113,0.16);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96,165,250,0.16);
+  --amber: #fbbf24;
+  --amber-dim: rgba(251,191,36,0.18);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167,139,250,0.18);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.35);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: #0b1120;
+    --bg2: #111a2e;
+    --bg3: #1b253b;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #6b7a90;
+    --accent: #10b981;
+    --accent2: #0ea371;
+    --accent-dim: rgba(16,185,129,0.20);
+    --on-accent: #04241b;
+    --red: #f87171;
+    --red-dim: rgba(248,113,113,0.16);
+    --blue: #60a5fa;
+    --blue-dim: rgba(96,165,250,0.16);
+    --amber: #fbbf24;
+    --amber-dim: rgba(251,191,36,0.18);
+    --purple: #a78bfa;
+    --purple-dim: rgba(167,139,250,0.18);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.35);
+  }
+}
+
 html, body, #root {
   height: 100%;
   background: var(--bg);
