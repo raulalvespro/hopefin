@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import InstalarApp from './InstalarApp'
+import Avatar from './Avatar'
 
 // Itens fixos da barra inferior (uso diário)
 const navPrincipal = [
@@ -49,9 +50,12 @@ export default function Layout() {
         <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--accent)', letterSpacing: '-0.02em' }}>HopeFin</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {perfil && (
-            <span style={{ fontSize: 13, color: 'var(--text2)' }}>
-              {perfil.nome.split(' ')[0]}
-            </span>
+            <Link to="/configuracoes" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+              <Avatar nome={perfil.nome} foto={perfil.foto_url} size={28} />
+              <span style={{ fontSize: 13, color: 'var(--text2)' }}>
+                {perfil.nome.split(' ')[0]}
+              </span>
+            </Link>
           )}
           <button onClick={handleLogout} style={{ color: 'var(--text3)', display: 'flex', alignItems: 'center' }}>
             <LogOut size={17} />

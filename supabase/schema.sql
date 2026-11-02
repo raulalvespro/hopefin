@@ -24,6 +24,7 @@ create table if not exists public.usuarios (
   id         uuid primary key references auth.users(id) on delete cascade,
   nome       text not null,
   email      text,
+  foto_url   text,
   grupo_id   uuid references public.grupos(id) on delete set null,
   criado_em  timestamptz not null default now()
 );
@@ -63,8 +64,10 @@ create table if not exists public.entradas (
   usuario_id  uuid references public.usuarios(id) on delete set null,
   descricao   text not null,
   valor       numeric(12,2) not null,
-  tipo        text default 'avulso',   -- fixo | avulso
-  recorrente  boolean not null default false,
+  tipo            text default 'avulso',   -- fixo | avulso
+  recorrente      boolean not null default false,
+  recebido        boolean not null default false,  -- entrada confirmada na conta
+  data_recebimento date,
   data        date not null default current_date,
   criado_em   timestamptz not null default now()
 );
