@@ -116,6 +116,7 @@ create table if not exists public.cofrinhos (
   nome        text not null,
   descricao   text,
   meta        numeric(12,2),
+  meta_data   date,                      -- prazo-alvo opcional da meta
   tipo        text default 'cofrinho',  -- cofrinho | investimento | reserva
   saldo_atual numeric(12,2) not null default 0,
   criado_em   timestamptz not null default now()

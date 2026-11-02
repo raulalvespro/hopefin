@@ -4,10 +4,33 @@ import { supabase } from '../lib/supabase'
 import { Plus, Trash2, Pencil, ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight } from 'lucide-react'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
-import { fmt, hojeISO } from '../lib/format'
+import { fmt, hojeISO, fmtData, parseDataLocal } from '../lib/format'
+import { differenceInCalendarMonths, addMonths } from 'date-fns'
 
 const tipos = { cofrinho: { label: 'Cofrinho', icon: '🐷', cor: 'var(--accent)' }, investimento: { label: 'Investimento', icon: '📈', cor: 'var(--blue)' }, reserva: { label: 'Reserva', icon: '🛡️', cor: 'var(--amber)' } }
-const novoForm = () => ({ nome: '', descricao: '', meta: '', tipo: 'cofrinho' })
+const novoForm = () => ({ nome: '', descricao: '', meta: '', meta_data: '', tipo: 'cofrinho' })
+
+// Métricas da meta de um cofre: quanto falta, ritmo mensal e projeção.
+function metaInfo(c) {
+  const meta = Number(c.meta)
+  if (!c.meta || meta <= 0) return null
+  const falta = Math.max(0, meta - c.saldo_atual)
+  const atingida = c.saldo_atual >= meta
+  const progresso = Math.min(100, Math.round((c.saldo_atual / meta) * 100))
+  let ritmoMensal = null, dataProjetada = null, porMes = null
+  const movs = c.transferencias || []
+  if (!atingida && c.saldo_atual > 0 && movs.length) {
+    const datas = movs.map(m => parseDataLocal(m.data)).sort((a, b) => a - b)
+    const mesesHist = Math.max(1, differenceInCalendarMonths(new Date(), datas[0]) + 1)
+    ritmoMensal = c.saldo_atual / mesesHist
+    if (ritmoMensal > 0) dataProjetada = addMonths(new Date(), Math.ceil(falta / ritmoMensal))
+  }
+  if (!atingida && c.meta_data) {
+    const mesesAteAlvo = Math.max(1, differenceInCalendarMonths(parseDataLocal(c.meta_data), new Date()))
+    porMes = falta / mesesAteAlvo
+  }
+  return { meta, falta, atingida, progresso, ritmoMensal, dataProjetada, porMes }
+}
 
 export default function Cofrinhos() {
   const { perfil } = useAuth()
@@ -27,7 +50,7 @@ export default function Cofrinhos() {
 
   async function carregar() {
     setLoading(true)
-    const { data } = await supabase.from('cofrinhos').select('*, transferencias(valor)').eq('grupo_id', perfil.grupo_id).order('criado_em')
+    const { data } = await supabase.from('cofrinhos').select('*, transferencias(valor, data)').eq('grupo_id', perfil.grupo_id).order('criado_em')
     // Saldo é derivado da soma das transferências (fonte única, evita dessincronizar)
     const com_saldo = (data || []).map(c => ({
       ...c,
@@ -43,7 +66,7 @@ export default function Cofrinhos() {
 
   function editar(c) {
     setEditando(c.id)
-    setForm({ nome: c.nome, descricao: c.descricao || '', meta: c.meta != null ? String(c.meta) : '', tipo: c.tipo || 'cofrinho' })
+    setForm({ nome: c.nome, descricao: c.descricao || '', meta: c.meta != null ? String(c.meta) : '', meta_data: c.meta_data || '', tipo: c.tipo || 'cofrinho' })
     setModalCofrinho(true)
   }
 
@@ -53,7 +76,7 @@ export default function Cofrinhos() {
 
   async function salvarCofrinho() {
     if (!form.nome) { toast('Dê um nome ao cofre.', 'erro'); return }
-    const payload = { nome: form.nome, descricao: form.descricao, meta: form.meta ? parseFloat(form.meta) : null, tipo: form.tipo }
+    const payload = { nome: form.nome, descricao: form.descricao, meta: form.meta ? parseFloat(form.meta) : null, meta_data: (form.meta && form.meta_data) ? form.meta_data : null, tipo: form.tipo }
     setSalvando(true)
     const op = editando
       ? run(supabase.from('cofrinhos').update(payload).eq('id', editando), { ok: 'Cofre atualizado' })
@@ -131,7 +154,7 @@ export default function Cofrinhos() {
         : cofrinhos.length === 0 ? <div className="empty-state">Nenhum cofre criado ainda</div>
         : cofrinhos.map(c => {
           const t = tipos[c.tipo] || tipos.cofrinho
-          const progresso = c.meta ? Math.min(100, Math.round((c.saldo_atual / c.meta) * 100)) : null
+          const mi = metaInfo(c)
           return (
             <div key={c.id} className="card" style={{ marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
@@ -150,15 +173,33 @@ export default function Cofrinhos() {
 
               <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 24, color: t.cor, marginBottom: 8 }}>{fmt(c.saldo_atual)}</p>
 
-              {c.meta && (
-                <>
-                  <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 4 }}>
-                    <div style={{ width: `${progresso}%`, height: '100%', background: t.cor, borderRadius: 4, transition: 'width 0.3s' }} />
+              {mi && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 6 }}>
+                    <div style={{ width: `${mi.progresso}%`, height: '100%', background: mi.atingida ? 'var(--accent)' : t.cor, borderRadius: 4, transition: 'width 0.3s' }} />
                   </div>
-                  <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>
-                    {progresso}% da meta de {fmt(c.meta)}
-                  </p>
-                </>
+                  {mi.atingida ? (
+                    <p style={{ fontSize: 12.5, color: 'var(--accent2)', fontWeight: 600 }}>
+                      🎉 Meta de {fmt(mi.meta)} atingida!
+                    </p>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 12, color: 'var(--text2)' }}>
+                        {mi.progresso}% · faltam <strong style={{ color: 'var(--text)' }}>{fmt(mi.falta)}</strong> de {fmt(mi.meta)}
+                      </p>
+                      {mi.porMes != null && (
+                        <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 3 }}>
+                          Guarde <strong style={{ color: t.cor }}>{fmt(mi.porMes)}/mês</strong> até {fmtData(c.meta_data, 'MMM/yyyy')} para bater a meta
+                        </p>
+                      )}
+                      {mi.dataProjetada && (
+                        <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 3 }}>
+                          No ritmo atual, você chega em {fmtData(mi.dataProjetada, 'MMM/yyyy')}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
 
               {c.descricao && <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12 }}>{c.descricao}</p>}
@@ -198,7 +239,10 @@ export default function Cofrinhos() {
             </div>
             <div className="form-group"><label>Nome</label><input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Viagem Europa, FGTS..." /></div>
             <div className="form-group"><label>Descrição (opcional)</label><input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Para que serve este cofre?" /></div>
-            <div className="form-group"><label>Meta (opcional)</label><input type="number" value={form.meta} onChange={e => setForm(p => ({ ...p, meta: e.target.value }))} placeholder="0,00" /></div>
+            <div className="form-row">
+              <div className="form-group"><label>Meta (opcional)</label><input type="number" value={form.meta} onChange={e => setForm(p => ({ ...p, meta: e.target.value }))} placeholder="0,00" /></div>
+              <div className="form-group"><label>Prazo da meta</label><input type="date" value={form.meta_data} onChange={e => setForm(p => ({ ...p, meta_data: e.target.value }))} disabled={!form.meta} /></div>
+            </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharCofrinho}>Cancelar</button>
               <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} onClick={salvarCofrinho} disabled={salvando}>
