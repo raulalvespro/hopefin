@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths, getDaysInMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, RefreshCw, Check } from 'lucide-react'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { fmt, fmtData, hojeISO } from '../lib/format'
@@ -93,12 +93,21 @@ export default function Entradas() {
     }
 
     const { error } = await run(
-      supabase.from('entradas').insert({ descricao: form.descricao, valor, tipo: form.tipo, recorrente: form.recorrente, data: form.data, grupo_id: perfil.grupo_id, usuario_id: perfil.id }),
+      supabase.from('entradas').insert({ descricao: form.descricao, valor, tipo: form.tipo, recorrente: form.recorrente, data: form.data, recebido: form.data <= hojeISO(), grupo_id: perfil.grupo_id, usuario_id: perfil.id }),
       { ok: 'Entrada adicionada' }
     )
     setSalvando(false)
     if (error) return
     fecharModal(); carregar()
+  }
+
+  async function toggleRecebido(e) {
+    const novo = !e.recebido
+    const { error } = await run(
+      supabase.from('entradas').update({ recebido: novo, data_recebimento: novo ? hojeISO() : null }).eq('id', e.id),
+      { ok: novo ? 'Confirmada como recebida' : 'Recebimento desfeito' }
+    )
+    if (!error) setEntradas(list => list.map(x => x.id === e.id ? { ...x, recebido: novo } : x))
   }
 
   async function excluir(id) {
@@ -108,6 +117,8 @@ export default function Entradas() {
   }
 
   const total = entradas.reduce((s, e) => s + e.valor, 0)
+  const totalRecebido = entradas.filter(e => e.recebido).reduce((s, e) => s + Number(e.valor), 0)
+  const aReceber = total - totalRecebido
 
   return (
     <div>
@@ -117,9 +128,17 @@ export default function Entradas() {
         <button onClick={() => setMes(m => addMonths(m, 1))}><ChevronRight size={20} color="var(--text2)" /></button>
       </div>
 
-      <div className="card" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: 'var(--text2)', fontSize: 13 }}>Total de entradas</span>
-        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--accent)' }}>{fmt(total)}</span>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ color: 'var(--text2)', fontSize: 13 }}>Total de entradas</span>
+          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--accent)' }}>{fmt(total)}</span>
+        </div>
+        {aReceber > 0.009 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 12 }}>
+            <span style={{ color: 'var(--text2)' }}>Recebido <strong style={{ color: 'var(--accent)' }}>{fmt(totalRecebido)}</strong></span>
+            <span style={{ color: 'var(--text2)' }}>A receber <strong style={{ color: 'var(--amber)' }}>{fmt(aReceber)}</strong></span>
+          </div>
+        )}
       </div>
 
       {/* Banner de recorrentes pendentes */}
@@ -146,19 +165,23 @@ export default function Entradas() {
       {loading ? <div className="empty-state">Carregando...</div> : entradas.length === 0 ? (
         <div className="empty-state">Nenhuma entrada neste mês</div>
       ) : entradas.map(e => (
-        <div key={e.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div key={e.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: e.recebido ? 1 : 0.85 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <button onClick={() => toggleRecebido(e)} title={e.recebido ? 'Recebido — desfazer' : 'Marcar como recebido'}
+              style={{ width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${e.recebido ? 'var(--accent)' : 'var(--amber)'}`, background: e.recebido ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {e.recebido && <Check size={14} color="var(--on-accent)" />}
+            </button>
             <span style={{ fontSize: 22 }}>{e.tipo === 'fixo' ? '💼' : '💰'}</span>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: 14, fontWeight: 500 }}>{e.descricao}</p>
               <p style={{ fontSize: 11, color: 'var(--text3)' }}>
-                {fmtData(e.data, 'dd/MM')} · {e.tipo === 'fixo' ? 'Fixo' : 'Avulso'} · {e.usuarios?.nome?.split(' ')[0]}
-                {e.recorrente && <span style={{ marginLeft: 6 }}><RefreshCw size={10} /></span>}
+                {fmtData(e.data, 'dd/MM')} · {e.recebido ? 'Recebido' : 'A receber'} · {e.usuarios?.nome?.split(' ')[0]}
+                {e.recorrente && <span style={{ marginLeft: 6, verticalAlign: 'middle' }}><RefreshCw size={10} /></span>}
               </p>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ color: 'var(--accent)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(e.valor)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <span style={{ color: e.recebido ? 'var(--accent)' : 'var(--amber)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(e.valor)}</span>
             <button onClick={() => editar(e)}><Pencil size={14} color="var(--text3)" /></button>
             <button onClick={() => excluir(e.id)}><Trash2 size={15} color="var(--text3)" /></button>
           </div>
