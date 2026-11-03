@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, addMonths, getDaysInMonth } from 'date-fns'
@@ -28,6 +28,7 @@ export function useAlertas() {
   const { emojiDe } = useCategorias()
   const [alertas, setAlertas] = useState([])
   const [loading, setLoading] = useState(true)
+  const dispensadosRef = useRef(new Set())
 
   const carregar = useCallback(async () => {
     if (!perfil?.grupo_id) { setAlertas([]); setLoading(false); return }
@@ -43,7 +44,7 @@ export function useAlertas() {
     const iniAtual = format(mesAtual, 'yyyy-MM-dd')
     const fimProx = format(endOfMonth(prox), 'yyyy-MM-dd')
 
-    const [cf, cartoes, gastos, parcelas, assinaturas, lanc, pagas, orc] = await Promise.all([
+    const [cf, cartoes, gastos, parcelas, assinaturas, lanc, pagas, orc, disp] = await Promise.all([
       supabase.from('contas_fixas').select('id, nome, valor, categoria, dia_vencimento').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('cartoes').select('id, nome, dia_fechamento, dia_vencimento').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('gastos').select('valor, data, cartao_id, categoria').eq('grupo_id', gid),
@@ -52,7 +53,10 @@ export function useAlertas() {
       supabase.from('fixas_lancamentos').select('conta_fixa_id, competencia, valor_real, pago').eq('grupo_id', gid).in('competencia', [compAtual, compProx]),
       supabase.from('contas_pagas').select('tipo, referencia_id, competencia, pago').eq('grupo_id', gid).in('competencia', [compAtual, compProx]),
       supabase.from('orcamentos').select('categoria, valor').eq('grupo_id', gid),
+      supabase.from('alertas_dispensados').select('alerta_id').eq('grupo_id', gid),
     ])
+
+    dispensadosRef.current = new Set((disp.data || []).map(d => d.alerta_id))
 
     const lancMap = {}
     ;(lanc.data || []).forEach(l => { lancMap[`${l.competencia}|${l.conta_fixa_id}`] = l })
@@ -119,18 +123,40 @@ export function useAlertas() {
       const r = real[cat] || 0
       const pct = Math.round((r / teto) * 100)
       if (r >= teto) {
-        out.push({ id: `orc-${cat}`, severidade: 'estourou', emoji: emojiDe(cat), titulo: `Orçamento de ${cat}`, descricao: `Estourou — ${fmt(r)} de ${fmt(teto)} (${pct}%)`, destino: '/orcamento', ord: 0.5 })
+        out.push({ id: `orc-${compAtual}-${cat}-estourou`, severidade: 'estourou', emoji: emojiDe(cat), titulo: `Orçamento de ${cat}`, descricao: `Estourou — ${fmt(r)} de ${fmt(teto)} (${pct}%)`, destino: '/orcamento', ord: 0.5 })
       } else if (pct >= 80) {
-        out.push({ id: `orc-${cat}`, severidade: 'quase', emoji: emojiDe(cat), titulo: `Orçamento de ${cat}`, descricao: `No limite — ${fmt(r)} de ${fmt(teto)} (${pct}%)`, destino: '/orcamento', ord: 1.5 })
+        out.push({ id: `orc-${compAtual}-${cat}-quase`, severidade: 'quase', emoji: emojiDe(cat), titulo: `Orçamento de ${cat}`, descricao: `No limite — ${fmt(r)} de ${fmt(teto)} (${pct}%)`, destino: '/orcamento', ord: 1.5 })
       }
     })
 
     out.sort((a, b) => (a.ord - b.ord) || ((a.venc?.getTime() || 0) - (b.venc?.getTime() || 0)))
-    setAlertas(out)
+    setAlertas(out.filter(a => !dispensadosRef.current.has(a.id)))
     setLoading(false)
   }, [perfil, emojiDe])
 
   useEffect(() => { carregar() }, [carregar])
 
-  return { alertas, loading, recarregar: carregar }
+  // Dispensa um alerta (some do sininho até voltar a ser relevante).
+  const dispensar = useCallback(async id => {
+    if (!perfil?.grupo_id) return
+    dispensadosRef.current.add(id)
+    setAlertas(a => a.filter(x => x.id !== id))
+    await supabase.from('alertas_dispensados').upsert(
+      { grupo_id: perfil.grupo_id, alerta_id: id },
+      { onConflict: 'grupo_id,alerta_id' }
+    )
+  }, [perfil])
+
+  const dispensarTodos = useCallback(async () => {
+    if (!perfil?.grupo_id || alertas.length === 0) return
+    const ids = alertas.map(a => a.id)
+    ids.forEach(i => dispensadosRef.current.add(i))
+    setAlertas([])
+    await supabase.from('alertas_dispensados').upsert(
+      ids.map(i => ({ grupo_id: perfil.grupo_id, alerta_id: i })),
+      { onConflict: 'grupo_id,alerta_id' }
+    )
+  }, [perfil, alertas])
+
+  return { alertas, loading, recarregar: carregar, dispensar, dispensarTodos }
 }

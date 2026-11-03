@@ -40,7 +40,7 @@ export default function Layout() {
   const location = useLocation()
   const [mais, setMais] = useState(false)
   const [alertasAbertos, setAlertasAbertos] = useState(false)
-  const { alertas, recarregar: recarregarAlertas } = useAlertas()
+  const { alertas, recarregar: recarregarAlertas, dispensar, dispensarTodos } = useAlertas()
 
   async function handleLogout() {
     await logout()
@@ -89,9 +89,14 @@ export default function Layout() {
                   background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
                   boxShadow: '0 12px 32px rgba(0,0,0,0.25)', maxHeight: '70vh', overflowY: 'auto',
                 }}>
-                  <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <p style={{ fontFamily: 'Syne', fontWeight: 600, fontSize: 14 }}>Alertas</p>
-                    <button onClick={() => setAlertasAbertos(false)}><X size={16} color="var(--text3)" /></button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {alertas.length > 0 && (
+                        <button onClick={dispensarTodos} style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 500 }}>Limpar todos</button>
+                      )}
+                      <button onClick={() => setAlertasAbertos(false)}><X size={16} color="var(--text3)" /></button>
+                    </div>
                   </div>
                   {alertas.length === 0 ? (
                     <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
@@ -99,17 +104,23 @@ export default function Layout() {
                     </div>
                   ) : (
                     alertas.map(a => (
-                      <button key={a.id} onClick={() => irPara(a.destino)}
-                        style={{ width: '100%', textAlign: 'left', display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 16px', borderBottom: '1px solid var(--border)', borderLeft: `3px solid ${COR_SEV[a.severidade] || 'var(--border2)'}` }}>
-                        <span style={{ fontSize: 18, lineHeight: 1.2, flexShrink: 0 }}>{a.emoji}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                            <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text)' }}>{a.titulo}</span>
-                            {a.valor != null && <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Syne', color: COR_SEV[a.severidade] || 'var(--text)', flexShrink: 0 }}>{fmtBRL(a.valor)}</span>}
+                      <div key={a.id} style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid var(--border)', borderLeft: `3px solid ${COR_SEV[a.severidade] || 'var(--border2)'}` }}>
+                        <button onClick={() => irPara(a.destino)}
+                          style={{ flex: 1, minWidth: 0, textAlign: 'left', display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 4px 12px 13px' }}>
+                          <span style={{ fontSize: 18, lineHeight: 1.2, flexShrink: 0 }}>{a.emoji}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                              <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text)' }}>{a.titulo}</span>
+                              {a.valor != null && <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Syne', color: COR_SEV[a.severidade] || 'var(--text)', flexShrink: 0 }}>{fmtBRL(a.valor)}</span>}
+                            </div>
+                            <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 2 }}>{a.descricao}</p>
                           </div>
-                          <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 2 }}>{a.descricao}</p>
-                        </div>
-                      </button>
+                        </button>
+                        <button onClick={() => dispensar(a.id)} title="Dispensar"
+                          style={{ flexShrink: 0, padding: '0 12px', color: 'var(--text3)', display: 'flex', alignItems: 'center' }}>
+                          <X size={15} />
+                        </button>
+                      </div>
                     ))
                   )}
                 </div>
