@@ -70,13 +70,14 @@ export default function Dashboard() {
 
     const competencia = format(data, 'yyyy-MM')
 
-    const [{ data: gastos }, { data: entradas }, { data: fixas }, { data: parcelas }, { data: assinaturas }, { data: lancFixas }] = await Promise.all([
-      supabase.from('gastos').select('id, descricao, valor, categoria, data, usuarios(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
-      supabase.from('entradas').select('valor').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
+    const [{ data: gastos }, { data: entradas }, { data: fixas }, { data: parcelas }, { data: assinaturas }, { data: lancFixas }, { data: contasPagas }] = await Promise.all([
+      supabase.from('gastos').select('id, descricao, valor, categoria, data, cartao_id, usuarios(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
+      supabase.from('entradas').select('valor, recebido').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
       supabase.from('contas_fixas').select('id, valor, categoria').eq('grupo_id', gid).eq('ativo', true),
-      supabase.from('parcelas').select('valor, parcelamentos(categoria)').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
-      supabase.from('assinaturas').select('valor').eq('grupo_id', gid).eq('ativo', true),
-      supabase.from('fixas_lancamentos').select('conta_fixa_id, valor_real').eq('grupo_id', gid).eq('competencia', competencia),
+      supabase.from('parcelas').select('valor, paga, parcelamentos(categoria, cartao_id)').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
+      supabase.from('assinaturas').select('id, valor, cartao_id').eq('grupo_id', gid).eq('ativo', true),
+      supabase.from('fixas_lancamentos').select('conta_fixa_id, valor_real, pago').eq('grupo_id', gid).eq('competencia', competencia),
+      supabase.from('contas_pagas').select('tipo, referencia_id, pago').eq('grupo_id', gid).eq('competencia', competencia),
     ])
 
     // valor efetivo de cada conta fixa = real lançado no mês (se houver) senão o previsto
@@ -91,6 +92,40 @@ export default function Dashboard() {
     const totalAssint = (assinaturas || []).reduce((s, a) => s + Number(a.valor), 0)
     const totalSaidas = totalGastos + totalFixas + totalParcelas + totalAssint
     const saldo = totalEntradas - totalSaidas
+
+    // --- Realizado (fluxo de caixa): o que de fato já entrou e já saiu ---
+    // Os estados de "pago" vêm das mesmas fontes que o usuário controla no hub Contas do mês.
+    const faturaPaga = {}       // cartao_id -> fatura do mês quitada
+    const assinaturaPaga = {}   // assinatura_id -> assinatura avulsa quitada
+    ;(contasPagas || []).forEach(r => {
+      if (!r.pago) return
+      if (r.tipo === 'fatura') faturaPaga[r.referencia_id] = true
+      else if (r.tipo === 'assinatura') assinaturaPaga[r.referencia_id] = true
+    })
+    const fixaPaga = {}
+    ;(lancFixas || []).forEach(l => { if (l.pago) fixaPaga[l.conta_fixa_id] = true })
+
+    // Entradas: realizado = marcadas como recebidas
+    const recebidoEntradas = (entradas || []).filter(e => e.recebido).reduce((s, e) => s + Number(e.valor), 0)
+    const aReceber = totalEntradas - recebidoEntradas
+
+    // Saídas: dinheiro que já saiu da conta
+    let saiuSaidas = 0
+    ;(gastos || []).forEach(g => {
+      const v = Number(g.valor)
+      if (!g.cartao_id) saiuSaidas += v                  // pix/dinheiro/débito: saiu na hora
+      else if (faturaPaga[g.cartao_id]) saiuSaidas += v   // gasto no cartão: saiu quando a fatura foi paga
+    })
+    ;(fixas || []).forEach(f => { if (fixaPaga[f.id]) saiuSaidas += valorFixa(f) })
+    ;(parcelas || []).forEach(p => {
+      const cid = p.parcelamentos?.cartao_id
+      if (cid ? faturaPaga[cid] : p.paga) saiuSaidas += Number(p.valor)
+    })
+    ;(assinaturas || []).forEach(a => {
+      if (a.cartao_id ? faturaPaga[a.cartao_id] : assinaturaPaga[a.id]) saiuSaidas += Number(a.valor)
+    })
+    const aPagar = totalSaidas - saiuSaidas
+    const saldoCaixa = recebidoEntradas - saiuSaidas
 
     // Visão por NATUREZA: categorias só dos gastos variáveis
     const porCategoria = {}
@@ -115,7 +150,7 @@ export default function Dashboard() {
       porPessoa[nome] = (porPessoa[nome] || 0) + Number(g.valor)
     })
 
-    return { totalEntradas, totalGastos, totalFixas, totalParcelas, totalAssint, totalSaidas, saldo, porCategoria, porCategoriaUni, porPessoa, gastos: gastos || [] }
+    return { totalEntradas, recebidoEntradas, aReceber, totalGastos, totalFixas, totalParcelas, totalAssint, totalSaidas, saiuSaidas, aPagar, saldo, saldoCaixa, porCategoria, porCategoriaUni, porPessoa, gastos: gastos || [] }
   }
 
   // Vencimentos próximos (só faz sentido no mês corrente)
@@ -160,9 +195,6 @@ export default function Dashboard() {
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
-
-  const varEntradas = dadosAnt?.totalEntradas > 0 ? ((dados.totalEntradas - dadosAnt.totalEntradas) / dadosAnt.totalEntradas * 100).toFixed(0) : null
-  const varGastos = dadosAnt?.totalSaidas > 0 ? ((dados.totalSaidas - dadosAnt.totalSaidas) / dadosAnt.totalSaidas * 100).toFixed(0) : null
 
   const catEntries = Object.entries(dados.porCategoria).sort((a, b) => b[1] - a[1])
   const maxCat = catEntries[0]?.[1] || 1
@@ -219,32 +251,38 @@ export default function Dashboard() {
         <button onClick={() => setMes(m => addMonths(m, 1))}><ChevronRight size={20} color="var(--text2)" /></button>
       </div>
 
-      {/* Saldo do mês */}
-      <div className="card" style={{ marginBottom: 16, background: dados.saldo >= 0 ? 'var(--accent-dim)' : 'var(--red-dim)', borderColor: dados.saldo >= 0 ? 'var(--accent)' : 'var(--red)' }}>
-        <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Saldo do mês</p>
-        <p style={{ fontSize: 34, fontFamily: 'Syne', fontWeight: 700, color: dados.saldo >= 0 ? 'var(--accent)' : 'var(--red)' }}>{fmt(dados.saldo)}</p>
-        {dadosAnt && <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>Mês anterior: {fmt(dadosAnt.saldo)}</p>}
+      {/* Saldo em caixa (fluxo realizado) */}
+      <div className="card" style={{ marginBottom: 16, background: dados.saldoCaixa >= 0 ? 'var(--accent-dim)' : 'var(--red-dim)', borderColor: dados.saldoCaixa >= 0 ? 'var(--accent)' : 'var(--red)' }}>
+        <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Saldo em caixa</p>
+        <p style={{ fontSize: 34, fontFamily: 'Syne', fontWeight: 700, color: dados.saldoCaixa >= 0 ? 'var(--accent)' : 'var(--red)' }}>{fmt(dados.saldoCaixa)}</p>
+        <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>o que já entrou menos o que já saiu</p>
+        <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+            Previsto no mês: <strong style={{ color: dados.saldo >= 0 ? 'var(--accent)' : 'var(--red)' }}>{fmt(dados.saldo)}</strong>
+          </span>
+          {dadosAnt && <span style={{ fontSize: 12, color: 'var(--text2)' }}>Mês anterior: {fmt(dadosAnt.saldo)}</span>}
+        </div>
       </div>
 
-      {/* Comparativo entradas/saídas */}
+      {/* Entradas e saídas: realizado × previsto */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
         <div className="card">
           <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Entradas</p>
-          <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--accent)' }}>{fmt(dados.totalEntradas)}</p>
-          {varEntradas !== null && (
-            <p style={{ fontSize: 12, marginTop: 4, color: varEntradas >= 0 ? 'var(--accent)' : 'var(--red)' }}>
-              {varEntradas >= 0 ? '▲' : '▼'} {Math.abs(varEntradas)}% vs mês ant.
-            </p>
-          )}
+          <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--accent)' }}>{fmt(dados.recebidoEntradas)}</p>
+          <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>já recebido</p>
+          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text2)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span>Previsto: {fmt(dados.totalEntradas)}</span>
+            {dados.aReceber > 0.005 && <span style={{ color: 'var(--amber)' }}>A receber: {fmt(dados.aReceber)}</span>}
+          </div>
         </div>
         <div className="card">
-          <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Saídas totais</p>
-          <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--red)' }}>{fmt(dados.totalSaidas)}</p>
-          {varGastos !== null && (
-            <p style={{ fontSize: 12, marginTop: 4, color: varGastos <= 0 ? 'var(--accent)' : 'var(--red)' }}>
-              {varGastos >= 0 ? '▲' : '▼'} {Math.abs(varGastos)}% vs mês ant.
-            </p>
-          )}
+          <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Saídas</p>
+          <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--red)' }}>{fmt(dados.saiuSaidas)}</p>
+          <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>já saiu</p>
+          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text2)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span>Previsto: {fmt(dados.totalSaidas)}</span>
+            {dados.aPagar > 0.005 && <span style={{ color: 'var(--amber)' }}>A pagar: {fmt(dados.aPagar)}</span>}
+          </div>
         </div>
       </div>
 
@@ -460,7 +498,7 @@ export default function Dashboard() {
             ['Entradas', dados.totalEntradas, dadosAnt.totalEntradas, true],
             ['Gastos variáveis', dados.totalGastos, dadosAnt.totalGastos, false],
             ['Total saídas', dados.totalSaidas, dadosAnt.totalSaidas, false],
-            ['Saldo', dados.saldo, dadosAnt.saldo, true],
+            ['Saldo previsto', dados.saldo, dadosAnt.saldo, true],
           ].map(([label, atual, anterior, maiorEBom]) => {
             const diff = atual - anterior
             const bom = maiorEBom ? diff >= 0 : diff <= 0
