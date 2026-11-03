@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { format, startOfMonth, endOfMonth, subMonths, addMonths, addDays, isSameMonth } from 'date-fns'
+import { format, startOfMonth, endOfMonth, subMonths, addMonths, isSameMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, TrendingUp, Bell, PieChart as PieIcon, Target, Wallet } from 'lucide-react'
+import { ChevronLeft, ChevronRight, TrendingUp, PieChart as PieIcon, Target, Wallet } from 'lucide-react'
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
   PieChart, Pie, Cell,
@@ -29,7 +29,6 @@ export default function Dashboard() {
   const [dados, setDados] = useState(null)
   const [dadosAnt, setDadosAnt] = useState(null)
   const [historico, setHistorico] = useState([])
-  const [alertas, setAlertas] = useState([])
   const [loading, setLoading] = useState(true)
 
   const ehMesAtual = isSameMonth(mes, new Date())
@@ -174,39 +173,14 @@ export default function Dashboard() {
     return { totalEntradas, recebidoEntradas, aReceber, totalGastos, totalFixas, totalParcelas, totalAssint, totalSaidas, saiuSaidas, aPagar, saldo, saldoCaixa, previstoSaidas, saldoPrevisto, orcamentoCats, porCategoria, porCategoriaUni, porPessoa, gastos: gastos || [] }
   }
 
-  // Vencimentos próximos (só faz sentido no mês corrente)
-  async function carregarAlertas() {
-    const gid = perfil.grupo_id
-    const hoje = new Date()
-    const [{ data: fixas }, { data: cartoes }] = await Promise.all([
-      supabase.from('contas_fixas').select('valor, nome, dia_vencimento, alerta_dias').eq('grupo_id', gid).eq('ativo', true),
-      supabase.from('cartoes').select('nome, dia_vencimento, alerta_dias').eq('grupo_id', gid).eq('ativo', true),
-    ])
-    const alertasGerados = []
-    const mesN = hoje.getMonth()
-    const anoN = hoje.getFullYear()
-    ;(fixas || []).forEach(f => {
-      const venc = new Date(anoN, mesN, f.dia_vencimento)
-      const limite = addDays(hoje, f.alerta_dias || 3)
-      if (venc >= hoje && venc <= limite) alertasGerados.push({ tipo: 'fixa', nome: f.nome, data: venc, valor: f.valor })
-    })
-    ;(cartoes || []).forEach(c => {
-      const venc = new Date(anoN, mesN, c.dia_vencimento)
-      const limite = addDays(hoje, c.alerta_dias || 3)
-      if (venc >= hoje && venc <= limite) alertasGerados.push({ tipo: 'cartao', nome: `Fatura ${c.nome}`, data: venc })
-    })
-    return alertasGerados
-  }
-
   async function carregar() {
     setLoading(true)
-    const [d, dAnt, hist, alrt] = await Promise.all([
+    const [d, dAnt, hist] = await Promise.all([
       carregarMes(mes),
       carregarMes(subMonths(mes, 1)),
       carregarHistorico(),
-      ehMesAtual ? carregarAlertas() : Promise.resolve([]),
     ])
-    setDados(d); setDadosAnt(dAnt); setHistorico(hist); setAlertas(alrt)
+    setDados(d); setDadosAnt(dAnt); setHistorico(hist)
     setLoading(false)
   }
 
@@ -311,24 +285,6 @@ export default function Dashboard() {
                 : 'Renda já comprometida com contas e gastos do mês'}
             </p>
           </div>
-        </div>
-      )}
-
-      {/* Vencimentos próximos (mês corrente) */}
-      {ehMesAtual && alertas.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <h3 style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Bell size={14} color="var(--amber)" /> Vencimentos próximos
-          </h3>
-          {alertas.map((a, i) => (
-            <div key={i} className="card" style={{ marginBottom: 8, borderColor: 'var(--amber)', background: 'var(--amber-dim)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <p style={{ fontWeight: 500, fontSize: 14 }}>{a.nome}</p>
-                <p style={{ fontSize: 12, color: 'var(--text2)' }}>Vence {format(a.data, 'dd/MM', { locale: ptBR })}</p>
-              </div>
-              {a.valor && <p style={{ color: 'var(--amber)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(a.valor)}</p>}
-            </div>
-          ))}
         </div>
       )}
 

@@ -2,11 +2,15 @@ import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-do
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar,
-  LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat, ClipboardCheck, Upload,
+  LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat, ClipboardCheck, Upload, Bell,
 } from 'lucide-react'
 import { useState } from 'react'
 import InstalarApp from './InstalarApp'
 import Avatar from './Avatar'
+import { useAlertas } from '../hooks/useAlertas'
+
+const COR_SEV = { vencido: 'var(--red)', estourou: 'var(--red)', vence: 'var(--amber)', quase: 'var(--amber)' }
+const fmtBRL = v => (v == null ? null : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))
 
 // Itens fixos da barra inferior (uso diário)
 const navPrincipal = [
@@ -35,12 +39,27 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [mais, setMais] = useState(false)
+  const [alertasAbertos, setAlertasAbertos] = useState(false)
+  const { alertas, recarregar: recarregarAlertas } = useAlertas()
 
   async function handleLogout() {
     await logout()
     navigate('/login')
   }
 
+  function abrirAlertas() {
+    setAlertasAbertos(a => {
+      if (!a) recarregarAlertas()   // atualiza ao abrir (ex: após pagar algo)
+      return !a
+    })
+  }
+
+  function irPara(destino) {
+    setAlertasAbertos(false)
+    navigate(destino)
+  }
+
+  const temUrgente = alertas.some(a => a.severidade === 'vencido' || a.severidade === 'estourou')
   const maisAtivo = navMais.some(n => location.pathname === n.to)
 
   return (
@@ -49,6 +68,55 @@ export default function Layout() {
       <header style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 10 }}>
         <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--accent)', letterSpacing: '-0.02em' }}>HopeFin</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Sininho de alertas */}
+          <div style={{ position: 'relative', display: 'flex' }}>
+            <button onClick={abrirAlertas} title="Alertas" style={{ position: 'relative', color: alertasAbertos ? 'var(--accent)' : 'var(--text3)', display: 'flex', alignItems: 'center' }}>
+              <Bell size={19} />
+              {alertas.length > 0 && (
+                <span style={{
+                  position: 'absolute', top: -5, right: -6, minWidth: 16, height: 16, padding: '0 4px',
+                  borderRadius: 8, background: temUrgente ? 'var(--red)' : 'var(--amber)', color: '#fff',
+                  fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>{alertas.length}</span>
+              )}
+            </button>
+
+            {alertasAbertos && (
+              <>
+                <div onClick={() => setAlertasAbertos(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 12px)', right: -8, width: 'min(320px, 86vw)', zIndex: 50,
+                  background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+                  boxShadow: '0 12px 32px rgba(0,0,0,0.25)', maxHeight: '70vh', overflowY: 'auto',
+                }}>
+                  <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <p style={{ fontFamily: 'Syne', fontWeight: 600, fontSize: 14 }}>Alertas</p>
+                    <button onClick={() => setAlertasAbertos(false)}><X size={16} color="var(--text3)" /></button>
+                  </div>
+                  {alertas.length === 0 ? (
+                    <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
+                      Tudo em dia por aqui 🎉
+                    </div>
+                  ) : (
+                    alertas.map(a => (
+                      <button key={a.id} onClick={() => irPara(a.destino)}
+                        style={{ width: '100%', textAlign: 'left', display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 16px', borderBottom: '1px solid var(--border)', borderLeft: `3px solid ${COR_SEV[a.severidade] || 'var(--border2)'}` }}>
+                        <span style={{ fontSize: 18, lineHeight: 1.2, flexShrink: 0 }}>{a.emoji}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                            <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text)' }}>{a.titulo}</span>
+                            {a.valor != null && <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Syne', color: COR_SEV[a.severidade] || 'var(--text)', flexShrink: 0 }}>{fmtBRL(a.valor)}</span>}
+                          </div>
+                          <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 2 }}>{a.descricao}</p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
           {perfil && (
             <Link to="/configuracoes" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
               <Avatar nome={perfil.nome} foto={perfil.foto_url} size={28} />
