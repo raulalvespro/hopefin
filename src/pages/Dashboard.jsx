@@ -222,7 +222,6 @@ export default function Dashboard() {
 
   // Visão por categoria (tudo somado): [cat, { total, gasto, fixa, parcela, assinatura }]
   const catUniEntries = Object.entries(dados.porCategoriaUni).sort((a, b) => b[1].total - a[1].total)
-  const maxCatUni = catUniEntries[0]?.[1].total || 1
 
   const emojiPara = cat => cat === 'assinaturas' ? '📺' : emojiDe(cat)
   const nomeCategoria = cat => cat === 'assinaturas' ? 'Assinaturas' : cat
@@ -239,16 +238,6 @@ export default function Dashboard() {
   const compromissos = dados.totalFixas + dados.totalParcelas + dados.totalAssint
   const livreMes = dados.totalEntradas - compromissos - dados.totalGastos
   const porDia = Math.max(0, livreMes) / diasRestantes
-
-  // Rótulo de composição por natureza dentro de uma categoria (ex: "variável R$120 · fixa R$80")
-  const composicaoCat = o => {
-    const partes = []
-    if (o.gasto > 0) partes.push(`variável ${fmt(o.gasto)}`)
-    if (o.fixa > 0) partes.push(`fixa ${fmt(o.fixa)}`)
-    if (o.parcela > 0) partes.push(`parcela ${fmt(o.parcela)}`)
-    if (o.assinatura > 0) partes.push(`assinatura ${fmt(o.assinatura)}`)
-    return partes.length > 1 ? partes.join(' · ') : null
-  }
 
   return (
     <div>
@@ -280,11 +269,6 @@ export default function Dashboard() {
           </span>
           {dadosAnt && <span style={{ fontSize: 12, color: 'var(--text2)' }}>Mês anterior: {fmt(dadosAnt.saldoPrevisto)}</span>}
         </div>
-        <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>
-          {dados.saldoPrevisto >= 0
-            ? `Seguindo o planejado, deve sobrar ${fmt(dados.saldoPrevisto)} no fim do mês`
-            : `Seguindo o planejado, deve faltar ${fmt(Math.abs(dados.saldoPrevisto))} no fim do mês`}
-        </p>
       </div>
 
       {/* Entradas e saídas: realizado × previsto */}
@@ -473,31 +457,6 @@ export default function Dashboard() {
           ) : null
         })}
       </div>
-
-      {/* Por categoria (tudo somado) */}
-      {catUniEntries.length > 0 && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Por categoria (tudo somado)</p>
-          {catUniEntries.map(([cat, o], i) => {
-            const pct = Math.round((o.total / maxCatUni) * 100)
-            const totalCatUni = dados.totalGastos + dados.totalFixas + dados.totalParcelas + dados.totalAssint
-            const pctTotal = totalCatUni > 0 ? Math.round((o.total / totalCatUni) * 100) : 0
-            const comp = composicaoCat(o)
-            return (
-              <div key={cat} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
-                  <span>{emojiPara(cat)} {nomeCategoria(cat)}</span>
-                  <span style={{ fontWeight: 500 }}>{fmt(o.total)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pctTotal}%)</span></span>
-                </div>
-                <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
-                  <div style={{ width: `${pct}%`, height: '100%', background: CORES[i % CORES.length], borderRadius: 4, transition: 'width 0.4s' }} />
-                </div>
-                {comp && <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{comp}</p>}
-              </div>
-            )
-          })}
-        </div>
-      )}
 
       {/* Gastos por pessoa */}
       {pessoaEntries.length > 0 && (
