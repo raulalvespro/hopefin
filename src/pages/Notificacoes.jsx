@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
 import { Bell, CalendarClock, CreditCard, Target, PiggyBank, TrendingDown, Smartphone } from 'lucide-react'
+import { statusPush, ativarPush, desativarPush, enviarPushTeste } from '../lib/push'
 
 const PADRAO = {
   alertar_vencimentos: true,
@@ -37,11 +38,16 @@ function Toggle({ ativo, onChange }) {
 }
 
 export default function Notificacoes() {
-  const { perfil } = useAuth()
+  const { user, perfil } = useAuth()
   const { toast } = useToast()
   const [prefs, setPrefs] = useState(PADRAO)
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
+
+  // Push no celular
+  const [push, setPush] = useState({ suportado: false, permissao: 'default', inscrito: false })
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushErro, setPushErro] = useState('')
 
   useEffect(() => {
     if (!perfil?.grupo_id) return
@@ -51,6 +57,43 @@ export default function Notificacoes() {
       setLoading(false)
     })()
   }, [perfil])
+
+  useEffect(() => {
+    statusPush().then(setPush)
+  }, [])
+
+  async function togglePush(ativar) {
+    setPushErro('')
+    setPushBusy(true)
+    try {
+      if (ativar) {
+        await ativarPush(user.id, perfil.grupo_id)
+        toast('Notificações no celular ativadas!', 'ok')
+      } else {
+        await desativarPush()
+        toast('Notificações no celular desativadas.', 'ok')
+      }
+      setPush(await statusPush())
+    } catch (e) {
+      setPushErro(e.message || 'Não foi possível alterar as notificações.')
+      setPush(await statusPush())
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
+  async function testarPush() {
+    setPushErro('')
+    setPushBusy(true)
+    try {
+      const r = await enviarPushTeste()
+      toast(r?.enviados ? `Teste enviado (${r.enviados}).` : 'Teste enviado.', 'ok')
+    } catch (e) {
+      setPushErro(e.message || 'Falha ao enviar o teste.')
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   async function salvar(novas) {
     setPrefs(novas)
@@ -111,14 +154,43 @@ export default function Notificacoes() {
         </div>
       </div>
 
-      <div className="card" style={{ display: 'flex', alignItems: 'flex-start', gap: 12, opacity: 0.75 }}>
-        <Smartphone size={19} color="var(--text3)" style={{ flexShrink: 0, marginTop: 1 }} />
-        <div>
-          <p style={{ fontSize: 14, fontWeight: 500 }}>Notificação no celular <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 400 }}>· em breve</span></p>
-          <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2, lineHeight: 1.4 }}>
-            Receber os alertas como push no celular, mesmo com o app fechado.
-          </p>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <Smartphone size={19} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 14, fontWeight: 500 }}>Notificação no celular</p>
+            <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2, lineHeight: 1.4 }}>
+              Receba os alertas como push no celular, mesmo com o app fechado.
+            </p>
+          </div>
+          {push.suportado && push.permissao !== 'denied' && (
+            <div style={{ opacity: pushBusy ? 0.5 : 1, pointerEvents: pushBusy ? 'none' : 'auto' }}>
+              <Toggle ativo={push.inscrito} onChange={togglePush} />
+            </div>
+          )}
         </div>
+
+        {push.inscrito && (
+          <button onClick={testarPush} disabled={pushBusy}
+            style={{ marginTop: 14, fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>
+            {pushBusy ? 'Enviando…' : 'Enviar notificação de teste'}
+          </button>
+        )}
+
+        {!push.suportado && (
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 12, lineHeight: 1.5 }}>
+            Este navegador não suporta notificações push. No iPhone, instale o app na tela de início
+            (Compartilhar → Adicionar à Tela de Início) e abra por lá.
+          </p>
+        )}
+        {push.permissao === 'denied' && (
+          <p style={{ fontSize: 12, color: 'var(--amber)', marginTop: 12, lineHeight: 1.5 }}>
+            As notificações estão bloqueadas para este site. Libere nas configurações do navegador para ativar.
+          </p>
+        )}
+        {pushErro && (
+          <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 12, lineHeight: 1.5 }}>{pushErro}</p>
+        )}
       </div>
 
       {salvando && <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', marginTop: 14 }}>Salvando…</p>}

@@ -32,6 +32,8 @@ export default defineConfig({
         // Nunca interceptar chamadas ao Supabase (API/auth/realtime)
         navigateFallbackDenylist: [/^\/api/, /supabase\.co/],
         cleanupOutdatedCaches: true,
+        // Handlers de Web Push (push / notificationclick) — ver public/push-sw.js
+        importScripts: ['push-sw.js'],
       },
       devOptions: {
         enabled: true,
