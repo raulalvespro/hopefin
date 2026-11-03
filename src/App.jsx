@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
+import RedefinirSenha from './pages/RedefinirSenha'
 import EscolhaGrupo from './pages/EscolhaGrupo'
 import Dashboard from './pages/Dashboard'
 import Gastos from './pages/Gastos'
@@ -42,6 +43,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<Cadastro />} />
+      <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       <Route path="/" element={<RotaProtegida><Layout /></RotaProtegida>}>
         <Route index element={<Dashboard />} />
         <Route path="gastos" element={<Gastos />} />
