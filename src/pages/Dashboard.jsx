@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths, addDays, isSameMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, TrendingUp, Bell, PieChart as PieIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, TrendingUp, Bell, PieChart as PieIcon, Target, Wallet } from 'lucide-react'
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
   PieChart, Pie, Cell,
@@ -19,6 +20,7 @@ const fmtCurto = v => {
   return String(Math.round(n))
 }
 const CORES = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b', '#8b5cf6', '#14b8a6', '#ec4899', '#0ea5e9']
+const corBarra = pct => (pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--accent)')
 
 export default function Dashboard() {
   const { perfil } = useAuth()
@@ -29,7 +31,6 @@ export default function Dashboard() {
   const [historico, setHistorico] = useState([])
   const [alertas, setAlertas] = useState([])
   const [loading, setLoading] = useState(true)
-  const [visao, setVisao] = useState('categoria') // 'categoria' = tudo somado por categoria | 'natureza' = separa fixo/variável/parcela
 
   const ehMesAtual = isSameMonth(mes, new Date())
 
@@ -70,7 +71,7 @@ export default function Dashboard() {
 
     const competencia = format(data, 'yyyy-MM')
 
-    const [{ data: gastos }, { data: entradas }, { data: fixas }, { data: parcelas }, { data: assinaturas }, { data: lancFixas }, { data: contasPagas }] = await Promise.all([
+    const [{ data: gastos }, { data: entradas }, { data: fixas }, { data: parcelas }, { data: assinaturas }, { data: lancFixas }, { data: contasPagas }, { data: orcamentos }] = await Promise.all([
       supabase.from('gastos').select('id, descricao, valor, categoria, data, cartao_id, usuarios(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
       supabase.from('entradas').select('valor, recebido').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
       supabase.from('contas_fixas').select('id, valor, categoria').eq('grupo_id', gid).eq('ativo', true),
@@ -78,6 +79,7 @@ export default function Dashboard() {
       supabase.from('assinaturas').select('id, valor, cartao_id').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('fixas_lancamentos').select('conta_fixa_id, valor_real, pago').eq('grupo_id', gid).eq('competencia', competencia),
       supabase.from('contas_pagas').select('tipo, referencia_id, pago').eq('grupo_id', gid).eq('competencia', competencia),
+      supabase.from('orcamentos').select('categoria, valor').eq('grupo_id', gid),
     ])
 
     // valor efetivo de cada conta fixa = real lançado no mês (se houver) senão o previsto
@@ -124,7 +126,6 @@ export default function Dashboard() {
     ;(assinaturas || []).forEach(a => {
       if (a.cartao_id ? faturaPaga[a.cartao_id] : assinaturaPaga[a.id]) saiuSaidas += Number(a.valor)
     })
-    const aPagar = totalSaidas - saiuSaidas
     const saldoCaixa = recebidoEntradas - saiuSaidas
 
     // Visão por NATUREZA: categorias só dos gastos variáveis
@@ -144,13 +145,33 @@ export default function Dashboard() {
     ;(parcelas || []).forEach(p => addCat(p.parcelamentos?.categoria, 'parcela', Number(p.valor)))
     ;(assinaturas || []).forEach(a => addCat('assinaturas', 'assinatura', Number(a.valor)))
 
+    // --- Previsto do mês = teto do orçamento (planejado pelo usuário) ---
+    // Para cada categoria: o maior entre o já realizado e o teto definido.
+    // Assim o previsto projeta o fim do mês em vez de "crescer" conforme se gasta.
+    const tetos = Object.fromEntries((orcamentos || []).map(o => [o.categoria, Number(o.valor)]))
+    const catsPrev = new Set([...Object.keys(porCategoriaUni), ...Object.keys(tetos)])
+    let previstoSaidas = 0
+    catsPrev.forEach(c => {
+      if (c === 'assinaturas') { previstoSaidas += porCategoriaUni[c]?.total || 0; return } // assinaturas não têm teto
+      previstoSaidas += Math.max(porCategoriaUni[c]?.total || 0, tetos[c] || 0)
+    })
+    const saldoPrevisto = totalEntradas - previstoSaidas
+    const aPagar = Math.max(0, previstoSaidas - saiuSaidas)
+
+    // Orçamento × realizado (só categorias com teto), ordenado por % de uso
+    const orcamentoCats = Object.keys(tetos).map(c => ({
+      categoria: c,
+      teto: tetos[c],
+      realizado: porCategoriaUni[c]?.total || 0,
+    })).sort((a, b) => (b.realizado / b.teto) - (a.realizado / a.teto))
+
     const porPessoa = {}
     ;(gastos || []).forEach(g => {
       const nome = g.usuarios?.nome?.split(' ')[0] || 'Desconhecido'
       porPessoa[nome] = (porPessoa[nome] || 0) + Number(g.valor)
     })
 
-    return { totalEntradas, recebidoEntradas, aReceber, totalGastos, totalFixas, totalParcelas, totalAssint, totalSaidas, saiuSaidas, aPagar, saldo, saldoCaixa, porCategoria, porCategoriaUni, porPessoa, gastos: gastos || [] }
+    return { totalEntradas, recebidoEntradas, aReceber, totalGastos, totalFixas, totalParcelas, totalAssint, totalSaidas, saiuSaidas, aPagar, saldo, saldoCaixa, previstoSaidas, saldoPrevisto, orcamentoCats, porCategoria, porCategoriaUni, porPessoa, gastos: gastos || [] }
   }
 
   // Vencimentos próximos (só faz sentido no mês corrente)
@@ -196,8 +217,6 @@ export default function Dashboard() {
     </div>
   )
 
-  const catEntries = Object.entries(dados.porCategoria).sort((a, b) => b[1] - a[1])
-  const maxCat = catEntries[0]?.[1] || 1
   const pessoaEntries = Object.entries(dados.porPessoa).sort((a, b) => b[1] - a[1])
   const totalPessoas = pessoaEntries.reduce((s, [, v]) => s + v, 0)
 
@@ -208,19 +227,18 @@ export default function Dashboard() {
   const emojiPara = cat => cat === 'assinaturas' ? '📺' : emojiDe(cat)
   const nomeCategoria = cat => cat === 'assinaturas' ? 'Assinaturas' : cat
 
-  // Distribuição da renda: quanto de tudo que entrou vai para cada fatia
+  // Distribuição da renda: quanto de tudo que entrou vai para cada categoria
   const baseRenda = Math.max(dados.totalEntradas, dados.totalSaidas, 1)
   const sobra = dados.totalEntradas - dados.totalSaidas
-  const distribuicao = []
-  if (visao === 'categoria') {
-    catUniEntries.forEach(([cat, o]) => distribuicao.push({ nome: cat, valor: o.total, rotulo: `${emojiPara(cat)} ${nomeCategoria(cat)}` }))
-  } else {
-    catEntries.forEach(([cat, valor]) => distribuicao.push({ nome: cat, valor, rotulo: `${emojiDe(cat)} ${cat}` }))
-    if (dados.totalFixas > 0) distribuicao.push({ nome: 'Contas fixas', valor: dados.totalFixas, rotulo: '🧾 Contas fixas' })
-    if (dados.totalParcelas > 0) distribuicao.push({ nome: 'Parcelas', valor: dados.totalParcelas, rotulo: '💳 Parcelas' })
-    if (dados.totalAssint > 0) distribuicao.push({ nome: 'Assinaturas', valor: dados.totalAssint, rotulo: '📺 Assinaturas' })
-  }
+  const distribuicao = catUniEntries.map(([cat, o]) => ({ nome: cat, valor: o.total, rotulo: `${emojiPara(cat)} ${nomeCategoria(cat)}` }))
   if (sobra > 0) distribuicao.push({ nome: 'Disponível', valor: sobra, rotulo: '✅ Disponível', sobra: true })
+
+  // "Quanto posso gastar" (só no mês corrente): renda − compromissos − já gasto variável
+  const diasNoMes = endOfMonth(mes).getDate()
+  const diasRestantes = Math.max(1, diasNoMes - new Date().getDate() + 1)
+  const compromissos = dados.totalFixas + dados.totalParcelas + dados.totalAssint
+  const livreMes = dados.totalEntradas - compromissos - dados.totalGastos
+  const porDia = Math.max(0, livreMes) / diasRestantes
 
   // Rótulo de composição por natureza dentro de uma categoria (ex: "variável R$120 · fixa R$80")
   const composicaoCat = o => {
@@ -258,10 +276,15 @@ export default function Dashboard() {
         <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>o que já entrou menos o que já saiu</p>
         <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: 'var(--text2)' }}>
-            Previsto no mês: <strong style={{ color: dados.saldo >= 0 ? 'var(--accent)' : 'var(--red)' }}>{fmt(dados.saldo)}</strong>
+            Projeção do mês: <strong style={{ color: dados.saldoPrevisto >= 0 ? 'var(--accent)' : 'var(--red)' }}>{fmt(dados.saldoPrevisto)}</strong>
           </span>
-          {dadosAnt && <span style={{ fontSize: 12, color: 'var(--text2)' }}>Mês anterior: {fmt(dadosAnt.saldo)}</span>}
+          {dadosAnt && <span style={{ fontSize: 12, color: 'var(--text2)' }}>Mês anterior: {fmt(dadosAnt.saldoPrevisto)}</span>}
         </div>
+        <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>
+          {dados.saldoPrevisto >= 0
+            ? `Seguindo o planejado, deve sobrar ${fmt(dados.saldoPrevisto)} no fim do mês`
+            : `Seguindo o planejado, deve faltar ${fmt(Math.abs(dados.saldoPrevisto))} no fim do mês`}
+        </p>
       </div>
 
       {/* Entradas e saídas: realizado × previsto */}
@@ -280,11 +303,32 @@ export default function Dashboard() {
           <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--red)' }}>{fmt(dados.saiuSaidas)}</p>
           <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>já saiu</p>
           <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text2)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span>Previsto: {fmt(dados.totalSaidas)}</span>
+            <span>Previsto: {fmt(dados.previstoSaidas)}</span>
             {dados.aPagar > 0.005 && <span style={{ color: 'var(--amber)' }}>A pagar: {fmt(dados.aPagar)}</span>}
           </div>
         </div>
       </div>
+
+      {/* Quanto posso gastar (mês corrente) */}
+      {ehMesAtual && (
+        <div className="card" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Wallet size={22} color="var(--accent)" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 12, color: 'var(--text2)' }}>Quanto posso gastar</p>
+            <p style={{ fontSize: 22, fontFamily: 'Syne', fontWeight: 700, color: livreMes >= 0 ? 'var(--accent)' : 'var(--red)' }}>
+              {fmt(Math.max(0, livreMes))}
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text2)' }}> livres no mês</span>
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+              {livreMes > 0
+                ? `~${fmt(porDia)} por dia nos próximos ${diasRestantes} dias`
+                : 'Renda já comprometida com contas e gastos do mês'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Vencimentos próximos (mês corrente) */}
       {ehMesAtual && alertas.length > 0 && (
@@ -304,28 +348,42 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Orçamento × realizado */}
+      {dados.orcamentoCats.length > 0 && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Target size={18} color="var(--accent)" />
+              <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Orçamento do mês</p>
+            </div>
+            <Link to="/orcamento" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Ver tudo</Link>
+          </div>
+          {dados.orcamentoCats.slice(0, 5).map(({ categoria, teto, realizado }) => {
+            const pct = teto > 0 ? Math.round((realizado / teto) * 100) : 0
+            return (
+              <div key={categoria} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
+                  <span style={{ textTransform: 'capitalize' }}>{emojiDe(categoria)} {categoria}</span>
+                  <span style={{ fontWeight: 500 }}>{fmt(realizado)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>de {fmt(teto)} ({pct}%)</span></span>
+                </div>
+                <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 7, overflow: 'hidden' }}>
+                  <div style={{ width: `${Math.min(100, pct)}%`, height: '100%', background: corBarra(pct), borderRadius: 4, transition: 'width 0.4s' }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Pizza: para onde vai a renda */}
       {distribuicao.length > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <PieIcon size={18} color="var(--accent)" />
-              <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Para onde vai a renda</p>
-            </div>
-            <div style={{ display: 'flex', background: 'var(--bg3)', borderRadius: 20, padding: 2 }}>
-              {[['categoria', 'Categoria'], ['natureza', 'Natureza']].map(([v, label]) => (
-                <button key={v} onClick={() => setVisao(v)}
-                  style={{ fontSize: 11, fontWeight: 600, padding: '5px 10px', borderRadius: 18, border: 'none',
-                    background: visao === v ? 'var(--accent)' : 'transparent', color: visao === v ? 'var(--on-accent)' : 'var(--text2)' }}>
-                  {label}
-                </button>
-              ))}
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <PieIcon size={18} color="var(--accent)" />
+            <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Para onde vai a renda</p>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
-            {visao === 'categoria'
-              ? 'Tudo somado por categoria (gasto, conta fixa e parcela juntos)'
-              : 'Separado por natureza (gastos variáveis, contas fixas, parcelas, assinaturas)'}
+            Tudo somado por categoria (gasto, conta fixa, parcela e assinatura juntos)
           </p>
           <ResponsiveContainer width="100%" height={210}>
             <PieChart>
@@ -416,52 +474,29 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Por categoria (barras) — respeita o toggle categoria/natureza */}
-      {visao === 'categoria' ? (
-        catUniEntries.length > 0 && (
-          <div className="card" style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Por categoria (tudo somado)</p>
-            {catUniEntries.map(([cat, o], i) => {
-              const pct = Math.round((o.total / maxCatUni) * 100)
-              const totalCatUni = dados.totalGastos + dados.totalFixas + dados.totalParcelas + dados.totalAssint
-              const pctTotal = totalCatUni > 0 ? Math.round((o.total / totalCatUni) * 100) : 0
-              const comp = composicaoCat(o)
-              return (
-                <div key={cat} style={{ marginBottom: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
-                    <span>{emojiPara(cat)} {nomeCategoria(cat)}</span>
-                    <span style={{ fontWeight: 500 }}>{fmt(o.total)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pctTotal}%)</span></span>
-                  </div>
-                  <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: CORES[i % CORES.length], borderRadius: 4, transition: 'width 0.4s' }} />
-                  </div>
-                  {comp && <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{comp}</p>}
+      {/* Por categoria (tudo somado) */}
+      {catUniEntries.length > 0 && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Por categoria (tudo somado)</p>
+          {catUniEntries.map(([cat, o], i) => {
+            const pct = Math.round((o.total / maxCatUni) * 100)
+            const totalCatUni = dados.totalGastos + dados.totalFixas + dados.totalParcelas + dados.totalAssint
+            const pctTotal = totalCatUni > 0 ? Math.round((o.total / totalCatUni) * 100) : 0
+            const comp = composicaoCat(o)
+            return (
+              <div key={cat} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
+                  <span>{emojiPara(cat)} {nomeCategoria(cat)}</span>
+                  <span style={{ fontWeight: 500 }}>{fmt(o.total)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pctTotal}%)</span></span>
                 </div>
-              )
-            })}
-          </div>
-        )
-      ) : (
-        catEntries.length > 0 && (
-          <div className="card" style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Gastos variáveis por categoria</p>
-            {catEntries.map(([cat, valor], i) => {
-              const pct = Math.round((valor / maxCat) * 100)
-              const pctTotal = dados.totalGastos > 0 ? Math.round((valor / dados.totalGastos) * 100) : 0
-              return (
-                <div key={cat} style={{ marginBottom: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
-                    <span>{emojiDe(cat)} {cat}</span>
-                    <span style={{ fontWeight: 500 }}>{fmt(valor)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pctTotal}%)</span></span>
-                  </div>
-                  <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: CORES[i % CORES.length], borderRadius: 4, transition: 'width 0.4s' }} />
-                  </div>
+                <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: CORES[i % CORES.length], borderRadius: 4, transition: 'width 0.4s' }} />
                 </div>
-              )
-            })}
-          </div>
-        )
+                {comp && <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{comp}</p>}
+              </div>
+            )
+          })}
+        </div>
       )}
 
       {/* Gastos por pessoa */}
@@ -498,7 +533,7 @@ export default function Dashboard() {
             ['Entradas', dados.totalEntradas, dadosAnt.totalEntradas, true],
             ['Gastos variáveis', dados.totalGastos, dadosAnt.totalGastos, false],
             ['Total saídas', dados.totalSaidas, dadosAnt.totalSaidas, false],
-            ['Saldo previsto', dados.saldo, dadosAnt.saldo, true],
+            ['Saldo do mês', dados.saldo, dadosAnt.saldo, true],
           ].map(([label, atual, anterior, maiorEBom]) => {
             const diff = atual - anterior
             const bom = maiorEBom ? diff >= 0 : diff <= 0
