@@ -35,20 +35,16 @@ export function AuthProvider({ children }) {
       const md = authUser.user_metadata || {}
       const nome = md.nome || authUser.email?.split('@')[0] || 'Usuário'
 
-      let grupoId = null
-      if (md.codigo_grupo) {
-        const { data: g } = await supabase
-          .from('grupos').select('id').eq('codigo', md.codigo_grupo.trim()).maybeSingle()
-        grupoId = g?.id ?? null
-      } else if (md.nome_grupo) {
-        const { data: g } = await supabase
-          .from('grupos').insert({ nome: md.nome_grupo }).select().single()
-        grupoId = g?.id ?? null
-      }
-
+      // Cria a linha do usuário sem grupo; o vínculo é feito por RPC (servidor),
+      // nunca por update direto de grupo_id (fechado pela RLS).
       await supabase.from('usuarios').insert({
-        id: authUser.id, nome, email: authUser.email, grupo_id: grupoId,
+        id: authUser.id, nome, email: authUser.email, grupo_id: null,
       })
+      if (md.codigo_grupo) {
+        await supabase.rpc('entrar_no_grupo', { p_codigo: md.codigo_grupo })
+      } else if (md.nome_grupo) {
+        await supabase.rpc('criar_grupo', { p_nome: md.nome_grupo })
+      }
       perfilRow = await buscarPerfil(authUser.id)
     }
 
@@ -89,27 +85,19 @@ export function AuthProvider({ children }) {
   // Cria um novo grupo e vincula o usuário logado (fluxo da tela EscolhaGrupo).
   async function criarGrupo(nome) {
     if (!user) return { error: { message: 'Sem sessão ativa' } }
-    const { data: g, error } = await supabase
-      .from('grupos').insert({ nome }).select().single()
+    const { data: gid, error } = await supabase.rpc('criar_grupo', { p_nome: nome })
     if (error) return { error }
-    const { error: e2 } = await supabase
-      .from('usuarios').update({ grupo_id: g.id }).eq('id', user.id)
-    if (e2) return { error: e2 }
     await carregarPerfil(user)
-    return { data: g }
+    return { data: { id: gid } }
   }
 
   // Entra num grupo existente a partir do código curto compartilhado.
   async function entrarGrupo(codigo) {
     if (!user) return { error: { message: 'Sem sessão ativa' } }
-    const { data: g } = await supabase
-      .from('grupos').select('id').eq('codigo', codigo.trim()).maybeSingle()
-    if (!g) return { error: { message: 'Código inválido' } }
-    const { error: e2 } = await supabase
-      .from('usuarios').update({ grupo_id: g.id }).eq('id', user.id)
-    if (e2) return { error: e2 }
+    const { data: gid, error } = await supabase.rpc('entrar_no_grupo', { p_codigo: codigo.trim() })
+    if (error) return { error }
     await carregarPerfil(user)
-    return { data: g }
+    return { data: { id: gid } }
   }
 
   async function logout() {

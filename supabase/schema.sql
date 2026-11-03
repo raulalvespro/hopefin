@@ -292,19 +292,42 @@ create policy preferencias_notificacao_todas on public.preferencias_notificacao
   using (grupo_id = public.meu_grupo_id())
   with check (grupo_id = public.meu_grupo_id());
 
--- GRUPOS: qualquer autenticado pode ler (necessário p/ entrar via código) e criar.
---         Atualiza só quem é do grupo.
+-- Entrar/criar grupo são RPCs SECURITY DEFINER (ver migração 0013). O cliente
+-- NÃO troca grupo_id por update direto, e não enumera grupos de terceiros.
+create or replace function public.entrar_no_grupo(p_codigo text)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare gid uuid;
+begin
+  select id into gid from public.grupos where codigo = lower(trim(p_codigo));
+  if gid is null then raise exception 'codigo_invalido' using errcode = 'P0001'; end if;
+  update public.usuarios set grupo_id = gid where id = auth.uid();
+  return gid;
+end; $$;
+create or replace function public.criar_grupo(p_nome text)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare gid uuid;
+begin
+  if coalesce(trim(p_nome), '') = '' then raise exception 'nome_vazio' using errcode = 'P0001'; end if;
+  insert into public.grupos (nome) values (trim(p_nome)) returning id into gid;
+  update public.usuarios set grupo_id = gid where id = auth.uid();
+  return gid;
+end; $$;
+revoke all on function public.entrar_no_grupo(text) from public;
+revoke all on function public.criar_grupo(text) from public;
+grant execute on function public.entrar_no_grupo(text) to authenticated;
+grant execute on function public.criar_grupo(text) to authenticated;
+
+-- GRUPOS: cada um vê só o próprio grupo; cria/entra só via RPC acima; renomeia quem é do grupo.
 drop policy if exists grupos_select on public.grupos;
 create policy grupos_select on public.grupos
-  for select to authenticated using (true);
+  for select to authenticated using (id = public.meu_grupo_id());
 drop policy if exists grupos_insert on public.grupos;
-create policy grupos_insert on public.grupos
-  for insert to authenticated with check (true);
 drop policy if exists grupos_update on public.grupos;
 create policy grupos_update on public.grupos
   for update to authenticated using (id = public.meu_grupo_id());
 
--- USUARIOS: vê a si mesmo e colegas de grupo; insere/atualiza a própria linha.
+-- USUARIOS: vê a si mesmo e colegas de grupo; insere a própria linha;
+-- atualiza a própria linha SEM poder trocar grupo_id por update direto.
 drop policy if exists usuarios_select on public.usuarios;
 create policy usuarios_select on public.usuarios
   for select to authenticated
@@ -314,7 +337,9 @@ create policy usuarios_insert on public.usuarios
   for insert to authenticated with check (id = auth.uid());
 drop policy if exists usuarios_update on public.usuarios;
 create policy usuarios_update on public.usuarios
-  for update to authenticated using (id = auth.uid());
+  for update to authenticated
+  using (id = auth.uid())
+  with check (id = auth.uid() and grupo_id is not distinct from public.meu_grupo_id());
 
 -- Macro para as tabelas de dados: tudo escopo do grupo do usuário.
 -- (políticas FOR ALL cobrem select/insert/update/delete)
