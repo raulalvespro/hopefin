@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-do
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar,
-  LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat, ClipboardCheck, Upload, Bell, Clock, History,
+  LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat, ClipboardCheck, Bell, Clock, History,
 } from 'lucide-react'
 import { useState } from 'react'
 import InstalarApp from './InstalarApp'
@@ -20,19 +20,28 @@ const navPrincipal = [
   { to: '/cartoes', label: 'Cartões', icon: CreditCard },
 ]
 
-// Itens do menu "Mais"
+// Menu "Mais" agrupado por seção
 const navMais = [
-  { to: '/orcamento', label: 'Orçamento', icon: Target },
-  { to: '/contas-fixas', label: 'Contas fixas', icon: FileText },
-  { to: '/contas-do-mes', label: 'Contas do mês', icon: CalendarCheck },
-  { to: '/parcelamentos', label: 'Parcelamentos', icon: Layers },
-  { to: '/importar', label: 'Importar CSV', icon: Upload },
-  { to: '/assinaturas', label: 'Assinaturas', icon: Repeat },
-  { to: '/fechamento', label: 'Fechamento', icon: ClipboardCheck },
-  { to: '/projecao', label: 'Projeção', icon: Calendar },
-  { to: '/cofrinhos', label: 'Cofrinhos', icon: PiggyBank },
-  { to: '/historico', label: 'Histórico', icon: History },
-  { to: '/configuracoes', label: 'Configurações', icon: Settings },
+  { secao: 'Planejamento', itens: [
+    { to: '/orcamento', label: 'Orçamento', icon: Target },
+    { to: '/projecao', label: 'Projeção', icon: Calendar },
+    { to: '/fechamento', label: 'Fechamento', icon: ClipboardCheck },
+  ] },
+  { secao: 'Compromissos', itens: [
+    { to: '/contas-fixas', label: 'Contas fixas', icon: FileText },
+    { to: '/contas-do-mes', label: 'Contas do mês', icon: CalendarCheck },
+    { to: '/parcelamentos', label: 'Parcelamentos', icon: Layers },
+    { to: '/assinaturas', label: 'Assinaturas', icon: Repeat },
+  ] },
+  { secao: 'Metas', itens: [
+    { to: '/cofrinhos', label: 'Cofrinhos', icon: PiggyBank },
+  ] },
+  { secao: 'Acompanhar', itens: [
+    { to: '/historico', label: 'Histórico', icon: History },
+  ] },
+  { secao: 'Conta', itens: [
+    { to: '/configuracoes', label: 'Configurações', icon: Settings },
+  ] },
 ]
 
 export default function Layout() {
@@ -61,7 +70,7 @@ export default function Layout() {
   }
 
   const temUrgente = alertas.some(a => a.severidade === 'vencido' || a.severidade === 'estourou')
-  const maisAtivo = navMais.some(n => location.pathname === n.to)
+  const maisAtivo = navMais.some(sec => sec.itens.some(n => location.pathname === n.to))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: 480, margin: '0 auto', position: 'relative' }}>
@@ -200,24 +209,29 @@ export default function Layout() {
               <h2 style={{ fontSize: 18 }}>Mais</h2>
               <button onClick={() => setMais(false)}><X size={20} color="var(--text2)" /></button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {navMais.map(({ to, label, icon: Icon }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  onClick={() => setMais(false)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '14px',
-                    borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
-                    background: 'var(--bg)', color: 'var(--text)', textDecoration: 'none',
-                    fontSize: 14, fontWeight: 500,
-                  }}
-                >
-                  <Icon size={18} color="var(--accent)" strokeWidth={1.9} />
-                  {label}
-                </Link>
-              ))}
-            </div>
+            {navMais.map(({ secao, itens }) => (
+              <div key={secao} style={{ marginBottom: 18 }}>
+                <p style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 2px 8px' }}>{secao}</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {itens.map(({ to, label, icon: Icon }) => (
+                    <Link
+                      key={to}
+                      to={to}
+                      onClick={() => setMais(false)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '14px',
+                        borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
+                        background: 'var(--bg)', color: 'var(--text)', textDecoration: 'none',
+                        fontSize: 14, fontWeight: 500,
+                      }}
+                    >
+                      <Icon size={18} color="var(--accent)" strokeWidth={1.9} />
+                      {label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

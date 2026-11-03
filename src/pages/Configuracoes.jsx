@@ -5,7 +5,7 @@ import { useTema } from '../contexts/ThemeContext'
 import { useToast } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
 import Avatar from '../components/Avatar'
-import { Copy, Check, Users, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera } from 'lucide-react'
+import { Copy, Check, Users, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera, Bell, Upload } from 'lucide-react'
 
 // Redimensiona (corte quadrado central) para um data URL leve.
 function redimensionar(file, max = 160) {
@@ -117,6 +117,18 @@ export default function Configuracoes() {
         </div>
       </div>
 
+      {/* Notificações */}
+      <Link to="/notificacoes" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <Bell size={18} color="var(--accent)" />
+          <div>
+            <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Notificações</p>
+            <p style={{ fontSize:12, color:'var(--text2)' }}>Escolher quais alertas aparecem no sininho</p>
+          </div>
+        </div>
+        <ChevronRight size={18} color="var(--text3)" />
+      </Link>
+
       {/* Categorias */}
       <Link to="/categorias" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -136,6 +148,21 @@ export default function Configuracoes() {
           <div>
             <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Planos</p>
             <p style={{ fontSize:12, color:'var(--text2)' }}>Conheça o plano Família e o que está incluso</p>
+          </div>
+        </div>
+        <ChevronRight size={18} color="var(--text3)" />
+      </Link>
+
+      {/* Dados */}
+      <p style={{ fontSize:12, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.04em', margin:'24px 2px 10px' }}>Dados</p>
+
+      {/* Importar CSV */}
+      <Link to="/importar" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <Upload size={18} color="var(--accent)" />
+          <div>
+            <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Importar CSV</p>
+            <p style={{ fontSize:12, color:'var(--text2)' }}>Trazer gastos de um extrato ou planilha</p>
           </div>
         </div>
         <ChevronRight size={18} color="var(--text3)" />
