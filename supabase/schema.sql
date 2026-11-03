@@ -262,6 +262,7 @@ create table if not exists public.alertas_dispensados (
   id            uuid primary key default gen_random_uuid(),
   grupo_id      uuid not null references public.grupos(id) on delete cascade,
   alerta_id     text not null,
+  lembrar_em    date,                 -- null = dispensado; data = em soneca até essa data
   dispensado_em timestamptz not null default now(),
   unique (grupo_id, alerta_id)
 );

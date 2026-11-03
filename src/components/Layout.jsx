@@ -2,14 +2,14 @@ import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-do
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar,
-  LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat, ClipboardCheck, Upload, Bell,
+  LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat, ClipboardCheck, Upload, Bell, Clock, History,
 } from 'lucide-react'
 import { useState } from 'react'
 import InstalarApp from './InstalarApp'
 import Avatar from './Avatar'
 import { useAlertas } from '../hooks/useAlertas'
 
-const COR_SEV = { vencido: 'var(--red)', estourou: 'var(--red)', vence: 'var(--amber)', quase: 'var(--amber)' }
+const COR_SEV = { vencido: 'var(--red)', estourou: 'var(--red)', vence: 'var(--amber)', quase: 'var(--amber)', info: 'var(--blue)', ok: 'var(--accent)' }
 const fmtBRL = v => (v == null ? null : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))
 
 // Itens fixos da barra inferior (uso diário)
@@ -31,6 +31,7 @@ const navMais = [
   { to: '/fechamento', label: 'Fechamento', icon: ClipboardCheck },
   { to: '/projecao', label: 'Projeção', icon: Calendar },
   { to: '/cofrinhos', label: 'Cofrinhos', icon: PiggyBank },
+  { to: '/historico', label: 'Histórico', icon: History },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
@@ -40,7 +41,7 @@ export default function Layout() {
   const location = useLocation()
   const [mais, setMais] = useState(false)
   const [alertasAbertos, setAlertasAbertos] = useState(false)
-  const { alertas, recarregar: recarregarAlertas, dispensar, dispensarTodos } = useAlertas()
+  const { alertas, recarregar: recarregarAlertas, dispensar, snoozeAmanha, dispensarTodos } = useAlertas()
 
   async function handleLogout() {
     await logout()
@@ -116,13 +117,23 @@ export default function Layout() {
                             <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 2 }}>{a.descricao}</p>
                           </div>
                         </button>
-                        <button onClick={() => dispensar(a.id)} title="Dispensar"
-                          style={{ flexShrink: 0, padding: '0 12px', color: 'var(--text3)', display: 'flex', alignItems: 'center' }}>
-                          <X size={15} />
-                        </button>
+                        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                          <button onClick={() => snoozeAmanha(a.id)} title="Lembrar amanhã"
+                            style={{ flex: 1, padding: '0 11px', color: 'var(--text3)', display: 'flex', alignItems: 'center' }}>
+                            <Clock size={14} />
+                          </button>
+                          <button onClick={() => dispensar(a.id)} title="Dispensar"
+                            style={{ flex: 1, padding: '0 11px', color: 'var(--text3)', display: 'flex', alignItems: 'center' }}>
+                            <X size={15} />
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}
+                  <button onClick={() => irPara('/historico')}
+                    style={{ width: '100%', padding: '11px 16px', fontSize: 12.5, color: 'var(--accent)', fontWeight: 500, textAlign: 'center', borderTop: alertas.length > 0 ? '1px solid var(--border)' : 'none' }}>
+                    Ver histórico
+                  </button>
                 </div>
               </>
             )}
