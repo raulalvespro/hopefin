@@ -11,8 +11,9 @@ export default function EscolhaGrupo() {
 
   async function handleCriar() {
     if (!nomeGrupo.trim()) return
-    setLoading(true)
-    await criarGrupo(nomeGrupo)
+    setLoading(true); setErro('')
+    const { error } = await criarGrupo(nomeGrupo)
+    if (error) setErro('Não foi possível criar o grupo. Tente de novo.')
     setLoading(false)
   }
 

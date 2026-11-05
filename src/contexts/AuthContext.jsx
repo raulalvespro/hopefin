@@ -37,13 +37,19 @@ export function AuthProvider({ children }) {
 
       // Cria a linha do usuário sem grupo; o vínculo é feito por RPC (servidor),
       // nunca por update direto de grupo_id (fechado pela RLS).
-      await supabase.from('usuarios').insert({
+      const { error: insErro } = await supabase.from('usuarios').insert({
         id: authUser.id, nome, email: authUser.email, grupo_id: null,
       })
-      if (md.codigo_grupo) {
-        await supabase.rpc('entrar_no_grupo', { p_codigo: md.codigo_grupo })
+      // Não engolir falhas: se o insert falhar, o resto não tem como funcionar.
+      // Se o grupo falhar aqui, o usuário cai na tela EscolhaGrupo e tenta de novo lá.
+      if (insErro) {
+        console.error('[HopeFin] falha ao criar perfil em usuarios:', insErro)
+      } else if (md.codigo_grupo) {
+        const { error } = await supabase.rpc('entrar_no_grupo', { p_codigo: md.codigo_grupo })
+        if (error) console.error('[HopeFin] falha ao entrar no grupo pelo código do cadastro:', error)
       } else if (md.nome_grupo) {
-        await supabase.rpc('criar_grupo', { p_nome: md.nome_grupo })
+        const { error } = await supabase.rpc('criar_grupo', { p_nome: md.nome_grupo })
+        if (error) console.error('[HopeFin] falha ao criar o grupo do cadastro:', error)
       }
       perfilRow = await buscarPerfil(authUser.id)
     }
