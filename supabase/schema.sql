@@ -359,5 +359,39 @@ begin
 end $$;
 
 -- ============================================================
+-- ASSINATURA DO APP (billing Asaas) — ver migração 0016
+-- Uma por grupo (plano Família). NÃO confundir com public.assinaturas.
+-- Escrita só via service_role (webhook) ou RPCs SECURITY DEFINER.
+-- ============================================================
+create table if not exists public.assinaturas_app (
+  id                    uuid primary key default gen_random_uuid(),
+  grupo_id              uuid not null unique references public.grupos(id) on delete cascade,
+  titular_id            uuid references public.usuarios(id) on delete set null,
+  plano                 text not null default 'familia',
+  ciclo                 text not null default 'mensal' check (ciclo in ('mensal','anual')),
+  status                text not null default 'trialing'
+                          check (status in ('trialing','active','past_due','canceled','expired')),
+  is_fundador           boolean not null default false,
+  fundador_em           timestamptz,
+  preco_centavos        integer,
+  trial_started_at      timestamptz,
+  trial_ends_at         timestamptz,
+  current_period_start  timestamptz,
+  current_period_end    timestamptz,
+  cancel_at_period_end  boolean not null default false,
+  canceled_at           timestamptz,
+  asaas_customer_id     text,
+  asaas_subscription_id text,
+  asaas_last_payment_id text,
+  criado_em             timestamptz not null default now(),
+  atualizado_em         timestamptz not null default now()
+);
+alter table public.assinaturas_app enable row level security;
+drop policy if exists assinaturas_app_select on public.assinaturas_app;
+create policy assinaturas_app_select on public.assinaturas_app
+  for select to authenticated using (grupo_id = public.meu_grupo_id());
+-- Funções: iniciar_trial_familia(int) e contar_fundadores() — ver 0016.
+
+-- ============================================================
 -- FIM
 -- ============================================================
