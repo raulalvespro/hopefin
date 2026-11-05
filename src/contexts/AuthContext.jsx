@@ -39,6 +39,9 @@ export function AuthProvider({ children }) {
       // nunca por update direto de grupo_id (fechado pela RLS).
       await supabase.from('usuarios').insert({
         id: authUser.id, nome, email: authUser.email, grupo_id: null,
+        telefone: md.telefone || null,
+        marketing_optin: !!md.marketing_optin,
+        marketing_optin_em: md.marketing_optin ? new Date().toISOString() : null,
       })
       if (md.codigo_grupo) {
         await supabase.rpc('entrar_no_grupo', { p_codigo: md.codigo_grupo })
@@ -75,7 +78,7 @@ export function AuthProvider({ children }) {
   // tipo 'existente' -> cadastrar(nome, email, senha, codigoGrupo, null)
   // A criação/entrada no grupo acontece em carregarPerfil (quando há sessão),
   // usando os metadados abaixo — assim funciona com ou sem confirmação de e-mail.
-  async function cadastrar(nome, email, senha, codigoGrupo = null, nomeGrupo = null) {
+  async function cadastrar(nome, email, senha, codigoGrupo = null, nomeGrupo = null, extra = {}) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password: senha,
@@ -84,6 +87,8 @@ export function AuthProvider({ children }) {
           nome,
           nome_grupo: nomeGrupo || null,
           codigo_grupo: codigoGrupo || null,
+          telefone: extra.telefone || null,
+          marketing_optin: !!extra.marketingOptin,
         },
       },
     })

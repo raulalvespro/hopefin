@@ -19,6 +19,7 @@ import Categorias from './pages/Categorias'
 import Configuracoes from './pages/Configuracoes'
 import MeusDados from './pages/MeusDados'
 import Planos from './pages/Planos'
+import Checkout from './pages/Checkout'
 import Fechamento from './pages/Fechamento'
 import Importar from './pages/Importar'
 import Historico from './pages/Historico'
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="configuracoes" element={<Configuracoes />} />
         <Route path="meus-dados" element={<MeusDados />} />
         <Route path="planos" element={<Planos />} />
+        <Route path="checkout" element={<Checkout />} />
         <Route path="fechamento" element={<Fechamento />} />
         <Route path="importar" element={<Importar />} />
         <Route path="historico" element={<Historico />} />

@@ -6,7 +6,7 @@ export default function Cadastro() {
   const { cadastrar } = useAuth()
   const navigate = useNavigate()
   const [tipo, setTipo] = useState('novo') // 'novo' (cria família) ou 'existente' (entra por código)
-  const [form, setForm] = useState({ nome: '', email: '', senha: '', senha2: '', nomeGrupo: '', codigoGrupo: '' })
+  const [form, setForm] = useState({ nome: '', email: '', senha: '', senha2: '', telefone: '', nomeGrupo: '', codigoGrupo: '', optin: true })
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -18,13 +18,16 @@ export default function Cadastro() {
     if (form.senha.length < 6) { setErro('A senha precisa ter ao menos 6 caracteres.'); return }
     if (form.senha !== form.senha2) { setErro('As senhas não coincidem.'); return }
     if (tipo === 'existente' && !form.codigoGrupo.trim()) { setErro('Cole o código do convite.'); return }
+    const telefone = form.telefone.replace(/\D/g, '')
+    if (telefone.length < 10) { setErro('Informe um WhatsApp válido com DDD.'); return }
 
+    const extra = { telefone, marketingOptin: form.optin }
     setLoading(true)
     if (tipo === 'novo') {
-      const { error } = await cadastrar(form.nome, form.email, form.senha, null, form.nomeGrupo || `Família ${form.nome.split(' ')[0]}`)
+      const { error } = await cadastrar(form.nome, form.email, form.senha, null, form.nomeGrupo || `Família ${form.nome.split(' ')[0]}`, extra)
       if (error) { setErro(traduzErro(error)); setLoading(false); return }
     } else {
-      const { error } = await cadastrar(form.nome, form.email, form.senha, form.codigoGrupo.trim(), null)
+      const { error } = await cadastrar(form.nome, form.email, form.senha, form.codigoGrupo.trim(), null, extra)
       if (error) { setErro(traduzErro(error)); setLoading(false); return }
     }
     setLoading(false)
@@ -66,6 +69,10 @@ export default function Cadastro() {
             <input type="email" placeholder="seu@email.com" value={form.email} onChange={e => set('email', e.target.value)} autoComplete="email" required />
           </div>
           <div className="form-group">
+            <label>WhatsApp (com DDD)</label>
+            <input type="tel" inputMode="numeric" placeholder="(11) 90000-0000" value={form.telefone} onChange={e => set('telefone', e.target.value)} autoComplete="tel" required />
+          </div>
+          <div className="form-group">
             <label>Crie sua senha</label>
             <input type="password" placeholder="mínimo 6 caracteres" value={form.senha} onChange={e => set('senha', e.target.value)} minLength={6} autoComplete="new-password" required />
           </div>
@@ -89,6 +96,11 @@ export default function Cadastro() {
               <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6 }}>Peça o código para quem criou a família (fica nas Configurações, em "Convidar para o grupo").</p>
             </div>
           )}
+
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--text2)', marginBottom: 14, cursor: 'pointer', lineHeight: 1.45 }}>
+            <input type="checkbox" checked={form.optin} onChange={e => set('optin', e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }} />
+            Quero receber dicas e novidades do HopeFin por WhatsApp e e-mail. Dá pra cancelar quando quiser.
+          </label>
 
           {erro && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
 

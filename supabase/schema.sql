@@ -21,12 +21,15 @@ create table if not exists public.grupos (
 
 -- Usuários (espelha auth.users; id = auth.uid())
 create table if not exists public.usuarios (
-  id         uuid primary key references auth.users(id) on delete cascade,
-  nome       text not null,
-  email      text,
-  foto_url   text,
-  grupo_id   uuid references public.grupos(id) on delete set null,
-  criado_em  timestamptz not null default now()
+  id                  uuid primary key references auth.users(id) on delete cascade,
+  nome                text not null,
+  email               text,
+  foto_url            text,
+  grupo_id            uuid references public.grupos(id) on delete set null,
+  telefone            text,                                 -- WhatsApp (só dígitos) — 0018
+  marketing_optin     boolean not null default false,       -- consentimento LGPD — 0018
+  marketing_optin_em  timestamptz,
+  criado_em           timestamptz not null default now()
 );
 
 -- Cartões de crédito
@@ -383,6 +386,8 @@ create table if not exists public.subscriptions (
   asaas_customer_id     text,
   asaas_subscription_id text,
   asaas_last_payment_id text,
+  metodo_pagamento      text,                                -- pix | boleto | cartao — 0018
+  checkout_iniciado_em  timestamptz,                         -- carrinho abandonado — 0018
   criado_em             timestamptz not null default now(),
   atualizado_em         timestamptz not null default now()
 );

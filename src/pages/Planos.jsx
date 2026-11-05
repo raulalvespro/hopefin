@@ -111,7 +111,7 @@ export default function Planos() {
             Faltam {p.fundador_vagas} de {p.fundador_limite} vagas
           </p>
           <ListaBeneficios />
-          <AcaoAssinar />
+          <AcaoAssinar ciclo={ciclo} />
           <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 10, lineHeight: 1.5 }}>
             Para os <strong>{p.fundador_limite} primeiros que assinarem</strong>. O preço fica travado
             enquanto a assinatura seguir ativa.
@@ -136,7 +136,7 @@ export default function Planos() {
         {!temVaga && (
           <>
             <div style={{ marginTop: 18 }}><ListaBeneficios /></div>
-            <AcaoAssinar />
+            <AcaoAssinar ciclo={ciclo} />
           </>
         )}
       </div>
@@ -164,15 +164,13 @@ function ListaBeneficios() {
   )
 }
 
-// Cobrança ainda não está ligada (Asaas entra no prompt 4). Botão informativo.
-function AcaoAssinar() {
+// Leva para o nosso checkout próprio (/checkout), onde a pessoa escolhe
+// Pix/boleto/cartão e paga sem sair do app.
+function AcaoAssinar({ ciclo }) {
   return (
-    <button
-      disabled
-      title="Pagamentos chegam em breve"
-      style={{ width: '100%', padding: '13px', borderRadius: 'var(--radius-sm)', background: 'var(--bg3)', color: 'var(--text3)', fontWeight: 700, fontFamily: 'Syne', fontSize: 14, cursor: 'not-allowed' }}
-    >
-      Assinatura em breve
-    </button>
+    <Link to={`/checkout?ciclo=${ciclo}`} className="btn-primary"
+      style={{ display: 'block', width: '100%', padding: '13px', textAlign: 'center', textDecoration: 'none', fontFamily: 'Syne', fontSize: 14 }}>
+      Assinar
+    </Link>
   )
 }
