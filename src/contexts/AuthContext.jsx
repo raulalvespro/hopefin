@@ -48,6 +48,15 @@ export function AuthProvider({ children }) {
       perfilRow = await buscarPerfil(authUser.id)
     }
 
+    // Garante a assinatura em trial do grupo (idempotente: não recria se já existe).
+    // A trava de novos lançamentos por status vive no banco (RLS); aqui só
+    // asseguramos que todo grupo tenha a linha de trial no 1º acesso.
+    if (perfilRow?.grupo_id) {
+      supabase.rpc('iniciar_trial_familia', {}).then(({ error }) => {
+        if (error) console.error('[auth] iniciar_trial_familia:', error.message)
+      })
+    }
+
     setPerfil(perfilRow)
     setLoading(false)
   }

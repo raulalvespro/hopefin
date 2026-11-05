@@ -7,6 +7,7 @@ import {
 import { useState } from 'react'
 import InstalarApp from './InstalarApp'
 import Avatar from './Avatar'
+import BannerAssinatura from './BannerAssinatura'
 import { useAlertas } from '../hooks/useAlertas'
 
 const COR_SEV = { vencido: 'var(--red)', estourou: 'var(--red)', vence: 'var(--amber)', quase: 'var(--amber)', info: 'var(--blue)', ok: 'var(--accent)' }
@@ -164,6 +165,7 @@ export default function Layout() {
 
       {/* Conteúdo */}
       <main style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 100px' }}>
+        <BannerAssinatura />
         <Outlet />
       </main>
 

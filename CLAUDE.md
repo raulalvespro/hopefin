@@ -79,12 +79,29 @@ Rodar local: `npm run dev` (porta 5173, ver `.claude/launch.json`).
 - Modelo: **um plano pago + trial** no começo (sem free tier por ora). Free limitado só
   se virar funil de aquisição; múltiplos planos pagos só com Open Finance.
 
-### Assinatura do app no banco
-- Tabela `public.assinaturas_app` (migração 0016): **uma por grupo**. Status
-  `trialing | active | past_due | canceled | expired`, `ciclo`, `is_fundador`,
-  `preco_centavos` (travado), datas de trial/período, IDs do Asaas.
-- `iniciar_trial_familia(dias int default 14)` — RPC do cliente no 1º acesso (idempotente).
-- `contar_fundadores()` — quantos já pegaram vaga de fundador (para "faltam X vagas").
+### Assinatura do app no banco (migrações 0016 + 0017)
+- Tabela `public.subscriptions` (criada como `assinaturas_app` na 0016, **renomeada** na
+  0017): **uma por grupo**. Status `trial | active | past_due | canceled | expired`
+  (default `trial`), `ciclo`, `is_fundador`, `preco_centavos` (travado), datas de
+  trial/período, IDs do Asaas. RLS de select por grupo (`meu_grupo_id()`).
+- Tabela `public.planos_config` (0017): **linha única** (`id = 1`) com os preços em
+  centavos (família 1990/14990, fundador 1490/11990), `fundador_limite` (100),
+  `fundador_usados`, `trial_dias` (14). Escrita só por `service_role`/SECURITY DEFINER;
+  select liberado para `anon` (para a landing).
+- **RPCs** (todas `SECURITY DEFINER`):
+  - `iniciar_trial_familia(dias int default null)` — cria a linha de trial do grupo no
+    1º acesso (idempotente; `dias` vem de `planos_config.trial_dias`). Chamada no
+    `AuthContext` ao carregar o perfil com grupo.
+  - `planos_publicos()` — JSON de preços + `fundador_vagas` (limite − usados) para a
+    página de Planos e a landing (`grant` a `anon`).
+  - `contar_fundadores()` — quantos já pegaram vaga de fundador.
+  - `reservar_vaga_fundador(p_grupo)` — reserva **atômica** (nunca passa de 100); **sem
+    grant**, só o webhook do Asaas (service_role) executa, no 1º pagamento confirmado.
+  - `grupo_pode_lancar()` — true se `active`, trial válido, ou grupo legado (sem linha).
+- **Trava de novos lançamentos:** policies RLS **restrictive de INSERT**
+  (`<tabela>_insert_assinatura`) em `gastos/entradas/parcelamentos/transferencias`, com
+  `with check (grupo_pode_lancar())`. Vencido/inadimplente **lê e exporta**, mas não
+  cria lançamento. UX espelhada no front: `useAssinatura` + `BannerAssinatura`.
 - Mudança de status/preço vem **só** do webhook do Asaas (service_role) ou dessas RPCs.
 
 ## Integrações planejadas (ainda não no código)

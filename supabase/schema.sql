@@ -359,18 +359,18 @@ begin
 end $$;
 
 -- ============================================================
--- ASSINATURA DO APP (billing Asaas) — ver migração 0016
+-- ASSINATURA DO APP (billing Asaas) — ver migrações 0016 + 0017
 -- Uma por grupo (plano Família). NÃO confundir com public.assinaturas.
 -- Escrita só via service_role (webhook) ou RPCs SECURITY DEFINER.
 -- ============================================================
-create table if not exists public.assinaturas_app (
+create table if not exists public.subscriptions (
   id                    uuid primary key default gen_random_uuid(),
   grupo_id              uuid not null unique references public.grupos(id) on delete cascade,
   titular_id            uuid references public.usuarios(id) on delete set null,
   plano                 text not null default 'familia',
   ciclo                 text not null default 'mensal' check (ciclo in ('mensal','anual')),
-  status                text not null default 'trialing'
-                          check (status in ('trialing','active','past_due','canceled','expired')),
+  status                text not null default 'trial'
+                          check (status in ('trial','active','past_due','canceled','expired')),
   is_fundador           boolean not null default false,
   fundador_em           timestamptz,
   preco_centavos        integer,
@@ -386,11 +386,39 @@ create table if not exists public.assinaturas_app (
   criado_em             timestamptz not null default now(),
   atualizado_em         timestamptz not null default now()
 );
-alter table public.assinaturas_app enable row level security;
-drop policy if exists assinaturas_app_select on public.assinaturas_app;
-create policy assinaturas_app_select on public.assinaturas_app
+alter table public.subscriptions enable row level security;
+drop policy if exists subscriptions_select on public.subscriptions;
+create policy subscriptions_select on public.subscriptions
   for select to authenticated using (grupo_id = public.meu_grupo_id());
--- Funções: iniciar_trial_familia(int) e contar_fundadores() — ver 0016.
+
+-- Config única de preços (linha id=1). Select liberado para a landing (anon).
+create table if not exists public.planos_config (
+  id                        int primary key default 1 check (id = 1),
+  familia_mensal_centavos   int not null default 1990,
+  familia_anual_centavos    int not null default 14990,
+  fundador_mensal_centavos  int not null default 1490,
+  fundador_anual_centavos   int not null default 11990,
+  fundador_limite           int not null default 100,
+  fundador_usados           int not null default 0,
+  trial_dias                int not null default 14,
+  atualizado_em             timestamptz not null default now()
+);
+insert into public.planos_config (id) values (1) on conflict (id) do nothing;
+alter table public.planos_config enable row level security;
+drop policy if exists planos_config_select on public.planos_config;
+create policy planos_config_select on public.planos_config
+  for select to anon, authenticated using (true);
+
+-- Funções (SECURITY DEFINER) — ver 0017 para o corpo completo:
+--   iniciar_trial_familia(int default null) -> cria trial do grupo (idempotente)
+--   planos_publicos()        -> json de preços + fundador_vagas (grant anon)
+--   contar_fundadores()      -> fundador_usados
+--   reservar_vaga_fundador(uuid) -> reserva atômica (sem grant: só service_role)
+--   grupo_pode_lancar()      -> active | trial válido | legado (sem linha)
+
+-- Trava de novos lançamentos: RLS RESTRICTIVE de INSERT em gastos/entradas/
+-- parcelamentos/transferencias (<tabela>_insert_assinatura) com
+-- with check (public.grupo_pode_lancar()). Vencido lê/exporta, não cria.
 
 -- ============================================================
 -- FIM
