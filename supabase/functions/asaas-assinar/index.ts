@@ -64,13 +64,22 @@ Deno.serve(async (req) => {
   if (!perfil?.grupo_id) return json({ error: 'usuário sem grupo' }, 400)
   const emailCobranca = String(body.email || perfil.email || '').trim()
 
-  // 2) Preço + vaga de fundador.
+  // 2) Preço conforme ciclo e método. Anual aplica o preço de LANÇAMENTO
+  //    enquanto estiver vigente (até cfg.lancamento_ate). Sem "fundador".
   const { data: cfg } = await admin.from('planos_config').select('*').eq('id', 1).maybeSingle()
   if (!cfg) return json({ error: 'planos_config ausente' }, 500)
-  const temVaga = cfg.fundador_usados < cfg.fundador_limite
-  const centavos = ciclo === 'anual'
-    ? (temVaga ? cfg.fundador_anual_centavos : cfg.familia_anual_centavos)
-    : (temVaga ? cfg.fundador_mensal_centavos : cfg.familia_mensal_centavos)
+  const lanc = new Date() < new Date(cfg.lancamento_ate)
+  const noLancamento = ciclo === 'anual' && lanc
+  let centavos: number
+  let parcelas = 0
+  if (ciclo === 'mensal') {
+    centavos = cfg.mensal_centavos
+  } else if (metodo === 'cartao') {
+    centavos = lanc ? cfg.lanc_anual_cartao_centavos : cfg.anual_cartao_centavos
+    parcelas = 12 // 12x no cartão (ver nota no payload)
+  } else {
+    centavos = lanc ? cfg.lanc_anual_pix_centavos : cfg.anual_pix_centavos
+  }
 
   // 3) Captura de lead / carrinho (antes de cobrar): telefone + marca de checkout.
   if (telefone && telefone !== perfil.telefone) {
@@ -112,6 +121,13 @@ Deno.serve(async (req) => {
       description: `HopeFin Família (${ciclo})`,
       externalReference: perfil.grupo_id,
     }
+    // Anual no cartão: parcelar em 12x. OBS: no Asaas o parcelamento
+    // (installmentCount) é documentado para cobranças avulsas; em assinatura
+    // YEARLY ainda precisa ser validado no sandbox. Se o Asaas recusar o campo,
+    // o try/catch devolve o erro e a gente revisa (ver nota do prompt 2.1).
+    if (parcelas > 1 && metodo === 'cartao') {
+      payload.installmentCount = parcelas
+    }
     if (metodo === 'cartao') {
       const c = body.cartao || {}
       const t = body.titular || {}
@@ -146,7 +162,7 @@ Deno.serve(async (req) => {
     if (metodo === 'pix' && paymentId) {
       const qr = await asaas(`/payments/${paymentId}/pixQrCode`)
       return json({
-        ok: true, metodo, fundador: temVaga, subscriptionId: assinatura.id, paymentId,
+        ok: true, metodo, lancamento: noLancamento, subscriptionId: assinatura.id, paymentId,
         pix: { imagem: `data:image/png;base64,${qr.encodedImage}`, copiaECola: qr.payload, vencimento: qr.expirationDate },
       })
     }
@@ -154,13 +170,13 @@ Deno.serve(async (req) => {
       let linha = ''
       try { linha = (await asaas(`/payments/${paymentId}/identificationField`))?.identificationField || '' } catch (_) { /* ok */ }
       return json({
-        ok: true, metodo, fundador: temVaga, subscriptionId: assinatura.id, paymentId,
+        ok: true, metodo, lancamento: noLancamento, subscriptionId: assinatura.id, paymentId,
         boleto: { url: primeira?.bankSlipUrl || primeira?.invoiceUrl, linhaDigitavel: linha, vencimento: primeira?.dueDate },
       })
     }
     // cartão: cobrança imediata; status CONFIRMED/RECEIVED = aprovado (webhook também confirma)
     return json({
-      ok: true, metodo, fundador: temVaga, subscriptionId: assinatura.id, paymentId,
+      ok: true, metodo, lancamento: noLancamento, subscriptionId: assinatura.id, paymentId,
       status: primeira?.status || 'PENDING',
     })
   } catch (err) {

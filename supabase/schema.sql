@@ -362,7 +362,7 @@ begin
 end $$;
 
 -- ============================================================
--- ASSINATURA DO APP (billing Asaas) — ver migrações 0016 + 0017
+-- ASSINATURA DO APP (billing Asaas) — ver migrações 0016 + 0017 + 0019
 -- Uma por grupo (plano Família). NÃO confundir com public.assinaturas.
 -- Escrita só via service_role (webhook) ou RPCs SECURITY DEFINER.
 -- ============================================================
@@ -374,8 +374,10 @@ create table if not exists public.subscriptions (
   ciclo                 text not null default 'mensal' check (ciclo in ('mensal','anual')),
   status                text not null default 'trial'
                           check (status in ('trial','active','past_due','canceled','expired')),
-  is_fundador           boolean not null default false,
-  fundador_em           timestamptz,
+  is_lancamento         boolean not null default false,       -- assinou no preço de lançamento — 0019
+  lancamento_em         timestamptz,                          -- 0019
+  is_cortesia           boolean not null default false,       -- cupom de cortesia — 0019
+  cupom_codigo          text,                                 -- 0019
   preco_centavos        integer,
   trial_started_at      timestamptz,
   trial_ends_at         timestamptz,
@@ -397,16 +399,20 @@ create policy subscriptions_select on public.subscriptions
   for select to authenticated using (grupo_id = public.meu_grupo_id());
 
 -- Config única de preços (linha id=1). Select liberado para a landing (anon).
+-- Oferta 06/11: mensal 24,90; anual Pix 199,90 (lanç. 149,90); anual cartão
+-- 12x 19,90 = 238,80 (lanç. 12x 14,90 = 178,80); lançamento até 31/12/2026.
 create table if not exists public.planos_config (
-  id                        int primary key default 1 check (id = 1),
-  familia_mensal_centavos   int not null default 1990,
-  familia_anual_centavos    int not null default 14990,
-  fundador_mensal_centavos  int not null default 1490,
-  fundador_anual_centavos   int not null default 11990,
-  fundador_limite           int not null default 100,
-  fundador_usados           int not null default 0,
-  trial_dias                int not null default 14,
-  atualizado_em             timestamptz not null default now()
+  id                                 int primary key default 1 check (id = 1),
+  mensal_centavos                    int not null default 2490,
+  anual_pix_centavos                 int not null default 19990,
+  anual_cartao_centavos              int not null default 23880,
+  anual_cartao_parcela_centavos      int not null default 1990,
+  lanc_anual_pix_centavos            int not null default 14990,
+  lanc_anual_cartao_centavos         int not null default 17880,
+  lanc_anual_cartao_parcela_centavos int not null default 1490,
+  lancamento_ate                     timestamptz not null default '2026-12-31T23:59:59-03:00',
+  trial_dias                         int not null default 7,
+  atualizado_em                      timestamptz not null default now()
 );
 insert into public.planos_config (id) values (1) on conflict (id) do nothing;
 alter table public.planos_config enable row level security;
@@ -414,16 +420,77 @@ drop policy if exists planos_config_select on public.planos_config;
 create policy planos_config_select on public.planos_config
   for select to anon, authenticated using (true);
 
--- Funções (SECURITY DEFINER) — ver 0017 para o corpo completo:
---   iniciar_trial_familia(int default null) -> cria trial do grupo (idempotente)
---   planos_publicos()        -> json de preços + fundador_vagas (grant anon)
---   contar_fundadores()      -> fundador_usados
---   reservar_vaga_fundador(uuid) -> reserva atômica (sem grant: só service_role)
---   grupo_pode_lancar()      -> active | trial válido | legado (sem linha)
+-- Funções (SECURITY DEFINER) — ver 0017/0019 para o corpo completo:
+--   iniciar_trial_familia(int default null) -> cria trial do grupo (idempotente, 7 dias)
+--   planos_publicos()        -> json de preços + lancamento_ativo (grant anon)
+--   grupo_pode_lancar()      -> cortesia | active | trial válido | legado (sem linha)
+--   limite_ia_status()       -> json de uso/limite de IA do grupo (0019)
+--   registrar_consumo_ia(text,int,int) -> grava um uso de IA (0019)
+--   resgatar_cupom(text)     -> resgate atômico de cortesia; 1 cupom por grupo (0019)
 
 -- Trava de novos lançamentos: RLS RESTRICTIVE de INSERT em gastos/entradas/
 -- parcelamentos/transferencias (<tabela>_insert_assinatura) com
 -- with check (public.grupo_pode_lancar()). Vencido lê/exporta, não cria.
+
+-- ============================================================
+-- LIMITES DE USO + CONSUMO DE IA/WhatsApp — ver 0019
+-- ============================================================
+create table if not exists public.limites_config (
+  id              int primary key default 1 check (id = 1),
+  assinante_mes   int not null default 200,
+  teste_total     int not null default 50,
+  cortesia_mes    int not null default 100,
+  por_pessoa_dia  int not null default 40,
+  audio_seg_max   int not null default 60,
+  atualizado_em   timestamptz not null default now()
+);
+insert into public.limites_config (id) values (1) on conflict (id) do nothing;
+alter table public.limites_config enable row level security;
+drop policy if exists limites_config_select on public.limites_config;
+create policy limites_config_select on public.limites_config
+  for select to anon, authenticated using (true);
+
+create table if not exists public.consumo_ia (
+  id            uuid primary key default gen_random_uuid(),
+  grupo_id      uuid not null references public.grupos(id) on delete cascade,
+  usuario_id    uuid references public.usuarios(id) on delete set null,
+  data          date not null default ((now() at time zone 'America/Sao_Paulo')::date),
+  origem        text not null check (origem in ('app','whatsapp')),
+  quantidade    int  not null default 1,
+  custo_estimado_centavos int not null default 0,
+  criado_em     timestamptz not null default now()
+);
+alter table public.consumo_ia enable row level security;
+drop policy if exists consumo_ia_select on public.consumo_ia;
+create policy consumo_ia_select on public.consumo_ia
+  for select to authenticated using (grupo_id = public.meu_grupo_id());
+
+-- ============================================================
+-- CUPONS DE CORTESIA — ver 0019
+-- ============================================================
+create table if not exists public.cupons (
+  codigo              text primary key,
+  tipo                text not null default 'cortesia' check (tipo in ('cortesia')),
+  max_usos            int  not null default 1,
+  usos                int  not null default 0,
+  resgate_ate         date,
+  whatsapp_limite_mes int  not null default 100,
+  ativo               boolean not null default true,
+  criado_em           timestamptz not null default now()
+);
+-- RLS ligada SEM select público: só a RPC resgatar_cupom (DEFINER) e o /admin.
+alter table public.cupons enable row level security;
+
+create table if not exists public.cupom_resgates (
+  grupo_id      uuid primary key references public.grupos(id) on delete cascade,
+  cupom_codigo  text not null references public.cupons(codigo),
+  usuario_id    uuid references public.usuarios(id) on delete set null,
+  resgatado_em  timestamptz not null default now()
+);
+alter table public.cupom_resgates enable row level security;
+drop policy if exists cupom_resgates_select on public.cupom_resgates;
+create policy cupom_resgates_select on public.cupom_resgates
+  for select to authenticated using (grupo_id = public.meu_grupo_id());
 
 -- ============================================================
 -- FIM

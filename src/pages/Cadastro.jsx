@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import { track } from '../lib/analytics'
 
 export default function Cadastro() {
   const { cadastrar } = useAuth()
   const navigate = useNavigate()
   const [tipo, setTipo] = useState('novo') // 'novo' (cria família) ou 'existente' (entra por código)
-  const [form, setForm] = useState({ nome: '', email: '', senha: '', senha2: '', telefone: '', nomeGrupo: '', codigoGrupo: '', optin: true })
+  const [form, setForm] = useState({ nome: '', email: '', senha: '', senha2: '', telefone: '', nomeGrupo: '', codigoGrupo: '', cupom: '', optin: true })
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -31,8 +32,19 @@ export default function Cadastro() {
       const { error } = await cadastrar(form.nome, form.email, form.senha, form.codigoGrupo.trim(), null, extra)
       if (error) { setErro(traduzErro(error)); setLoading(false); return }
     }
-    setLoading(false)
     track('cadastro_concluido', { tipo, marketing_optin: form.optin })
+
+    // Cupom (opcional): a conta e o grupo já existem, então dá para resgatar
+    // agora. Best-effort — se o código estiver errado, mandamos para Planos,
+    // onde o campo de cupom dá o retorno certinho.
+    const cupom = form.cupom.trim()
+    if (cupom) {
+      const { error } = await supabase.rpc('resgatar_cupom', { p_codigo: cupom })
+      setLoading(false)
+      navigate(error ? '/planos' : '/')
+      return
+    }
+    setLoading(false)
     navigate('/')
   }
 
@@ -87,9 +99,15 @@ export default function Cadastro() {
             <div className="form-group">
               <label>Nome da família (opcional)</label>
               <input placeholder={`Família ${form.nome ? form.nome.split(' ')[0] : '...'}`} value={form.nomeGrupo} onChange={e => set('nomeGrupo', e.target.value)} />
-              <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6 }}>Depois você convida sua esposa com o código que aparece nas Configurações.</p>
+              <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6 }}>Depois você convida quem divide as contas com você, com o código que aparece nas Configurações.</p>
             </div>
           )}
+
+          <div className="form-group">
+            <label>Cupom (opcional)</label>
+            <input placeholder="Tem um cupom? Cole aqui" value={form.cupom}
+              onChange={e => set('cupom', e.target.value.toUpperCase())} style={{ textTransform: 'uppercase' }} />
+          </div>
 
           {tipo === 'existente' && (
             <div className="form-group">

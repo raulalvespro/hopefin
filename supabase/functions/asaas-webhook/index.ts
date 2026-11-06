@@ -6,8 +6,8 @@
 //   supabase functions deploy asaas-webhook --no-verify-jwt
 //
 // Eventos tratados:
-//   PAYMENT_CONFIRMED / PAYMENT_RECEIVED -> status 'active' (+ reserva vaga de
-//     fundador na 1ª ativação, se a assinatura foi criada no preço de fundador)
+//   PAYMENT_CONFIRMED / PAYMENT_RECEIVED -> status 'active' (+ marca
+//     is_lancamento na 1ª ativação, se a assinatura foi feita no preço de lançamento)
 //   PAYMENT_OVERDUE                      -> status 'past_due'
 //   PAYMENT_DELETED / _REFUNDED / SUBSCRIPTION_DELETED -> 'canceled'
 //
@@ -60,15 +60,16 @@ Deno.serve(async (req) => {
         asaas_last_payment_id: pay?.id || sub.asaas_last_payment_id,
       }).eq('id', sub.id)
 
-      // Reserva de vaga de fundador: só na 1ª ativação e se a assinatura foi
-      // criada no preço de fundador (atômico; nunca passa do limite).
-      if (!sub.is_fundador) {
+      // Marca "assinou no preço de lançamento" na 1ª ativação (anual), para o
+      // /admin contar quantos pegaram o lançamento. Sem limite de vagas.
+      if (!sub.is_lancamento && sub.ciclo === 'anual') {
         const { data: cfg } = await admin
           .from('planos_config').select('*').eq('id', 1).maybeSingle()
-        const precoFundador = sub.ciclo === 'anual'
-          ? cfg?.fundador_anual_centavos : cfg?.fundador_mensal_centavos
-        if (cfg && sub.preco_centavos === precoFundador) {
-          await admin.rpc('reservar_vaga_fundador', { p_grupo: sub.grupo_id })
+        const precosLanc = [cfg?.lanc_anual_pix_centavos, cfg?.lanc_anual_cartao_centavos]
+        if (cfg && precosLanc.includes(sub.preco_centavos)) {
+          await admin.from('subscriptions')
+            .update({ is_lancamento: true, lancamento_em: new Date().toISOString() })
+            .eq('id', sub.id)
         }
       }
       return json({ ok: true, status: 'active' })

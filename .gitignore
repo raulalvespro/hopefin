@@ -27,3 +27,6 @@ Thumbs.db
 
 # Supabase CLI state
 supabase/.temp/
+
+# Dumps/backups do banco (contêm dados — NUNCA commitar)
+backups/

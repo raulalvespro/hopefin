@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { ChevronLeft, Copy, Check, QrCode, Barcode, CreditCard, ShieldCheck, Crown, Lock } from 'lucide-react'
+import { ChevronLeft, Copy, Check, QrCode, Barcode, CreditCard, ShieldCheck, Sparkles, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { fmt } from '../lib/format'
 import { track } from '../lib/analytics'
+import { precosVigentes } from '../lib/precos'
 
 const METODOS = [
   { id: 'pix', label: 'Pix', icon: QrCode },
@@ -26,9 +27,10 @@ export default function Checkout() {
   const { perfil } = useAuth()
   const [params] = useSearchParams()
   const ciclo = params.get('ciclo') === 'mensal' ? 'mensal' : 'anual'
+  const metodoInicial = ['pix', 'cartao', 'boleto'].includes(params.get('metodo')) ? params.get('metodo') : 'pix'
 
   const [planos, setPlanos] = useState(null)
-  const [metodo, setMetodo] = useState('pix')
+  const [metodo, setMetodo] = useState(metodoInicial)
   const [form, setForm] = useState({ nome: '', email: '', cpf: '', telefone: '', cartaoNome: '', numero: '', validade: '', ccv: '', cep: '', numeroEnd: '' })
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState('')
@@ -64,10 +66,13 @@ export default function Checkout() {
   }, [etapa])
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
-  const temVaga = (planos?.fundador_vagas ?? 0) > 0
-  const centavos = !planos ? null : ciclo === 'anual'
-    ? (temVaga ? planos.fundador_anual_centavos : planos.familia_anual_centavos)
-    : (temVaga ? planos.fundador_mensal_centavos : planos.familia_mensal_centavos)
+  const pv = precosVigentes(planos)
+  // Preço conforme ciclo e método: anual no cartão é parcelado em 12x (total
+  // maior por causa das taxas); Pix/boleto no anual é o valor à vista.
+  const anualCartao = ciclo === 'anual' && metodo === 'cartao'
+  const centavos = ciclo === 'mensal' ? pv.mensal : (anualCartao ? pv.anualCartao : pv.anualPix)
+  const parcelaCartao = anualCartao ? pv.anualCartaoParcela : null
+  const temLancamento = ciclo === 'anual' && pv.lancamentoAtivo
 
   async function pagar() {
     setErro('')
@@ -164,14 +169,27 @@ export default function Checkout() {
 
       {/* Resumo */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
           <div>
             <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15 }}>HopeFin Família</p>
             <p style={{ fontSize: 12.5, color: 'var(--text2)' }}>Cobrança {ciclo === 'anual' ? 'anual' : 'mensal'}</p>
+            {temLancamento && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--accent2)', fontWeight: 600, marginTop: 4 }}>
+                <Sparkles size={11} /> preço de lançamento
+              </span>
+            )}
           </div>
           <div style={{ textAlign: 'right' }}>
-            <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20 }}>{centavos != null ? fmt(centavos / 100) : '—'}</p>
-            {temVaga && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--accent2)', fontWeight: 600 }}><Crown size={11} /> preço de fundador</span>}
+            {anualCartao ? (
+              <>
+                <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20 }}>12x {fmt(parcelaCartao / 100)}</p>
+                <p style={{ fontSize: 11.5, color: 'var(--text3)' }}>total {fmt(centavos / 100)}/ano</p>
+              </>
+            ) : (
+              <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20 }}>
+                {fmt(centavos / 100)}<span style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 400 }}>{ciclo === 'anual' ? '/ano' : '/mês'}</span>
+              </p>
+            )}
           </div>
         </div>
       </div>

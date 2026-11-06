@@ -68,41 +68,61 @@ Rodar local: `npm run dev` (porta 5173, ver `.claude/launch.json`).
 
 ---
 
-## Comercial (decidido em 05/11/2026)
+## Comercial (oferta atual — decidida em 06/11/2026, substitui o modelo fundador)
 
 - **Cobrança** no CPF do dono (conta Asaas sem CNPJ ainda), via **Asaas**. Hoje tudo em
   **SANDBOX** — nada em produção.
-- **Plano Família:** R$ 19,90/mês ou R$ 149,90/ano. **Trial 14 dias, sem cartão.**
-- **Preço de fundador:** R$ 14,90/mês ou R$ 119,90/ano para os **100 primeiros que
-  PAGAREM** (não conta trial). Travado enquanto a assinatura seguir **ativa**; se cancelar
-  e voltar, volta ao preço padrão.
-- Modelo: **um plano pago + trial** no começo (sem free tier por ora). Free limitado só
-  se virar funil de aquisição; múltiplos planos pagos só com Open Finance.
+- **Plano Família, até 6 pessoas:**
+  - **Mensal:** R$ 24,90 (Pix ou cartão, sem desconto de lançamento).
+  - **Anual normal:** R$ 199,90 no Pix à vista ou 12x de R$ 19,90 no cartão (R$ 238,80).
+  - **Anual lançamento:** R$ 149,90 no Pix ou 12x de R$ 14,90 no cartão (R$ 178,80), para
+    quem assinar **até 31/12/2026 23:59 (America/Sao_Paulo)**; preço travado nas
+    renovações enquanto a assinatura seguir ativa, sem interrupção.
+  - **Trial: 7 dias, sem cartão** (com até 50 mensagens no WhatsApp).
+- **NÃO existe mais:** oferta "fundador", limite de 100 vagas, trial de 14 dias nem os
+  preços antigos (R$ 19,90/mês, R$ 14,90/mês). Nada disso pode aparecer no app/e-mails.
+- **Cortesia:** grupos que resgatam cupom (ex.: `IGREJA2026`) viram cortesia por tempo
+  indeterminado, sem cobrança (WhatsApp até 100/mês). 1 cupom por grupo.
+- Modelo: **um plano pago + trial** no começo (sem free tier por ora). Múltiplos planos
+  pagos só com Open Finance.
 
-### Assinatura do app no banco (migrações 0016 + 0017)
+### Assinatura do app no banco (migrações 0016 + 0017 + **0019**)
 - Tabela `public.subscriptions` (criada como `assinaturas_app` na 0016, **renomeada** na
   0017): **uma por grupo**. Status `trial | active | past_due | canceled | expired`
-  (default `trial`), `ciclo`, `is_fundador`, `preco_centavos` (travado), datas de
-  trial/período, IDs do Asaas. RLS de select por grupo (`meu_grupo_id()`).
-- Tabela `public.planos_config` (0017): **linha única** (`id = 1`) com os preços em
-  centavos (família 1990/14990, fundador 1490/11990), `fundador_limite` (100),
-  `fundador_usados`, `trial_dias` (14). Escrita só por `service_role`/SECURITY DEFINER;
-  select liberado para `anon` (para a landing).
+  (default `trial`), `ciclo`, `preco_centavos` (travado), datas de trial/período, IDs do
+  Asaas. Na **0019**: `is_fundador`→**`is_lancamento`** (+ `lancamento_em`), e novos
+  `is_cortesia` + `cupom_codigo`. RLS de select por grupo (`meu_grupo_id()`).
+- Tabela `public.planos_config` (0017, **remodelada na 0019**): **linha única** (`id = 1`)
+  em centavos — `mensal_centavos` (2490), `anual_pix_centavos` (19990),
+  `anual_cartao_centavos` (23880) + `anual_cartao_parcela_centavos` (1990),
+  `lanc_anual_pix_centavos` (14990), `lanc_anual_cartao_centavos` (17880) +
+  `lanc_anual_cartao_parcela_centavos` (1490), `lancamento_ate` (31/12/2026),
+  `trial_dias` (**7**). Escrita só por `service_role`/SECURITY DEFINER; select liberado
+  para `anon`. **Fonte única de preços** — front lê via `planos_publicos()` e
+  `src/lib/precos.js` (fallback + helpers).
+- Config de uso (**0019**): `public.limites_config` (linha única: 200 assinante / 50 trial
+  / 100 cortesia / 40 pessoa-dia / áudio 60s) e `public.consumo_ia` (um registro por uso
+  de IA/WhatsApp; base do prompt 11). Cupons: `public.cupons` (+ `cupom_resgates`), 1 por
+  grupo; cupom `IGREJA2026` criado (30 usos, até 31/03/2027).
 - **RPCs** (todas `SECURITY DEFINER`):
   - `iniciar_trial_familia(dias int default null)` — cria a linha de trial do grupo no
-    1º acesso (idempotente; `dias` vem de `planos_config.trial_dias`). Chamada no
-    `AuthContext` ao carregar o perfil com grupo.
-  - `planos_publicos()` — JSON de preços + `fundador_vagas` (limite − usados) para a
-    página de Planos e a landing (`grant` a `anon`).
-  - `contar_fundadores()` — quantos já pegaram vaga de fundador.
-  - `reservar_vaga_fundador(p_grupo)` — reserva **atômica** (nunca passa de 100); **sem
-    grant**, só o webhook do Asaas (service_role) executa, no 1º pagamento confirmado.
-  - `grupo_pode_lancar()` — true se `active`, trial válido, ou grupo legado (sem linha).
+    1º acesso (idempotente; `dias` vem de `planos_config.trial_dias` = 7). Chamada no
+    `AuthContext`.
+  - `planos_publicos()` — JSON de preços + `lancamento_ativo` (`grant` a `anon`).
+  - `grupo_pode_lancar()` — true se **cortesia**, `active`, trial válido ou legado (sem linha).
+  - `limite_ia_status()` / `registrar_consumo_ia(origem,qtd,custo)` — uso de IA (prompt 11).
+  - `resgatar_cupom(codigo)` — resgate **atômico** de cortesia; 1 cupom por grupo.
+  - Removidas na 0019: `contar_fundadores()`, `reservar_vaga_fundador()`.
 - **Trava de novos lançamentos:** policies RLS **restrictive de INSERT**
   (`<tabela>_insert_assinatura`) em `gastos/entradas/parcelamentos/transferencias`, com
   `with check (grupo_pode_lancar())`. Vencido/inadimplente **lê e exporta**, mas não
   cria lançamento. UX espelhada no front: `useAssinatura` + `BannerAssinatura`.
 - Mudança de status/preço vem **só** do webhook do Asaas (service_role) ou dessas RPCs.
+- **Asaas (ponto aberto):** anual no cartão deveria ser "12x". No Asaas, `installmentCount`
+  é de cobrança avulsa, não de assinatura (`cycle: YEARLY` cobra o valor cheio). O
+  `asaas-assinar` tenta `installmentCount: 12` na subscription anual de cartão — **validar
+  no sandbox**; se recusar, decidir entre cobrança parcelada recriada a cada ano ou cobrar
+  o anual à vista no cartão.
 
 ## Integrações planejadas (ainda não no código)
 

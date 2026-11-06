@@ -45,7 +45,7 @@ export default function BannerAssinatura() {
                 ? 'Seu teste grátis termina hoje'
                 : `Seu teste grátis termina em ${diasRestantes} ${diasRestantes === 1 ? 'dia' : 'dias'}`}
             </p>
-            <p style={{ fontSize: 11.5, color: 'var(--text2)' }}>Garanta o preço de fundador antes de acabar.</p>
+            <p style={{ fontSize: 11.5, color: 'var(--text2)' }}>Garanta o preço de lançamento antes de acabar.</p>
           </div>
         </div>
       </Link>
