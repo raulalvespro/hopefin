@@ -16,6 +16,9 @@ function limpar(txt) {
 }
 
 export function initSentry() {
+  // Só no app publicado (build de produção). Em desenvolvimento (npm run dev)
+  // não enviamos nada, pra não poluir o Sentry com erros dos nossos testes.
+  if (!import.meta.env.PROD) return
   if (!DSN) return
   Sentry.init({
     dsn: DSN,
