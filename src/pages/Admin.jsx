@@ -21,7 +21,7 @@ const STATUS = {
 export default function Admin() {
   const { perfil, loading: authLoading } = useAuth()
   const nav = useNavigate()
-  const toast = useToast()
+  const { toast } = useToast()
   const [carregando, setCarregando] = useState(true)
   const [metr, setMetr] = useState(null)
   const [consumo, setConsumo] = useState(null)
@@ -230,7 +230,7 @@ function Mini({ label, valor, sub }) {
 
 // Modal de ação sobre um grupo (estender trial / cortesia).
 function ModalAcao({ acao, onFechar, onFeito }) {
-  const toast = useToast()
+  const { toast } = useToast()
   const [dias, setDias] = useState(7)
   const [motivo, setMotivo] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -276,7 +276,7 @@ function ModalAcao({ acao, onFechar, onFeito }) {
 
 // Gestão de cupons de cortesia.
 function Cupons({ cupons, onMudou }) {
-  const toast = useToast()
+  const { toast } = useToast()
   const [novo, setNovo] = useState(false)
   const [form, setForm] = useState({ codigo: '', max_usos: 50, resgate_ate: '', whatsapp_limite_mes: 100 })
   const [salvando, setSalvando] = useState(false)
