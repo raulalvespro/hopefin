@@ -43,6 +43,8 @@ export function AuthProvider({ children }) {
         telefone: md.telefone || null,
         marketing_optin: !!md.marketing_optin,
         marketing_optin_em: md.marketing_optin ? new Date().toISOString() : null,
+        termos_versao: md.aceite_versao || null,
+        termos_aceito_em: md.aceite_versao ? new Date().toISOString() : null,
       })
       if (md.codigo_grupo) {
         await supabase.rpc('entrar_no_grupo', { p_codigo: md.codigo_grupo })
@@ -90,6 +92,7 @@ export function AuthProvider({ children }) {
           codigo_grupo: codigoGrupo || null,
           telefone: extra.telefone || null,
           marketing_optin: !!extra.marketingOptin,
+          aceite_versao: extra.aceiteVersao || null,
         },
       },
     })

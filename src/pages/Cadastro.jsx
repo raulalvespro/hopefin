@@ -3,12 +3,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { track } from '../lib/analytics'
+import { VERSAO_LEGAL } from '../lib/legal'
 
 export default function Cadastro() {
   const { cadastrar } = useAuth()
   const navigate = useNavigate()
   const [tipo, setTipo] = useState('novo') // 'novo' (cria família) ou 'existente' (entra por código)
-  const [form, setForm] = useState({ nome: '', email: '', senha: '', senha2: '', telefone: '', nomeGrupo: '', codigoGrupo: '', cupom: '', optin: true })
+  const [form, setForm] = useState({ nome: '', email: '', senha: '', senha2: '', telefone: '', nomeGrupo: '', codigoGrupo: '', cupom: '', optin: true, aceite: false })
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -22,8 +23,9 @@ export default function Cadastro() {
     if (tipo === 'existente' && !form.codigoGrupo.trim()) { setErro('Cole o código do convite.'); return }
     const telefone = form.telefone.replace(/\D/g, '')
     if (telefone.length < 10) { setErro('Informe um WhatsApp válido com DDD.'); return }
+    if (!form.aceite) { setErro('Para continuar, aceite os Termos de Uso e a Política de Privacidade.'); return }
 
-    const extra = { telefone, marketingOptin: form.optin }
+    const extra = { telefone, marketingOptin: form.optin, aceiteVersao: VERSAO_LEGAL }
     setLoading(true)
     if (tipo === 'novo') {
       const { error } = await cadastrar(form.nome, form.email, form.senha, null, form.nomeGrupo || `Família ${form.nome.split(' ')[0]}`, extra)
@@ -117,8 +119,16 @@ export default function Cadastro() {
             </div>
           )}
 
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--text2)', marginBottom: 12, cursor: 'pointer', lineHeight: 1.45 }}>
+            <input type="checkbox" checked={form.aceite} onChange={e => set('aceite', e.target.checked)} style={{ marginTop: 2, flexShrink: 0, width: 'auto' }} />
+            <span>Li e aceito os{' '}
+              <Link to="/termos" target="_blank" style={{ color: 'var(--accent)', fontWeight: 600 }}>Termos de Uso</Link> e a{' '}
+              <Link to="/privacidade" target="_blank" style={{ color: 'var(--accent)', fontWeight: 600 }}>Política de Privacidade</Link>.
+            </span>
+          </label>
+
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--text2)', marginBottom: 14, cursor: 'pointer', lineHeight: 1.45 }}>
-            <input type="checkbox" checked={form.optin} onChange={e => set('optin', e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }} />
+            <input type="checkbox" checked={form.optin} onChange={e => set('optin', e.target.checked)} style={{ marginTop: 2, flexShrink: 0, width: 'auto' }} />
             Quero receber dicas e novidades do HopeFin por WhatsApp e e-mail. Dá pra cancelar quando quiser.
           </label>
 

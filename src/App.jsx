@@ -25,6 +25,7 @@ import Importar from './pages/Importar'
 import Historico from './pages/Historico'
 import Notificacoes from './pages/Notificacoes'
 import Admin from './pages/Admin'
+import Legal from './pages/Legal'
 import Layout from './components/Layout'
 import CookieConsent from './components/CookieConsent'
 
@@ -61,6 +62,8 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+      <Route path="/termos" element={<Legal doc="termos" />} />
+      <Route path="/privacidade" element={<Legal doc="privacidade" />} />
       <Route path="/admin" element={<RotaAdmin><Admin /></RotaAdmin>} />
       <Route path="/" element={<RotaProtegida><Layout /></RotaProtegida>}>
         <Route index element={<Dashboard />} />
