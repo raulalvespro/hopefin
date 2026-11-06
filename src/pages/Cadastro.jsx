@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { track } from '../lib/analytics'
 
 export default function Cadastro() {
   const { cadastrar } = useAuth()
@@ -31,6 +32,7 @@ export default function Cadastro() {
       if (error) { setErro(traduzErro(error)); setLoading(false); return }
     }
     setLoading(false)
+    track('cadastro_concluido', { tipo, marketing_optin: form.optin })
     navigate('/')
   }
 

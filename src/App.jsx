@@ -25,6 +25,7 @@ import Importar from './pages/Importar'
 import Historico from './pages/Historico'
 import Notificacoes from './pages/Notificacoes'
 import Layout from './components/Layout'
+import CookieConsent from './components/CookieConsent'
 
 function RotaProtegida({ children }) {
   const { user, loading, precisaGrupo } = useAuth()
@@ -41,6 +42,7 @@ function RotaProtegida({ children }) {
 
 export default function App() {
   return (
+    <>
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<Cadastro />} />
@@ -68,5 +70,7 @@ export default function App() {
         <Route path="notificacoes" element={<Notificacoes />} />
       </Route>
     </Routes>
+    <CookieConsent />
+    </>
   )
 }

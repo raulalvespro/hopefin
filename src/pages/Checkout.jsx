@@ -4,6 +4,7 @@ import { ChevronLeft, Copy, Check, QrCode, Barcode, CreditCard, ShieldCheck, Cro
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { fmt } from '../lib/format'
+import { track } from '../lib/analytics'
 
 const METODOS = [
   { id: 'pix', label: 'Pix', icon: QrCode },
@@ -57,6 +58,11 @@ export default function Checkout() {
     return () => clearInterval(id)
   }, [etapa])
 
+  // Fim do funil: assinatura ativada (Pix/boleto confirmados pelo webhook ou cartão).
+  useEffect(() => {
+    if (etapa === 'sucesso') track('assinatura_ativada', { ciclo, metodo })
+  }, [etapa])
+
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
   const temVaga = (planos?.fundador_vagas ?? 0) > 0
   const centavos = !planos ? null : ciclo === 'anual'
@@ -79,11 +85,12 @@ export default function Checkout() {
       body.titular = { cep: form.cep, numero: form.numeroEnd }
     }
     setEnviando(true)
+    track('checkout_submetido', { metodo, ciclo })
     const { data, error } = await supabase.functions.invoke('asaas-assinar', { body })
     setEnviando(false)
     if (error || data?.error) { setErro(data?.error || 'Não foi possível processar o pagamento. Tente de novo.'); return }
-    if (data.metodo === 'pix') { setPix(data.pix); setEtapa('pix') }
-    else if (data.metodo === 'boleto') { setBoleto(data.boleto); setEtapa('boleto') }
+    if (data.metodo === 'pix') { setPix(data.pix); setEtapa('pix'); track('checkout_cobranca_gerada', { metodo: 'pix', ciclo }) }
+    else if (data.metodo === 'boleto') { setBoleto(data.boleto); setEtapa('boleto'); track('checkout_cobranca_gerada', { metodo: 'boleto', ciclo }) }
     else if (['CONFIRMED', 'RECEIVED', 'RECEIVED_IN_CASH'].includes(data.status)) setEtapa('sucesso')
     else setErro('O pagamento no cartão não foi aprovado. Tente outro cartão ou escolha Pix.')
   }
