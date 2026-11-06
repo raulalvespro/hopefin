@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { ChevronLeft, Copy, Check, QrCode, Barcode, CreditCard, ShieldCheck, Crown } from 'lucide-react'
+import { ChevronLeft, Copy, Check, QrCode, Barcode, CreditCard, ShieldCheck, Crown, Lock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { fmt } from '../lib/format'
@@ -11,6 +11,16 @@ const METODOS = [
   { id: 'boleto', label: 'Boleto', icon: Barcode },
 ]
 
+// Logo de bandeira num chip branco (os SVGs têm proporção de cartão; o fundo
+// branco garante leitura no tema escuro do checkout).
+function Selo({ src, nome }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', height: 24, padding: '0 6px', borderRadius: 5, background: '#fff' }}>
+      <img src={src} alt={nome} title={nome} style={{ height: 16, display: 'block' }} />
+    </span>
+  )
+}
+
 export default function Checkout() {
   const { perfil } = useAuth()
   const [params] = useSearchParams()
@@ -18,7 +28,7 @@ export default function Checkout() {
 
   const [planos, setPlanos] = useState(null)
   const [metodo, setMetodo] = useState('pix')
-  const [form, setForm] = useState({ cpf: '', telefone: '', cartaoNome: '', numero: '', validade: '', ccv: '', cep: '', numeroEnd: '' })
+  const [form, setForm] = useState({ nome: '', email: '', cpf: '', telefone: '', cartaoNome: '', numero: '', validade: '', ccv: '', cep: '', numeroEnd: '' })
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState('')
   const [etapa, setEtapa] = useState('dados') // dados | pix | boleto | sucesso
@@ -27,7 +37,15 @@ export default function Checkout() {
   const [copiado, setCopiado] = useState(false)
 
   useEffect(() => { supabase.rpc('planos_publicos').then(({ data }) => data && setPlanos(data)) }, [])
-  useEffect(() => { if (perfil?.telefone) setForm(f => ({ ...f, telefone: perfil.telefone })) }, [perfil])
+  useEffect(() => {
+    if (!perfil) return
+    setForm(f => ({
+      ...f,
+      nome: f.nome || perfil.nome || '',
+      email: f.email || perfil.email || '',
+      telefone: f.telefone || perfil.telefone || '',
+    }))
+  }, [perfil])
 
   // Confirmação em tempo real: o webhook ativa a assinatura; aqui só observamos.
   useEffect(() => {
@@ -47,10 +65,12 @@ export default function Checkout() {
 
   async function pagar() {
     setErro('')
+    if (form.nome.trim().length < 3 || !form.nome.trim().includes(' ')) { setErro('Informe seu nome completo.'); return }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) { setErro('Informe um e-mail válido.'); return }
     const cpf = form.cpf.replace(/\D/g, '')
     if (cpf.length < 11) { setErro('Informe um CPF válido.'); return }
     if ((form.telefone || '').replace(/\D/g, '').length < 10) { setErro('Informe um WhatsApp com DDD.'); return }
-    const body = { ciclo, metodo, cpfCnpj: cpf, telefone: form.telefone, nome: perfil?.nome }
+    const body = { ciclo, metodo, cpfCnpj: cpf, telefone: form.telefone, nome: form.nome.trim(), email: form.email.trim() }
     if (metodo === 'cartao') {
       if (!form.numero || !form.validade || !form.ccv || !form.cartaoNome) { setErro('Preencha os dados do cartão.'); return }
       const [mes, ano] = form.validade.split('/')
@@ -164,6 +184,8 @@ export default function Checkout() {
 
       {/* Dados comuns */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+        <input placeholder="Nome completo" value={form.nome} onChange={e => set('nome', e.target.value)} autoComplete="name" style={inputStyle} />
+        <input placeholder="E-mail" type="email" value={form.email} onChange={e => set('email', e.target.value)} autoComplete="email" style={inputStyle} />
         <input placeholder="CPF (só números)" inputMode="numeric" value={form.cpf} onChange={e => set('cpf', e.target.value.replace(/\D/g, ''))} style={inputStyle} />
         <input placeholder="WhatsApp com DDD" inputMode="numeric" value={form.telefone} onChange={e => set('telefone', e.target.value)} style={inputStyle} />
       </div>
@@ -186,15 +208,43 @@ export default function Checkout() {
 
       {erro && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 12 }}>{erro}</p>}
 
+      {/* Reforço de segurança */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '11px 13px', borderRadius: 'var(--radius-sm)', background: 'var(--bg2)', border: '1px solid var(--border)', marginBottom: 12 }}>
+        <ShieldCheck size={20} color="var(--accent)" style={{ flexShrink: 0 }} />
+        <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 }}>
+          <strong style={{ color: 'var(--text)' }}>Pagamento 100% seguro.</strong> Ambiente criptografado — seus dados de cartão vão direto pro processador e a gente não guarda nada.
+        </p>
+      </div>
+
       <button onClick={pagar} disabled={enviando}
         className="btn-primary" style={{ width: '100%', padding: '14px', opacity: enviando ? 0.6 : 1 }}>
-        {enviando ? 'Processando…' : centavos != null ? `Pagar ${fmt(centavos / 100)}` : 'Pagar'}
+        {enviando ? 'Processando…' : 'Assinar'}
       </button>
 
-      <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 12, display: 'flex', alignItems: 'flex-start', gap: 6, lineHeight: 1.5 }}>
-        <ShieldCheck size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-        Pagamento processado pelo Asaas. Seu CPF e os dados do cartão vão direto pra ele — a gente não guarda nada disso.
-      </p>
+      {/* Selos */}
+      <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--text3)', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Lock size={12} /> Conexão segura (SSL)</span>
+          <span>·</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>Processado por
+            <span className="selo-asaas" style={{ display: 'inline-flex' }} title="Asaas">
+              <svg height="11" viewBox="0 0 100 17" fill="currentColor" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Asaas" style={{ display: 'block' }}>
+                <path d="M67.0144 10.2322L71.1732 2.8531L75.291 10.2116C74.1232 9.6817 72.6687 9.41646 71.0912 9.41646C69.6159 9.41646 68.2023 9.68169 67.0144 10.2316M45.6871 10.2322L49.8459 2.8531L53.9638 10.2116C52.796 9.6817 51.3414 9.41646 49.764 9.41646C48.2887 9.41646 46.8751 9.68169 45.6871 10.2316M5.98205 10.2322L10.1409 2.69007L14.2997 10.2122C13.1319 9.68231 11.6566 9.41707 10.0791 9.41707C8.60379 9.41707 7.17003 9.6823 5.98144 10.2322M99.9988 12.067C99.9988 15.1653 97.1508 17 92.0498 17C88.4034 17 85.3096 16.3272 82.1339 14.3294L83.1788 12.4746C86.1497 14.3501 88.6901 15.0022 92.0296 15.0022C95.7378 15.0022 97.684 13.9218 97.684 12.0262C97.684 10.4975 96.2704 9.86542 93.4842 9.5801L88.5672 9.091C84.9819 8.74425 82.7081 7.37853 82.7081 4.87157C82.7081 1.89558 85.9247 0 91.0257 0C94.2014 0 96.721 0.61138 99.2412 2.18089L98.2171 4.11723C96.2092 2.79227 93.8535 2.07869 90.7597 2.07869C87.1542 2.07869 85.0235 3.21993 85.0235 4.79005C85.0235 6.27805 86.56 6.84867 88.7934 7.07314L93.8131 7.56225C97.8491 7.94976 100 9.397 100 12.067M81.3758 16.6332L72.2181 0.386904H70.1491L61.0115 16.6332H63.47L64.4739 14.7784C65.6417 12.6175 67.6698 11.4763 71.0912 11.4763C74.5127 11.4763 76.6637 12.5975 77.8522 14.799L78.8354 16.6338H81.3758V16.6332ZM60.0486 16.6332L50.8908 0.386904H48.8218L39.6843 16.6332H42.1428L43.1467 14.7784C44.3145 12.6175 46.3425 11.4763 49.764 11.4763C53.1854 11.4763 55.3364 12.5975 56.525 14.799L57.5081 16.6338H60.0486V16.6332ZM38.9873 12.067C38.9873 15.1653 36.1393 17 31.0383 17C27.3918 17 24.2981 16.3272 21.1224 14.3294L22.1673 12.4746C25.1382 14.3501 27.6786 15.0022 31.0181 15.0022C34.7263 15.0022 36.6725 13.9218 36.6725 12.0262C36.6725 10.4975 35.2589 9.86542 32.4727 9.5801L27.5557 9.091C23.9704 8.74425 21.6966 7.37853 21.6966 4.87157C21.6966 1.89558 24.9132 0 30.0142 0C33.1898 0 35.7095 0.61138 38.2297 2.18089L37.2056 4.11723C35.1977 2.79227 32.842 2.07869 29.7482 2.07869C26.1427 2.07869 24.012 3.21993 24.012 4.79005C24.012 6.27805 25.5484 6.84867 27.7819 7.07314L32.8016 7.56225C36.8375 7.94976 38.9885 9.397 38.9885 12.067M8.05167 2.30256L0 16.6326H2.45848L3.46243 14.7777C4.63023 12.6376 6.6381 11.4757 10.0797 11.4757C13.5214 11.4757 15.6729 12.6376 16.8407 14.7984L17.8239 16.6332H20.3643L11.8009 1.42655C11.3912 0.692898 10.8177 0.386904 9.87491 0.386904H2.97085L4.02493 1.45879C4.66691 2.09755 5.1707 2.30256 6.0652 2.30256H8.05167Z" />
+              </svg>
+            </span>
+          </span>
+        </div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <img src="/selos/pix.svg" alt="Pix" title="Pix" style={{ height: 18, display: 'block' }} />
+          <Selo src="/selos/visa.svg" nome="Visa" />
+          <Selo src="/selos/mastercard.svg" nome="Mastercard" />
+          <Selo src="/selos/elo.svg" nome="Elo" />
+          <span title="Boleto bancário" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 24, padding: '0 8px', borderRadius: 5, background: '#fff', color: '#1a1a1a' }}>
+            <Barcode size={15} strokeWidth={2.2} />
+            <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '-0.01em' }}>Boleto</span>
+          </span>
+        </div>
+      </div>
     </div>
   )
 }

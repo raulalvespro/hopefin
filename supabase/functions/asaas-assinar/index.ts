@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
   const { data: perfil } = await admin
     .from('usuarios').select('grupo_id, nome, email, telefone').eq('id', u.user.id).maybeSingle()
   if (!perfil?.grupo_id) return json({ error: 'usuário sem grupo' }, 400)
+  const emailCobranca = String(body.email || perfil.email || '').trim()
 
   // 2) Preço + vaga de fundador.
   const { data: cfg } = await admin.from('planos_config').select('*').eq('id', 1).maybeSingle()
@@ -90,7 +91,7 @@ Deno.serve(async (req) => {
         method: 'POST',
         body: JSON.stringify({
           name: body.nome || perfil.nome || 'Cliente HopeFin',
-          email: perfil.email, cpfCnpj, mobilePhone: telefone || undefined,
+          email: emailCobranca, cpfCnpj, mobilePhone: telefone || undefined,
           // Não deixamos o Asaas mandar e-mail/SMS padrão (com o nome/CPF do
           // titular). Toda comunicação com o cliente é nossa, com a marca
           // HopeFin, via Resend (prompt 7).
@@ -119,7 +120,7 @@ Deno.serve(async (req) => {
         expiryMonth: c.expiryMonth, expiryYear: c.expiryYear, ccv: c.ccv,
       }
       payload.creditCardHolderInfo = {
-        name: body.nome || perfil.nome, email: perfil.email, cpfCnpj,
+        name: body.nome || perfil.nome, email: emailCobranca, cpfCnpj,
         postalCode: String(t.cep || '').replace(/\D/g, ''),
         addressNumber: String(t.numero || 'S/N'),
         phone: telefone || undefined,
