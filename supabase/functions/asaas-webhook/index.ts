@@ -44,12 +44,25 @@ Deno.serve(async (req) => {
   const pay = body?.payment || {}
   const subId: string | null = pay?.subscription || null
 
+  // Registra o evento recebido (log visível no /admin — prompt 8). Nunca falha
+  // o webhook por causa do log; atualizamos o desfecho ao final.
+  let logId: string | null = null
+  try {
+    const { data: logRow } = await admin.from('webhook_log')
+      .insert({ origem: 'asaas', evento: event, payment_id: pay?.id || null, status: 'recebido', payload: body })
+      .select('id').maybeSingle()
+    logId = logRow?.id || null
+  } catch { /* log é best-effort */ }
+  const fecharLog = async (status: string, erro: string | null = null) => {
+    if (logId) { try { await admin.from('webhook_log').update({ status, erro }).eq('id', logId) } catch { /* ignore */ } }
+  }
+
   // Sem assinatura vinculada não há o que atualizar (ex.: cobrança avulsa).
-  if (!subId) return json({ ok: true, ignorado: 'sem subscription' })
+  if (!subId) { await fecharLog('ignorado: sem subscription'); return json({ ok: true, ignorado: 'sem subscription' }) }
 
   const { data: sub } = await admin
     .from('subscriptions').select('*').eq('asaas_subscription_id', subId).maybeSingle()
-  if (!sub) return json({ ok: true, ignorado: 'subscription desconhecida' })
+  if (!sub) { await fecharLog('ignorado: subscription desconhecida'); return json({ ok: true, ignorado: 'subscription desconhecida' }) }
 
   try {
     if (event === 'PAYMENT_CONFIRMED' || event === 'PAYMENT_RECEIVED') {
@@ -72,11 +85,13 @@ Deno.serve(async (req) => {
             .eq('id', sub.id)
         }
       }
+      await fecharLog('active')
       return json({ ok: true, status: 'active' })
     }
 
     if (event === 'PAYMENT_OVERDUE') {
       await admin.from('subscriptions').update({ status: 'past_due' }).eq('id', sub.id)
+      await fecharLog('past_due')
       return json({ ok: true, status: 'past_due' })
     }
 
@@ -84,12 +99,15 @@ Deno.serve(async (req) => {
       await admin.from('subscriptions').update({
         status: 'canceled', canceled_at: new Date().toISOString(),
       }).eq('id', sub.id)
+      await fecharLog('canceled')
       return json({ ok: true, status: 'canceled' })
     }
 
+    await fecharLog('ignorado: ' + event)
     return json({ ok: true, ignorado: event })
   } catch (err) {
     console.error('[asaas-webhook]', event, (err as Error)?.message)
+    await fecharLog('erro', (err as Error)?.message || 'erro')
     // 200 mesmo em erro evita retries em loop; o erro fica no log.
     return json({ ok: false, erro: (err as Error)?.message })
   }

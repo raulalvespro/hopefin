@@ -24,6 +24,7 @@ import Fechamento from './pages/Fechamento'
 import Importar from './pages/Importar'
 import Historico from './pages/Historico'
 import Notificacoes from './pages/Notificacoes'
+import Admin from './pages/Admin'
 import Layout from './components/Layout'
 import CookieConsent from './components/CookieConsent'
 
@@ -40,6 +41,19 @@ function RotaProtegida({ children }) {
   return children
 }
 
+// Guarda do /admin: exige sessão; o próprio Admin confere o papel is_admin.
+function RotaAdmin({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'var(--text2)' }}>
+      <div style={{ width:36, height:36, border:'3px solid var(--border2)', borderTop:'3px solid var(--accent)', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
+  if (!user) return <Navigate to="/login" replace />
+  return children
+}
+
 export default function App() {
   return (
     <>
@@ -47,6 +61,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+      <Route path="/admin" element={<RotaAdmin><Admin /></RotaAdmin>} />
       <Route path="/" element={<RotaProtegida><Layout /></RotaProtegida>}>
         <Route index element={<Dashboard />} />
         <Route path="gastos" element={<Gastos />} />

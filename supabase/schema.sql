@@ -493,5 +493,46 @@ create policy cupom_resgates_select on public.cupom_resgates
   for select to authenticated using (grupo_id = public.meu_grupo_id());
 
 -- ============================================================
+-- PAINEL DO DONO (/admin) — migração 0021 (prompt 8)
+-- ============================================================
+-- usuarios.is_admin (papel) + helper sou_admin(); o /admin vê MÉTRICAS e
+-- METADADOS de grupos, nunca os lançamentos das famílias (LGPD).
+alter table public.usuarios add column if not exists is_admin boolean not null default false;
+
+create table if not exists public.admin_config (            -- linha única (id=1)
+  id int primary key default 1 check (id = 1),
+  whatsapp_pausado boolean not null default false,
+  whatsapp_teto_centavos int not null default 30000,        -- R$ 300,00
+  ia_gratis_mes int not null default 1000,                  -- respostas grátis/mês
+  custo_resposta_centavos numeric(8,4) not null default 3.5, -- R$ 0,035/resposta
+  atualizado_em timestamptz not null default now()
+);
+alter table public.admin_config enable row level security;  -- select só admin
+
+create table if not exists public.admin_log (               -- auditoria de ações
+  id uuid primary key default gen_random_uuid(),
+  admin_id uuid references public.usuarios(id) on delete set null,
+  acao text not null, grupo_id uuid references public.grupos(id) on delete set null,
+  motivo text, detalhe jsonb, criado_em timestamptz not null default now()
+);
+alter table public.admin_log enable row level security;     -- select só admin
+
+create table if not exists public.webhook_log (             -- eventos do Asaas
+  id uuid primary key default gen_random_uuid(),
+  origem text not null default 'asaas', evento text, status text, payment_id text,
+  payload jsonb, erro text, recebido_em timestamptz not null default now()
+);
+alter table public.webhook_log enable row level security;   -- select só admin
+
+-- RPCs (SECURITY DEFINER, começam com if not sou_admin() then raise):
+--   admin_metricas()               -> MRR, assinantes, trials, past_due, lançamento…
+--   admin_consumo_mes()            -> uso IA/WhatsApp + custo + top + taxa de acerto da voz
+--   admin_grupos(busca)            -> grupos com status/plano/membros (SEM lançamentos)
+--   admin_estender_trial(g,dias,motivo) / admin_marcar_cortesia(g,ativar,motivo)  (+log)
+--   admin_cupons() / admin_salvar_cupom(cod,max,ate,wpp,ativo)
+--   admin_set_whatsapp(pausado,teto) / admin_webhooks()
+-- O asaas-webhook grava cada evento em webhook_log (service_role).
+
+-- ============================================================
 -- FIM
 -- ============================================================

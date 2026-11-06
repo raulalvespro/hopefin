@@ -135,9 +135,14 @@ Rodar local: `npm run dev` (porta 5173, ver `.claude/launch.json`).
 ## Domínios
 
 - `hopefin.com.br` — site + páginas legais. `app.hopefin.com.br` — o app (Vercel por ora).
-- `admin.hopefin.com.br` — **painel do dono**: planejado como **rota protegida dentro do
-  próprio app**, no mesmo banco (modelo parecido com a "Central" do SGQ Tech), não um
-  projeto separado.
+- `admin.hopefin.com.br` — **painel do dono**: **implementado (prompt 8)** como rota
+  `/admin` dentro do próprio app (fora do Layout, `noindex`), guarda por
+  `usuarios.is_admin` + RPCs `admin_*` (SECURITY DEFINER, migração **0021**). Mostra MRR,
+  assinantes, trials, inadimplentes, lançamento, consumo de IA/WhatsApp (+ custo, top
+  consumidores, taxa de acerto da voz, pausa do WhatsApp com teto), grupos (status/plano,
+  **nunca os lançamentos — LGPD**), cupons e log de webhooks. Ações com auditoria
+  (`admin_log`): estender trial, marcar/tirar cortesia. O admin é marcado pelo e-mail
+  `raullerickson@gmail.com` quando a conta é criada. (Reenviar e-mail depende do prompt 7.)
 - Domínio registrado na **Hostinger**; **DNS e site na Cloudflare**; caixas de e-mail na
   Hostinger (plano Business).
 
