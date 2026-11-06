@@ -63,6 +63,12 @@ if (env.ASAAS_API_KEY) {
   if (env.ASAAS_BASE_URL) secrets.push({ name: 'ASAAS_BASE_URL', value: env.ASAAS_BASE_URL })
 }
 
+// IA (lançamento por voz/texto — prompt 11) e e-mail (prompt 7): só entram se
+// a chave estiver preenchida no .env.local.
+if (env.ANTHROPIC_API_KEY) secrets.push({ name: 'ANTHROPIC_API_KEY', value: env.ANTHROPIC_API_KEY })
+if (env.OPENAI_API_KEY)    secrets.push({ name: 'OPENAI_API_KEY', value: env.OPENAI_API_KEY })
+if (env.RESEND_API_KEY)    secrets.push({ name: 'RESEND_API_KEY', value: env.RESEND_API_KEY })
+
 const res = await fetch(`https://api.supabase.com/v1/projects/${REF}/secrets`, {
   method: 'POST',
   headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
