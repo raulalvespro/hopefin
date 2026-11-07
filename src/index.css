@@ -18,6 +18,7 @@
   --accent2: #059669;
   --accent-dim: rgba(16,185,129,0.12);
   --on-accent: #06281e; /* texto sobre o accent */
+  --logo-fin: #059669; /* "fin" no wordmark da marca */
 
   /* Cores semânticas */
   --red: #ef4444;
@@ -52,6 +53,7 @@
   --accent2: #0ea371;
   --accent-dim: rgba(16,185,129,0.20);
   --on-accent: #04241b;
+  --logo-fin: #10b981;
   --red: #f87171;
   --red-dim: rgba(248,113,113,0.16);
   --blue: #60a5fa;
@@ -84,6 +86,7 @@
     --accent2: #0ea371;
     --accent-dim: rgba(16,185,129,0.20);
     --on-accent: #04241b;
+  --logo-fin: #10b981;
     --red: #f87171;
     --red-dim: rgba(248,113,113,0.16);
     --blue: #60a5fa;

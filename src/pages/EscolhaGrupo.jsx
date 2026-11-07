@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import Logo from '../components/Logo'
 
 export default function EscolhaGrupo() {
   const { perfil, criarGrupo, entrarGrupo, logout } = useAuth()
@@ -30,7 +31,7 @@ export default function EscolhaGrupo() {
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:24, background:'var(--bg)' }}>
       <div style={{ width:'100%', maxWidth:380 }}>
         <div style={{ textAlign:'center', marginBottom:32 }}>
-          <h1 style={{ fontSize:32, color:'var(--accent)', letterSpacing:'-0.03em' }}>HopeFin</h1>
+          <Logo size={40} style={{ display: 'flex', justifyContent: 'center' }} />
           <p style={{ color:'var(--text2)', marginTop:8, fontSize:15 }}>Olá, {nome}! Só mais um passo.</p>
         </div>
 

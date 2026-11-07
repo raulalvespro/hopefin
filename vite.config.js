@@ -14,7 +14,7 @@ export default defineConfig({
         description: 'Controle financeiro da família: gastos, contas fixas, cartões, orçamento e projeção.',
         lang: 'pt-BR',
         theme_color: '#10b981',
-        background_color: '#f6f7f9',
+        background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',

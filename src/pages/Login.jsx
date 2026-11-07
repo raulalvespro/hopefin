@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import Logo from '../components/Logo'
 
 export default function Login() {
   const { login } = useAuth()
@@ -37,7 +38,7 @@ export default function Login() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--bg)' }}>
       <div style={{ width: '100%', maxWidth: 360 }}>
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <h1 style={{ fontSize: 32, color: 'var(--accent)', letterSpacing: '-0.03em', fontFamily: 'Syne' }}>HopeFin</h1>
+          <Logo size={44} style={{ display: 'flex', justifyContent: 'center' }} />
           <p style={{ color: 'var(--text2)', marginTop: 8, fontSize: 14 }}>As finanças da sua família, no mesmo lugar.</p>
         </div>
 

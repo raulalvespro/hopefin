@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
+import Logo from '../components/Logo'
 
 // Página de destino do link de recuperação de senha enviado por e-mail.
 // O supabase-js estabelece a sessão de recuperação automaticamente ao abrir a URL.
@@ -34,7 +35,7 @@ export default function RedefinirSenha() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--bg)' }}>
       <div style={{ width: '100%', maxWidth: 360 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <h1 style={{ fontSize: 28, color: 'var(--accent)', letterSpacing: '-0.03em', fontFamily: 'Syne' }}>HopeFin</h1>
+          <Logo size={40} style={{ display: 'flex', justifyContent: 'center' }} />
           <p style={{ color: 'var(--text2)', marginTop: 8, fontSize: 14 }}>Criar uma nova senha</p>
         </div>
 

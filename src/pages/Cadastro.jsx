@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { track } from '../lib/analytics'
 import { VERSAO_LEGAL } from '../lib/legal'
+import Logo from '../components/Logo'
 
 export default function Cadastro() {
   const { cadastrar } = useAuth()
@@ -61,7 +62,7 @@ export default function Cadastro() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--bg)' }}>
       <div style={{ width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <h1 style={{ fontSize: 28, color: 'var(--accent)', letterSpacing: '-0.03em', fontFamily: 'Syne' }}>HopeFin</h1>
+          <Logo size={40} style={{ display: 'flex', justifyContent: 'center' }} />
           <p style={{ color: 'var(--text2)', marginTop: 8, fontSize: 14 }}>Primeiro acesso — crie sua conta e sua senha.</p>
         </div>
 
