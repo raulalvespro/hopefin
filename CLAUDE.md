@@ -55,6 +55,35 @@ Toda tela, e-mail ou componente **novo** segue a biblioteca de design em `docs/d
 - **Escopo:** o redesenho de todas as telas do app é o bloco dos **prompts 14–20**. Fora
   disso, só coisas novas já nascem no design; não refazer telas existentes sem tarefa.
 
+### Regras do redesenho (prompts 14–20) — valem em todo prompt do bloco
+
+1. **O app atual manda.** As telas de `docs/design/` são referência de **visual** (cores,
+   tipografia, espaços, componentes, animações), **não** de conteúdo nem de estrutura.
+2. **Não remova** nenhuma tela, rota, campo, botão, função, filtro, configuração ou dado
+   que já existe. Se a tela de referência não mostra algo que o app tem, **mantenha** no
+   visual novo.
+3. **Não crie por conta própria** o que a referência mostra e o app não tem: liste como
+   **sugestão** no fim da tarefa e espere o ok do Raul.
+4. **Não altere** banco, migrações, RLS, regras de negócio nem rotas para encaixar o
+   design. Só a camada **visual**, a menos que o prompt peça outra coisa.
+5. Se já existe um componente parecido, **evolua ele** em vez de criar outro.
+6. Números, nomes e datas das telas de referência são **exemplo**: use sempre os **dados
+   reais** do grupo.
+7. Antes de mexer em cada tela, **mostre a lista** do que ela tem hoje e como cada item
+   fica no visual novo; ao terminar, **confirme item por item** que tudo continua funcionando.
+8. As telas ficam em `docs/design/telas/` (leia antes o `docs/design/README.md`); os tokens
+   oficiais estão em `docs/design/tokens/tokens.json` e **valem quando divergirem** de uma tela.
+9. **Uma branch por prompt** (para dar pra voltar atrás). Textos das telas novas ficam
+   centralizados em `src/copy/pt-BR.js` — nenhuma tela nova com frase escrita direto no componente.
+
+**Base visual (prompt 14, em `src/components/ui/` + `src/index.css`):** fontes Syne 600/700
+(títulos, dinheiro, botões) e DM Sans 400/500 (resto); tokens de cor/espaço/raio/sombra do
+`tokens.json` (já no CSS global, + `--panel-ink`, raios `pill/xl/2xl`, `--space-*` e tokens de
+movimento `--ease`/`--dur-*`); movimento com `cubic-bezier(.2,.8,.2,1)`, 150–600 ms, **desligado
+em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `ListItem`,
+`Meter`, `Avatar`, `Toast`, `EmptyState`, `MicButton`; ícones de categoria com Lucide (traço
+1.75, 24px). Vitrine em **`/dev/componentes`** (só em `import.meta.env.DEV`).
+
 ---
 
 ## Banco de dados (regras importantes)

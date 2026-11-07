@@ -37,12 +37,49 @@
   --blue-text: #1d4ed8;
   --purple-text: #5b21b6;
 
+  /* Painel escuro de destaque (banner do login, avisos, posts) — igual nos 2 temas */
+  --panel-ink: #0f172a;
+
   /* Sombra suave para elevação dos cards */
   --shadow-sm: 0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.06);
 
-  --radius: 12px;
-  --radius-sm: 8px;
-  --radius-lg: 16px;
+  /* Raios (tokens.json) */
+  --radius-sm: 8px;    /* botões e campos */
+  --radius: 12px;      /* cards */
+  --radius-lg: 16px;   /* modais e folhas */
+  --radius-pill: 20px; /* etiquetas */
+  --radius-xl: 24px;   /* folhas no celular, onboarding */
+  --radius-2xl: 28px;  /* banners e cartões de destaque */
+
+  /* Espaços (tokens.json) */
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-28: 28px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-64: 64px;
+
+  /* Movimento — 150 a 600 ms; desligado em prefers-reduced-motion */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --dur-1: 150ms;
+  --dur-2: 250ms;
+  --dur-3: 400ms;
+  --dur-4: 600ms;
+}
+
+/* Acessibilidade: respeita quem pede menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ===== Tema escuro ===== */
@@ -76,6 +113,7 @@
   --amber-text: #fcd34d;
   --blue-text: #93c5fd;
   --purple-text: #c4b5fd;
+  --panel-ink: #111a2e;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.35);
 }
 
@@ -116,6 +154,7 @@
     --amber-text: #fcd34d;
     --blue-text: #93c5fd;
     --purple-text: #c4b5fd;
+    --panel-ink: #111a2e;
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.35);
   }
 }
