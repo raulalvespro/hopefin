@@ -56,7 +56,7 @@ async function apagar(path: string) {
 }
 
 // E-mail de confirmação (best-effort: se falhar, o cancelamento já está feito e não é desfeito).
-async function avisarCancelamento(grupoId: string, titularId: string, email: string | null, nome: string | null, acessoAte: Date | null) {
+async function avisarCancelamento(grupoId: string, titularId: string, email: string | null, nome: string | null, acessoAte: Date | null, reembolso = false) {
   if (!email) return
   const ref = new Date().toISOString() // permite novo aviso se a pessoa assinar e cancelar de novo
   const assunto = 'Seu cancelamento no HopeFin foi confirmado'
@@ -65,7 +65,9 @@ async function avisarCancelamento(grupoId: string, titularId: string, email: str
     .select('id').maybeSingle()
   if (ins.error || !ins.data) return
   const ola = nome ? `Olá, ${esc(nome.split(' ')[0])}!<br><br>` : ''
-  const ate = acessoAte
+  const ate = reembolso
+    ? 'Pedimos o <strong>reembolso integral</strong> do que você pagou (art. 49 do CDC). O valor volta para a mesma forma de pagamento — no cartão, pode levar até duas faturas para aparecer. O acesso para novos lançamentos foi encerrado.'
+    : acessoAte
     ? `Você continua usando o HopeFin normalmente até <strong>${acessoAte.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</strong> (período que já está pago).`
     : 'O acesso para novos lançamentos foi encerrado.'
   const html = layoutEmail({
@@ -73,7 +75,6 @@ async function avisarCancelamento(grupoId: string, titularId: string, email: str
     preheader: assunto,
     corpoHtml: `${ola}Recebemos o seu pedido e a assinatura foi cancelada. <strong>Nenhuma nova cobrança será feita.</strong><br><br>${ate}<br><br>` +
       'Seus dados continuam guardados: você pode ver e exportar tudo quando quiser. ' +
-      'Se foi nos últimos 7 dias depois do pagamento e você quer o reembolso, é só responder este e-mail.<br><br>' +
       'Mudou de ideia? Você pode assinar de novo a qualquer momento.',
     cta: { texto: 'Ver planos', url: 'https://app.hopefin.com.br/planos' },
   })
@@ -102,9 +103,29 @@ Deno.serve(async (req) => {
   }
   if (sub.status === 'canceled' || sub.status === 'expired') return json({ ok: true, jaCancelada: true })
 
+  const body = await req.json().catch(() => ({}))
   const agora = new Date()
   const fimPeriodo = sub.current_period_end ? new Date(sub.current_period_end) : null
-  const periodoPagoEmCurso = sub.status === 'active' && !!fimPeriodo && fimPeriodo > agora
+  let periodoPagoEmCurso = sub.status === 'active' && !!fimPeriodo && fimPeriodo > agora
+
+  // Reembolso automático: só nos 7 primeiros dias da PRIMEIRA cobrança (art. 49 do CDC).
+  // Estorna ANTES de cancelar: se o Asaas recusar, nada muda e a pessoa pode tentar de novo.
+  let reembolsou = false
+  if (body?.reembolso === true) {
+    const prim = sub.primeira_cobranca_em ? new Date(sub.primeira_cobranca_em) : null
+    const elegivel = sub.status === 'active' && !!prim && agora.getTime() - prim.getTime() <= 7 * 86400000
+    if (!elegivel) return json({ error: 'O prazo de 7 dias para reembolso já passou.' }, 400)
+    try {
+      if (sub.asaas_installment_id) await asaas(`/installments/${sub.asaas_installment_id}/refund`, { method: 'POST', body: '{}' })
+      else if (sub.asaas_last_payment_id) await asaas(`/payments/${sub.asaas_last_payment_id}/refund`, { method: 'POST', body: '{}' })
+      else throw new Error('sem cobrança para estornar')
+      reembolsou = true
+      periodoPagoEmCurso = false // reembolsou: o acesso termina agora
+    } catch (err) {
+      console.error('[asaas-cancelar] reembolso:', (err as Error)?.message)
+      return json({ error: 'Não foi possível pedir o reembolso agora. Nada foi alterado — tente de novo ou fale com contato@hopefin.com.br.' }, 502)
+    }
+  }
 
   // 1) Marca antes, para os webhooks de remoção não encerrarem o acesso agora.
   await admin.from('subscriptions').update({
@@ -119,7 +140,15 @@ Deno.serve(async (req) => {
         for (const p of lista?.data || []) await apagar(`/payments/${p.id}`)
       }
       await apagar(`/subscriptions/${sub.asaas_subscription_id}`)
+    } else if (sub.asaas_installment_id) {
+      // Anual no cartão (parcelado): o cartão já foi cobrado; só apaga parcela que ainda esteja em aberto.
+      const lista = await asaas(`/installments/${sub.asaas_installment_id}/payments?limit=100`)
+      for (const p of lista?.data || []) {
+        if (p.status === 'PENDING' || p.status === 'OVERDUE') await apagar(`/payments/${p.id}`)
+      }
     }
+    // Sem token, sem renovação: some a referência do cartão (a renovação também confere cancel_at_period_end).
+    await admin.from('subscription_secrets').delete().eq('grupo_id', sub.grupo_id)
   } catch (err) {
     // 3) Falhou: desfaz a marca. Nada fica "cancelado" com cobrança viva.
     console.error('[asaas-cancelar]', (err as Error)?.message)
@@ -140,8 +169,8 @@ Deno.serve(async (req) => {
   // Sem período pago em curso (ex.: pagamento em atraso): encerra já.
   if (!periodoPagoEmCurso) {
     await admin.from('subscriptions').update({ status: 'canceled' }).eq('id', sub.id)
-    await avisarCancelamento(perfil.grupo_id, u.user.id, perfil.email || u.user.email || null, perfil.nome, null)
-    return json({ ok: true, acessoAte: null })
+    await avisarCancelamento(perfil.grupo_id, u.user.id, perfil.email || u.user.email || null, perfil.nome, null, reembolsou)
+    return json({ ok: true, acessoAte: null, reembolso: reembolsou })
   }
 
   await avisarCancelamento(perfil.grupo_id, u.user.id, perfil.email || u.user.email || null, perfil.nome, fimPeriodo)

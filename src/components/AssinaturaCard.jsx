@@ -27,9 +27,13 @@ export default function AssinaturaCard() {
   const podeCancelar = !assinatura.titular_id || assinatura.titular_id === perfil?.id
   const fim = assinatura.current_period_end ? new Date(assinatura.current_period_end) : null
 
-  async function cancelar() {
+  // Reembolso automático só nos 7 primeiros dias da primeira cobrança (assinatura ativa).
+  const primeira = assinatura.primeira_cobranca_em ? new Date(assinatura.primeira_cobranca_em) : null
+  const noPrazoReembolso = status === 'active' && !!primeira && Date.now() - primeira.getTime() <= 7 * 86400000
+
+  async function cancelar(reembolso = false) {
     setCancelando(true)
-    const { data: res, error } = await supabase.functions.invoke('asaas-cancelar', { body: {} })
+    const { data: res, error } = await supabase.functions.invoke('asaas-cancelar', { body: { reembolso } })
     setCancelando(false)
     if (error || !res?.ok) {
       let msg = t.erroCancelar
@@ -38,7 +42,7 @@ export default function AssinaturaCard() {
       return
     }
     setConfirmando(false)
-    toast(t.okCancelada(res.acessoAte ? data(res.acessoAte) : null), 'ok', 6000)
+    toast(res.reembolso ? t.reembolsoOk : t.okCancelada(res.acessoAte ? data(res.acessoAte) : null), 'ok', 6000)
     recarregar()
   }
 
@@ -104,11 +108,23 @@ export default function AssinaturaCard() {
               <li>{t.confirmCobranca}</li>
               <li>{t.confirmDados}</li>
             </ul>
-            <p style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.5, marginBottom: 18 }}>{t.confirmReembolso}</p>
+            {noPrazoReembolso ? (
+              <div style={{ background: 'var(--accent-dim)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: 18 }}>
+                <p style={{ fontWeight: 500, fontSize: 14, marginBottom: 4 }}>{t.reembolsoTitulo}</p>
+                <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>{t.reembolsoTexto}</p>
+              </div>
+            ) : (
+              <p style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.5, marginBottom: 18 }}>{t.confirmReembolso}</p>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <Button onClick={() => setConfirmando(false)} disabled={cancelando}>{t.manter}</Button>
-              <Button variant="secondary" onClick={cancelar} loading={cancelando} style={{ color: 'var(--red-text)' }}>
-                {cancelando ? t.cancelando : t.confirmar}
+              {noPrazoReembolso && (
+                <Button variant="secondary" onClick={() => cancelar(true)} loading={cancelando} style={{ color: 'var(--red-text)' }}>
+                  {cancelando ? t.cancelando : t.cancelarReembolso}
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => cancelar(false)} loading={cancelando} style={{ color: 'var(--red-text)' }}>
+                {cancelando ? t.cancelando : (noPrazoReembolso ? t.cancelarSemReembolso(status === 'active' && fim && fim > new Date() ? data(fim) : null) : t.confirmar)}
               </Button>
             </div>
           </div>

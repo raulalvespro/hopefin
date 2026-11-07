@@ -347,3 +347,20 @@ testadas: os dois saíram com status "enviado" (testes chegaram na sua caixa com
 - [ ] Conferir o visual dos 2 e-mails na caixa (assuntos "Seu cancelamento no HopeFin foi confirmado" e
       "Você saiu do grupo …").
 - [ ] **Pendente de push:** a tela de convite só passa a chamar `remover-membro` (e disparar o e-mail) depois do deploy do front.
+
+## 💳 Anual no cartão 12x fixo + renovação + reembolso automático  (07/11/2026)
+
+Tudo testado **no sandbox do Asaas** (usuários/grupos de teste apagados depois). Resultado:
+- **12x fixo:** mesmo pedindo outra quantidade, cobra 12 × R$ 14,90 (lançamento). Webhook chegou 12 vezes e o fim
+  do período **não andou** (só a 1ª notificação estende).
+- **Renovação por token:** D-7 manda e-mail de aviso (idempotente); no dia recobra 12x no mesmo preço travado e o
+  período vai +1 ano; rodar de novo não duplica; depois de cancelar não renova e o token some.
+- **Reembolso automático:** fora dos 7 dias → recusa e nada muda; dentro → estorna as 12 parcelas (`REFUNDED`),
+  encerra o acesso e envia e-mail. Cron `hopefin-renovar-cartao` agendado (10:00 BRT).
+- **Não testado:** reembolso de **Pix** (no sandbox o Pix não chega a ser pago) e cartão **real/produção**.
+
+Checklist para você, logado (depois do push do front):
+- [ ] Checkout anual no cartão mostra só "12x de R$ 14,90" + aviso da renovação (sem seletor de parcelas).
+- [ ] Configurações → Minha assinatura: nos 7 primeiros dias aparecem "Cancelar e pedir reembolso" e "Cancelar e usar até …";
+      depois dos 7 dias só o cancelamento simples.
+- [ ] E-mails: aviso de renovação (D-7), renovado, falha na renovação, cancelamento com reembolso.

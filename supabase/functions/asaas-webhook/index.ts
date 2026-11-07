@@ -59,21 +59,38 @@ Deno.serve(async (req) => {
     if (logId) { try { await admin.from('webhook_log').update({ status, erro }).eq('id', logId) } catch { /* ignore */ } }
   }
 
-  // Sem assinatura vinculada não há o que atualizar (ex.: cobrança avulsa).
-  if (!subId) { await fecharLog('ignorado: sem subscription'); return json({ ok: true, ignorado: 'sem subscription' }) }
-
-  const { data: sub } = await admin
-    .from('subscriptions').select('*').eq('asaas_subscription_id', subId).maybeSingle()
-  if (!sub) { await fecharLog('ignorado: subscription desconhecida'); return json({ ok: true, ignorado: 'subscription desconhecida' }) }
+  // Acha a assinatura do app: (1) assinatura recorrente do Asaas (Pix/boleto/mensal);
+  // (2) parcelamento no cartão (anual): payment.installment; (3) externalReference = grupo_id.
+  let sub: Record<string, any> | null = null
+  if (subId) {
+    sub = (await admin.from('subscriptions').select('*').eq('asaas_subscription_id', subId).maybeSingle()).data
+  }
+  if (!sub && pay?.installment) {
+    sub = (await admin.from('subscriptions').select('*').eq('asaas_installment_id', pay.installment).maybeSingle()).data
+  }
+  if (!sub && pay?.externalReference) {
+    sub = (await admin.from('subscriptions').select('*').eq('grupo_id', pay.externalReference).maybeSingle()).data
+  }
+  // Sem assinatura vinculada não há o que atualizar (ex.: cobrança avulsa de outro tipo).
+  if (!sub) { await fecharLog('ignorado: sem subscription'); return json({ ok: true, ignorado: 'sem subscription' }) }
 
   try {
     if (event === 'PAYMENT_CONFIRMED' || event === 'PAYMENT_RECEIVED') {
-      await admin.from('subscriptions').update({
+      // O Asaas avisa uma vez por parcela (e de novo em RECEIVED). Só a 1ª notificação de cada
+      // cobrança/parcelamento estende o período — senão o fim do período "andaria" a cada parcela.
+      const chave: string | null = pay?.installment || pay?.id || null
+      const jaEstendeu = !!chave && chave === sub.asaas_periodo_ref
+      const upd: Record<string, unknown> = {
         status: 'active',
-        current_period_start: new Date().toISOString(),
-        current_period_end: fimPeriodo(sub.ciclo).toISOString(),
         asaas_last_payment_id: pay?.id || sub.asaas_last_payment_id,
-      }).eq('id', sub.id)
+      }
+      if (!sub.primeira_cobranca_em) upd.primeira_cobranca_em = new Date().toISOString()
+      if (!jaEstendeu) {
+        upd.current_period_start = new Date().toISOString()
+        upd.current_period_end = fimPeriodo(sub.ciclo).toISOString()
+        if (chave) upd.asaas_periodo_ref = chave
+      }
+      await admin.from('subscriptions').update(upd).eq('id', sub.id)
 
       // Marca "assinou no preço de lançamento" na 1ª ativação (anual), para o
       // /admin contar quantos pegaram o lançamento. Sem limite de vagas.

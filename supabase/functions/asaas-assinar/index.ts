@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
   }
   await admin.from('subscriptions').update({
     checkout_iniciado_em: new Date().toISOString(), metodo_pagamento: metodo, ciclo,
+    cancel_at_period_end: false, canceled_at: null, // assinar de novo depois de cancelar
   }).eq('grupo_id', perfil.grupo_id)
 
   const { data: sub } = await admin
@@ -110,6 +111,55 @@ Deno.serve(async (req) => {
       customerId = cli.id
     }
 
+    // 5a) ANUAL NO CARTÃO = cobrança parcelada (1..12x), não assinatura. No Asaas o parcelamento
+    //     só existe em cobrança avulsa; a renovação do ano seguinte é nossa (renovar-cartao,
+    //     recobrando pelo token). Total e preço de lançamento já vêm de `centavos`.
+    if (ciclo === 'anual' && metodo === 'cartao') {
+      // Decisão de produto: anual no cartão é SEMPRE 12x (o total já embute as taxas do parcelamento;
+      // quem quer pagar menos paga no Pix). Não há escolha de parcelas.
+      const n = 12
+      const c = body.cartao || {}
+      const t = body.titular || {}
+      const cobranca: Record<string, unknown> = {
+        customer: customerId,
+        billingType: 'CREDIT_CARD',
+        dueDate: hoje(),
+        description: `HopeFin Família (anual${n > 1 ? `, ${n}x` : ''})`,
+        externalReference: perfil.grupo_id,
+        creditCard: {
+          holderName: c.holderName, number: String(c.number || '').replace(/\s/g, ''),
+          expiryMonth: c.expiryMonth, expiryYear: c.expiryYear, ccv: c.ccv,
+        },
+        creditCardHolderInfo: {
+          name: body.nome || perfil.nome, email: emailCobranca, cpfCnpj,
+          postalCode: String(t.cep || '').replace(/\D/g, ''),
+          addressNumber: String(t.numero || 'S/N'),
+          phone: telefone || undefined,
+        },
+        remoteIp: (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || undefined,
+      }
+      if (n > 1) { cobranca.installmentCount = n; cobranca.totalValue = centavos / 100 }
+      else { cobranca.value = centavos / 100 }
+
+      const pg = await asaas('/payments', { method: 'POST', body: JSON.stringify(cobranca) })
+
+      await admin.from('subscriptions').update({
+        titular_id: u.user.id, ciclo, preco_centavos: centavos, parcelas: n,
+        asaas_customer_id: customerId, asaas_subscription_id: null,
+        asaas_installment_id: pg.installment || null, asaas_last_payment_id: pg.id,
+      }).eq('grupo_id', perfil.grupo_id)
+      // Token do cartão (referência do Asaas, não o cartão) p/ renovar daqui a um ano.
+      const token = pg?.creditCard?.creditCardToken
+      if (token) {
+        await admin.from('subscription_secrets')
+          .upsert({ grupo_id: perfil.grupo_id, asaas_card_token: token, atualizado_em: new Date().toISOString() })
+      }
+      return json({
+        ok: true, metodo, lancamento: noLancamento, paymentId: pg.id, parcelas: n,
+        status: pg.status || 'PENDING',
+      })
+    }
+
     // 5) Assinatura: paga agora para ativar (checkout = pagar para ter acesso).
     const billingType = metodo === 'cartao' ? 'CREDIT_CARD' : metodo === 'boleto' ? 'BOLETO' : 'PIX'
     const payload: Record<string, unknown> = {
@@ -120,13 +170,6 @@ Deno.serve(async (req) => {
       nextDueDate: hoje(),
       description: `HopeFin Família (${ciclo})`,
       externalReference: perfil.grupo_id,
-    }
-    // Anual no cartão: parcelar em 12x. OBS: no Asaas o parcelamento
-    // (installmentCount) é documentado para cobranças avulsas; em assinatura
-    // YEARLY ainda precisa ser validado no sandbox. Se o Asaas recusar o campo,
-    // o try/catch devolve o erro e a gente revisa (ver nota do prompt 2.1).
-    if (parcelas > 1 && metodo === 'cartao') {
-      payload.installmentCount = parcelas
     }
     if (metodo === 'cartao') {
       const c = body.cartao || {}
@@ -147,7 +190,7 @@ Deno.serve(async (req) => {
     const assinatura = await asaas('/subscriptions', { method: 'POST', body: JSON.stringify(payload) })
 
     await admin.from('subscriptions').update({
-      titular_id: u.user.id, ciclo, preco_centavos: centavos,
+      titular_id: u.user.id, ciclo, preco_centavos: centavos, parcelas: 1, asaas_installment_id: null,
       asaas_customer_id: customerId, asaas_subscription_id: assinatura.id,
     }).eq('grupo_id', perfil.grupo_id)
 

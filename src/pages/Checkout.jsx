@@ -71,6 +71,7 @@ export default function Checkout() {
   // maior por causa das taxas); Pix/boleto no anual é o valor à vista.
   const anualCartao = ciclo === 'anual' && metodo === 'cartao'
   const centavos = ciclo === 'mensal' ? pv.mensal : (anualCartao ? pv.anualCartao : pv.anualPix)
+  const parcelas = 12 // anual no cartão é sempre 12x
   const parcelaCartao = anualCartao ? pv.anualCartaoParcela : null
   const temLancamento = ciclo === 'anual' && pv.lancamentoAtivo
 
@@ -182,7 +183,7 @@ export default function Checkout() {
           <div style={{ textAlign: 'right' }}>
             {anualCartao ? (
               <>
-                <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20 }}>12x {fmt(parcelaCartao / 100)}</p>
+                <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20 }}>{parcelas}x {fmt(parcelaCartao / 100)}</p>
                 <p style={{ fontSize: 11.5, color: 'var(--text3)' }}>total {fmt(centavos / 100)}/ano</p>
               </>
             ) : (
@@ -224,6 +225,11 @@ export default function Checkout() {
             <input placeholder="Validade MM/AA" value={form.validade} onChange={e => set('validade', e.target.value)} style={{ ...inputStyle, flex: 1 }} />
             <input placeholder="CVV" inputMode="numeric" value={form.ccv} onChange={e => set('ccv', e.target.value.replace(/\D/g, ''))} style={{ ...inputStyle, flex: 1 }} />
           </div>
+          {anualCartao && (
+            <p style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.45 }}>
+              12x de {fmt(parcelaCartao / 100)} no cartão (total de {fmt(centavos / 100)}). Daqui a um ano o plano renova no mesmo cartão — avisamos 7 dias antes e você cancela quando quiser.
+            </p>
+          )}
           <div style={{ display: 'flex', gap: 10 }}>
             <input placeholder="CEP" inputMode="numeric" value={form.cep} onChange={e => set('cep', e.target.value.replace(/\D/g, ''))} style={{ ...inputStyle, flex: 1 }} />
             <input placeholder="Nº" inputMode="numeric" value={form.numeroEnd} onChange={e => set('numeroEnd', e.target.value)} style={{ ...inputStyle, flex: 1 }} />

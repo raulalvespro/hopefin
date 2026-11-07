@@ -168,15 +168,19 @@ em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `L
   `with check (grupo_pode_lancar())`. Vencido/inadimplente **lê e exporta**, mas não
   cria lançamento. UX espelhada no front: `useAssinatura` + `BannerAssinatura`.
 - Mudança de status/preço vem **só** do webhook do Asaas (service_role) ou dessas RPCs.
-- **Asaas — anual no cartão (VALIDADO no sandbox em 07/11/2026): o "12x" NÃO funciona em assinatura.**
-  Na subscription `cycle: YEARLY` o `installmentCount` é ignorado: o Asaas cobra o valor cheio de uma vez
-  (R$ 178,80 num único lançamento). Parcelamento real existe só em **cobrança avulsa**
-  (`POST /payments` com `installmentCount` + `totalValue`): testei 12x (12 × R$ 14,90), 6x e 1x, e a resposta traz
-  `creditCardToken` para recobrar. **Pendente de decisão:** anual no cartão virar cobrança parcelada (1–12x) +
-  renovação anual por token (cron). Até lá, a tela de Planos/Checkout promete 12x que não acontece.
-- **Cancelamento (0027 + `asaas-cancelar`)** e **remoção de membro (0028 + `remover-membro`)** estão no ar e testados
-  no sandbox (e-mails de cancelamento e de remoção incluídos). Webhook sandbox: token e evento
-  `SUBSCRIPTION_DELETED` configurados em 07/11/2026.
+- **Anual no cartão = cobrança PARCELADA, SEMPRE 12x** (decisão 07/11/2026; sem escolha de parcelas — o total
+  R$ 178,80 lançamento / R$ 238,80 normal já embute as taxas; quem quer pagar menos paga no Pix). No Asaas o
+  `installmentCount` é ignorado em *assinatura* (cobrava tudo à vista — validado no sandbox), então o anual no cartão é
+  `POST /payments` com `installmentCount: 12` + `totalValue`, e **a renovação é nossa**: função `renovar-cartao` (cron diário
+  `hopefin-renovar-cartao`, 10:00 BRT) avisa 7 dias antes (e-mail) e recobra pelo **token do cartão** (tabela
+  `subscription_secrets`, só service_role; nunca o número) no mesmo preço travado. Cancelou = token apagado, não renova.
+  Pix anual e mensal seguem como *assinatura* do Asaas. Migrações 0029 (parcelas/token) e 0030 (primeira cobrança).
+- **Reembolso automático (art. 49 CDC):** nos 7 dias da **primeira** cobrança (`primeira_cobranca_em`, renovação não
+  reinicia) o botão "Cancelar e pedir reembolso" em Configurações estorna tudo no Asaas (`asaas-cancelar` com
+  `reembolso: true`) e encerra o acesso na hora. Depois dos 7 dias: cancelar vale só para as próximas cobranças.
+- **Cancelamento (0027 + `asaas-cancelar`)** e **remoção de membro (0028 + `remover-membro`)** no ar e testados no
+  sandbox, com e-mails. Webhook sandbox: token + `SUBSCRIPTION_DELETED` configurados. O webhook só estende o período na
+  1ª notificação de cada cobrança/parcelamento (`asaas_periodo_ref`).
 
 ## Integrações planejadas (ainda não no código)
 
