@@ -90,4 +90,32 @@ export const copy = {
     erroCodigoInvalido: 'Código do convite inválido. Confira com quem te convidou.',
     erroGenerico: 'Não foi possível criar a conta. Tente de novo.',
   },
+
+  splash: {
+    tagline: 'Finanças da família',
+  },
+
+  onboarding: {
+    pular: 'Pular',
+    proximo: 'Próximo',
+    comecar: 'Começar teste grátis',
+    jaTenho: 'Já tenho conta',
+    passos: [
+      {
+        titulo: 'A casa toda no mesmo app',
+        texto: 'Convide quem divide as contas com você. Cada um lança o seu, todos veem o mesmo saldo.',
+        avatar: 'Eu',
+      },
+      {
+        titulo: 'Fale e está lançado',
+        texto: 'Toque no microfone e diga o gasto do seu jeito. O app entende valor, categoria e data.',
+        bolha: '"paguei a luz, 212 reais"',   /* exemplo */
+      },
+      {
+        titulo: 'Veja o mês antes dele chegar',
+        texto: 'Contas fixas, parcelas e faturas viram uma projeção do saldo, para decidir com calma.',
+        mes: 'dezembro',                       /* exemplo */
+      },
+    ],
+  },
 }

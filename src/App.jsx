@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
@@ -29,6 +30,21 @@ import Legal from './pages/Legal'
 import Layout from './components/Layout'
 import CookieConsent from './components/CookieConsent'
 import DevComponentes from './pages/DevComponentes'
+import Splash from './components/Splash'
+import Onboarding from './pages/Onboarding'
+
+// Abertura (splash): mostra 1x por dia, sem tocar na auth.
+const hojeStr = () => new Date().toISOString().slice(0, 10)
+function deveMostrarSplash() {
+  try { return localStorage.getItem('hopefin_splash') !== hojeStr() } catch { return false }
+}
+function marcarSplash() {
+  try { localStorage.setItem('hopefin_splash', hojeStr()) } catch { /* ignore */ }
+}
+// Onboarding: já visto? (default true em erro, pra nunca prender o usuário num loop)
+function jaViuOnboarding() {
+  try { return localStorage.getItem('hopefin_onboarded') === '1' } catch { return true }
+}
 
 function RotaProtegida({ children }) {
   const { user, loading, precisaGrupo } = useAuth()
@@ -38,7 +54,7 @@ function RotaProtegida({ children }) {
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to={jaViuOnboarding() ? '/login' : '/onboarding'} replace />
   if (precisaGrupo) return <EscolhaGrupo />
   return children
 }
@@ -57,11 +73,16 @@ function RotaAdmin({ children }) {
 }
 
 export default function App() {
+  const [splash, setSplash] = useState(deveMostrarSplash)
+  const fecharSplash = useCallback(() => { marcarSplash(); setSplash(false) }, [])
+
   return (
     <>
+    {splash && <Splash onDone={fecharSplash} />}
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<Cadastro />} />
+      <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       <Route path="/termos" element={<Legal doc="termos" />} />
       <Route path="/privacidade" element={<Legal doc="privacidade" />} />
