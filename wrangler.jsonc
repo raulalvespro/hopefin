@@ -1,0 +1,14 @@
+// Cloudflare Worker com static assets (NÃO é o Pages). Publica a pasta dist/ do `vite build`.
+// worker.js = fallback de SPA (telas -> index.html; arquivo inexistente -> 404), igual ao vercel.json.
+// Headers de cache: public/_headers (copiado para dist/ no build).
+// Deploy: `npm run cf:deploy` (precisa de `wrangler login` ou CLOUDFLARE_API_TOKEN na SUA máquina).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hopefin-app",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  }
+}
