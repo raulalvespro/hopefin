@@ -99,6 +99,9 @@ em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `L
   node scripts/db.mjs -e "select count(*) from gastos" # SQL pontual
   node scripts/db.mjs --migrate                        # roda todas (idempotentes)
   ```
+- **Depois de TODA migração de schema, rodar `npm run smoke`** (`scripts/smoke-login.mjs`): entra com a conta de teste, lê o
+  perfil+grupo como o app faz e confere que `criar_grupo` não cria grupo para quem já tem um. Só dar a migração por
+  concluída com `SMOKE OK`. (Credenciais `TESTE_EMAIL/TESTE_SENHA` ficam em `supabase/.env.local`.)
 - **NUNCA criar FK extra entre `grupos` e `usuarios`** (ex.: `grupos.criado_por -> usuarios`): o app faz
   `usuarios?select=*,grupos(*)` no login e o PostgREST passa a recusar com PGRST201 ("more than one relationship"),
   o perfil não carrega e a tela fica em branco. Aconteceu em 07/11/2026 (migração 0028, corrigida na 0031: `criado_por`

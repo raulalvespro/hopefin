@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { normalizarCodigo, limparConvite } from '../lib/convite'
 import { identificar, resetarUsuario } from '../lib/analytics'
+import * as Sentry from '@sentry/react'
 
 const AuthContext = createContext({})
 
@@ -39,6 +40,8 @@ export function AuthProvider({ children }) {
     // fazia o app criar um grupo novo a cada tentativa e tirava a pessoa do grupo dela.
     if (erroPerfil) console.error('[auth] não foi possível carregar o perfil:', erroPerfil.message)
     setErroPerfil(erroPerfil ? (erroPerfil.message || String(erroPerfil)) : null)
+    // Avisa no Sentry (só liga no app publicado, e sem dados pessoais) — era o erro que derrubava o login.
+    if (erroPerfil) Sentry.captureMessage('perfil_nao_carregou: ' + (erroPerfil.code || '') + ' ' + (erroPerfil.message || ''), 'error')
     if (!perfilRow && !erroPerfil) {
       const md = authUser.user_metadata || {}
       const nome = md.nome || authUser.email?.split('@')[0] || 'Usuário'

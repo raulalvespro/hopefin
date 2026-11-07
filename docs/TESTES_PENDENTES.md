@@ -397,3 +397,13 @@ WhatsApp, link, código). Cada passo mostra "onde fica" no menu e uma amostra vi
   se a leitura do perfil falhar**.
 - **Lição:** eu deveria ter testado o login logado após a 0028. Testei só a remoção por RPC. Daqui pra frente, depois de toda
   migração de schema, rodo o select do login com um usuário real antes de dar por concluído.
+
+## 🛡️ Como garantir que não repete para novos usuários (07/11/2026)
+
+Quatro camadas — as duas primeiras já estão em produção:
+1. **Causa raiz (banco, no ar):** 0031 removeu a FK que deixava `grupos`/`usuarios` ambíguos.
+2. **Trava no banco (no ar):** 0032 — `criar_grupo()` devolve o grupo atual se a pessoa já tem um; mesmo que o app falhe, não cria grupo em laço.
+3. **App (aguarda push):** não cria grupo/usuário quando a LEITURA do perfil falha; usa hint explícito na relação; mostra
+   "Não consegui carregar a sua conta" com o motivo e "Tentar de novo"; manda o erro para o Sentry.
+4. **Teste automático:** `npm run smoke` (`scripts/smoke-login.mjs`) — rodar depois de toda migração. Falha se o login/perfil quebrar
+   ou se `criar_grupo` voltar a criar grupo duplicado.
