@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banner preço de fundador</title>
+<!-- Referência de design do HopeFin. Tela: "Banner · preço de fundador" (1200x628px). Original: canvas Telas de entrada, arquivo BannerFundador.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes hf-rise{0%{transform:scaleY(.3)}100%{transform:scaleY(1)}}
+@keyframes hf-fade{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
+.hf-bar{transform-origin:bottom;transform-box:fill-box;animation:hf-rise 2.4s ease-in-out infinite alternate}
+.hf-in{animation:hf-fade .6s ease-out both}
+@media (prefers-reduced-motion: reduce){.hf-bar,.hf-in{animation:none}}
+</style>
+</head>
+<body>
+<div style="width: 1200px; height: 628px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); font-family: 'DM Sans', system-ui, sans-serif; color: #0f172a; background: #ffffff; overflow: hidden">
+  <div style="grid-column: span 7; padding: 64px 0 56px 72px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <svg width="44" height="44" viewBox="0 0 512 512" aria-hidden="true"><rect x="8" y="8" width="496" height="496" rx="108" fill="#ffffff" stroke="#10b981" stroke-width="16"/><g fill="#10b981"><rect x="150" y="146" width="58" height="220" rx="18"/><rect x="304" y="146" width="58" height="220" rx="18"/></g><path d="M190 300 L322 222" fill="none" stroke="#10b981" stroke-width="54" stroke-linecap="round"/></svg>
+      <span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 26px; letter-spacing: -0.01em">hope<span style="color: #059669">fin</span></span>
+    </div>
+    <div class="hf-in" style="display: flex; flex-direction: column; gap: 20px">
+      <span style="align-self: flex-start; font-size: 15px; font-weight: 500; padding: 6px 14px; border-radius: 20px; background: #fef3c7; color: #92400e">Preço de fundador · só 100 vagas</span>
+      <h1 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 60px; line-height: 62px">Um preço para<br>a casa toda.</h1>
+      <p style="margin: 0; display: flex; align-items: baseline; gap: 10px"><span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 48px; color: #047857">R$ 14,90</span><span style="font-size: 20px; color: #475569">por mês, para a família inteira</span></p>
+    </div>
+    <p style="margin: 0; font-size: 18px; color: #475569">14 dias grátis · sem cartão · <span style="font-weight: 500; color: #0f172a">hopefin.com.br</span></p>
+  </div>
+  <div style="grid-column: span 5; position: relative; background: #10b981; border-radius: 40px 0 0 40px; margin: 40px 0; overflow: hidden">
+    <svg width="100%" height="100%" viewBox="0 0 460 548" preserveAspectRatio="xMidYMax meet" aria-hidden="true" style="position: absolute; inset: 0">
+      <rect class="hf-bar" x="56" y="348" width="56" height="200" rx="28" fill="#0ea371"/>
+      <rect class="hf-bar" x="136" y="288" width="56" height="260" rx="28" fill="#ffffff" fill-opacity=".55" style="animation-delay: .2s"/>
+      <rect class="hf-bar" x="216" y="218" width="56" height="330" rx="28" fill="#ffffff" fill-opacity=".75" style="animation-delay: .4s"/>
+      <rect class="hf-bar" x="296" y="138" width="56" height="410" rx="28" fill="#ffffff" style="animation-delay: .6s"/>
+      <circle cx="324" cy="96" r="22" fill="#fbbf24"/>
+    </svg>
+  </div>
+</div>
+</body>
+</html>

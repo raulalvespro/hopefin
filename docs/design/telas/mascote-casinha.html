@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mascote a casinha do mês</title>
+<!-- Referência de design do HopeFin. Tela: "Mascote · a casinha do mês" (1800x700px). Original: canvas Telas de entrada, arquivo MascoteCasinha.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</head>
+<body>
+<div style="width: 1800px; height: 700px; box-sizing: border-box; padding: 48px 56px; background: #ffffff; font-family: 'DM Sans', system-ui, sans-serif; color: #0f172a; display: flex; flex-direction: column; gap: 24px">
+  <div style="display: flex; justify-content: space-between; align-items: baseline">
+    <h2 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 36px">A casinha do mês</h2>
+    <span style="font-size: 18px; color: #475569">Cada lançamento é um tijolinho. Serve para o resumo do mês e para os stories.</span>
+  </div>
+  <svg width="1688" height="560" viewBox="0 0 1688 560" role="img" aria-label="Três etapas da casinha de barro: começo, meio e fim do mês">
+    <defs>
+      <path id="cb-forma" d="M20 250 L20 140 C20 70 80 20 150 20 C220 20 280 70 280 140 L280 250 Z"/>
+      <clipPath id="cb-c1"><rect x="0" y="180" width="300" height="80"/></clipPath>
+      <clipPath id="cb-c2"><rect x="0" y="105" width="300" height="160"/></clipPath>
+      <g id="cb-tijolos" stroke="#a85f2e" stroke-width="4" fill="none" stroke-linecap="round">
+        <path d="M24 220 H276 M24 190 H276 M28 160 H272 M36 130 H264 M52 100 H248 M78 70 H222 M112 44 H188"/>
+        <path d="M80 250 V220 M180 250 V220 M130 220 V190 M230 220 V190 M80 190 V160 M200 190 V160"/>
+      </g>
+    </defs>
+    <g transform="translate(70 120)">
+      <path d="M-20 252 H320" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/>
+      <use href="#cb-forma" fill="none" stroke="#e2e8f0" stroke-width="4" stroke-dasharray="10 10"/>
+      <g clip-path="url(#cb-c1)"><use href="#cb-forma" fill="#c2763d"/><use href="#cb-tijolos"/></g>
+    </g>
+    <text x="220" y="430" text-anchor="middle" font-family="Syne, sans-serif" font-weight="700" font-size="28" fill="#0f172a">Começo do mês</text>
+    <text x="220" y="466" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="20" fill="#475569">os primeiros lançamentos</text>
+
+    <g transform="translate(620 120)">
+      <path d="M-20 252 H320" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/>
+      <use href="#cb-forma" fill="none" stroke="#e2e8f0" stroke-width="4" stroke-dasharray="10 10"/>
+      <g clip-path="url(#cb-c2)"><use href="#cb-forma" fill="#c2763d"/><use href="#cb-tijolos"/><ellipse cx="150" cy="200" rx="38" ry="50" fill="#5c3317"/></g>
+    </g>
+    <text x="770" y="430" text-anchor="middle" font-family="Syne, sans-serif" font-weight="700" font-size="28" fill="#0f172a">Meio do mês</text>
+    <text x="770" y="466" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="20" fill="#475569">contas em dia, casa subindo</text>
+
+    <g transform="translate(1170 120)">
+      <path d="M-20 252 H460" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/>
+      <use href="#cb-forma" fill="#c2763d"/><use href="#cb-tijolos"/>
+      <ellipse cx="150" cy="200" rx="38" ry="50" fill="#5c3317"/>
+      <path d="M150 22 C150 4 152 -8 150 -20" stroke="#047857" stroke-width="6" stroke-linecap="round" fill="none"/>
+      <path d="M150 -12 C128 -14 114 -30 118 -48 C136 -48 149 -32 150 -12 Z" fill="#a7f3d0"/>
+      <path d="M151 -16 C168 -24 185 -38 188 -56 C170 -58 154 -42 151 -16 Z" fill="#34d399"/>
+      <g transform="translate(310 70) scale(.45)">
+        <path d="M88 250 L22 214 L34 252 L18 286 L96 282 Z" fill="#047857"/>
+        <path d="M182 372 L176 418 M176 418 L160 424 M176 418 L188 426 M226 372 L232 418 M232 418 L218 426 M232 418 L248 424" stroke="#f59e0b" stroke-width="9" stroke-linecap="round" fill="none"/>
+        <ellipse cx="205" cy="262" rx="128" ry="122" fill="#10b981"/>
+        <ellipse cx="220" cy="300" rx="78" ry="72" fill="#ffffff"/>
+        <path d="M205 142 C204 122 206 108 204 94" stroke="#047857" stroke-width="7" stroke-linecap="round" fill="none"/>
+        <path d="M204 102 C178 100 160 82 164 62 C186 62 202 80 204 102 Z" fill="#a7f3d0"/>
+        <path d="M205 98 C224 88 244 72 248 50 C226 48 208 66 205 98 Z" fill="#34d399"/>
+        <path d="M156 232 Q172 214 188 232 M230 232 Q246 214 262 232" stroke="#0f172a" stroke-width="8" fill="none" stroke-linecap="round"/>
+        <path d="M192 248 L238 254 L204 262 Z M204 266 L230 262 L206 280 Z" fill="#f59e0b"/>
+        <ellipse cx="100" cy="200" rx="40" ry="64" transform="rotate(-40 100 200)" fill="#059669"/>
+      </g>
+    </g>
+    <text x="1390" y="430" text-anchor="middle" font-family="Syne, sans-serif" font-weight="700" font-size="28" fill="#047857">Mês fechado no azul</text>
+    <text x="1390" y="466" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="20" fill="#475569">casa pronta e o broto brota</text>
+  </svg>
+</div>
+</body>
+</html>

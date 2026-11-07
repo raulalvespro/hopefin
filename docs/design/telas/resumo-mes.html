@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resumo do mês</title>
+<!-- Referência de design do HopeFin. Tela: "Resumo do mês · compartilhável" (360x640px). Original: canvas Telas de entrada, arquivo ResumoMes.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes hf-count{0%{opacity:0;transform:translateY(14px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes hf-arc{0%{stroke-dashoffset:251}100%{stroke-dashoffset:75}}
+.hf-count{animation:hf-count .6s cubic-bezier(.2,.8,.2,1) both}
+.hf-arc{stroke-dasharray:251;animation:hf-arc 1.4s cubic-bezier(.2,.8,.2,1) both .3s}
+@media (prefers-reduced-motion: reduce){.hf-count,.hf-arc{animation:none}}
+</style>
+</head>
+<body>
+<div style="width: 360px; height: 640px; box-sizing: border-box; padding: 40px 28px 32px; display: flex; flex-direction: column; gap: 18px; background: #0f172a; color: #ffffff; font-family: 'DM Sans', system-ui, sans-serif; position: relative; overflow: hidden">
+  <svg width="200" height="200" viewBox="0 0 480 240" aria-hidden="true" style="position: absolute; right: -40px; top: -20px; opacity: .18"><g fill="#10b981"><rect x="248" y="72" width="32" height="192" rx="16"/><rect x="304" y="48" width="32" height="216" rx="16"/><rect x="360" y="24" width="32" height="240" rx="16"/><rect x="416" y="0" width="32" height="264" rx="16"/></g></svg>
+  <div style="display: flex; align-items: center; gap: 8px; position: relative">
+    <svg width="26" height="26" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#ffffff"/><g fill="#10b981"><rect x="150" y="146" width="58" height="220" rx="18"/><rect x="304" y="146" width="58" height="220" rx="18"/></g><path d="M190 300 L322 222" fill="none" stroke="#10b981" stroke-width="54" stroke-linecap="round"/></svg>
+    <span style="font-size: 13px; color: #94a3b8">Novembro na Casa Oliveira</span>
+  </div>
+  <div class="hf-count" style="display: flex; flex-direction: column; gap: 4px; position: relative">
+    <span style="font-size: 15px; color: #94a3b8">Sobrou no fim do mês</span>
+    <span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 52px; line-height: 54px; color: #34d399">R$ 1.240</span>
+    <span style="font-size: 14px; color: #e2e8f0">R$ 380 a mais que outubro</span>
+  </div>
+  <div class="hf-count" style="display: flex; gap: 16px; align-items: center; background: #111a2e; border-radius: 16px; padding: 16px; animation-delay: .2s">
+    <svg width="92" height="92" viewBox="0 0 92 92" role="img" aria-label="70% da meta">
+      <circle cx="46" cy="46" r="40" fill="none" stroke="#1b253b" stroke-width="10"/>
+      <circle class="hf-arc" cx="46" cy="46" r="40" fill="none" stroke="#a78bfa" stroke-width="10" stroke-linecap="round" transform="rotate(-90 46 46)" style="stroke-dashoffset: 75"/>
+      <text x="46" y="52" text-anchor="middle" font-family="Syne, sans-serif" font-weight="700" font-size="18" fill="#ffffff">70%</text>
+    </svg>
+    <div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 13px; color: #94a3b8">Meta da viagem</span><span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px">R$ 2.100 de R$ 3.000</span></div>
+  </div>
+  <div class="hf-count" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; animation-delay: .35s">
+    <div style="background: #111a2e; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #94a3b8">Contas no prazo</span><span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 22px">12 de 12</span></div>
+    <div style="background: #111a2e; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #94a3b8">Lançado por voz</span><span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 22px">64%</span></div>
+  </div>
+  <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: center; position: relative">
+    <span style="font-size: 13px; color: #94a3b8">Organizado com o HopeFin</span>
+    <span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px">hopefin.com.br</span>
+  </div>
+</div>
+</body>
+</html>

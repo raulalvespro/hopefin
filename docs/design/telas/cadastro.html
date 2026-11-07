@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadastro HopeFin</title>
+<!-- Referência de design do HopeFin. Tela: "Cadastro · computador" (1280x800px). Original: canvas Telas de entrada, arquivo Cadastro.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065f46}
+@keyframes hf-pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.06);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes hf-line{0%{stroke-dashoffset:120}100%{stroke-dashoffset:0}}
+@keyframes hf-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes hf-fade{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+.hf-pop{animation:hf-pop .7s ease-out both}
+.hf-line{stroke-dasharray:120;animation:hf-line 1.2s ease-out both}
+.hf-pulse{transform-origin:center;animation:hf-pulse 3.2s ease-in-out infinite}
+.hf-in{animation:hf-fade .6s ease-out both}
+@media (prefers-reduced-motion: reduce){.hf-pop,.hf-line,.hf-pulse,.hf-in{animation:none}}
+</style>
+</head>
+<body>
+<div style="width: 1280px; height: 800px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-family: 'DM Sans', system-ui, sans-serif; color: #0f172a; background: #f6f7f9">
+  <section aria-label="Um preço para a casa toda" style="position: relative; overflow: hidden; background: #ffffff; border-right: 1px solid rgba(15,23,42,.07); padding: 56px 64px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <svg width="40" height="40" viewBox="0 0 512 512" aria-hidden="true"><rect x="8" y="8" width="496" height="496" rx="108" fill="#ffffff" stroke="#10b981" stroke-width="16"/><g fill="#10b981"><rect x="150" y="146" width="58" height="220" rx="18"/><rect x="304" y="146" width="58" height="220" rx="18"/></g><path d="M190 300 L322 222" fill="none" stroke="#10b981" stroke-width="54" stroke-linecap="round"/></svg>
+      <span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.01em">hope<span style="color: #059669">fin</span></span>
+    </div>
+    <div class="hf-in" style="display: flex; flex-direction: column; gap: 16px; max-width: 480px">
+      <h1 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 44px; line-height: 48px">Um preço para a casa toda.</h1>
+      <p style="margin: 0; font-size: 17px; line-height: 26px; color: #475569">Crie o grupo da sua família e convide quem divide as contas com você. Cada um lança no próprio celular, e o saldo é um só.</p>
+    </div>
+    <div style="position: relative; height: 260px">
+      <svg width="520" height="240" viewBox="0 0 520 240" aria-hidden="true" style="position: absolute; left: 0; bottom: 0">
+        <path class="hf-line" d="M70 70 C 150 70, 170 150, 250 150" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" style="animation-delay: .5s"/>
+        <path class="hf-line" d="M70 190 C 150 190, 170 150, 250 150" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" style="animation-delay: .7s"/>
+        <path class="hf-line" d="M430 70 C 350 70, 330 150, 270 150" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" style="animation-delay: .9s"/>
+        <g class="hf-pop" style="animation-delay: .1s"><circle cx="70" cy="70" r="34" fill="#d1fae5"/><text x="70" y="77" text-anchor="middle" font-family="Syne, sans-serif" font-weight="700" font-size="20" fill="#065f46">Você</text></g>
+        <g class="hf-pop" style="animation-delay: .25s"><circle cx="70" cy="190" r="34" fill="#dbeafe"/><text x="70" y="197" text-anchor="middle" font-family="Syne, sans-serif" font-weight="700" font-size="20" fill="#1e3a8a">+1</text></g>
+        <g class="hf-pop" style="animation-delay: .4s"><circle cx="430" cy="70" r="34" fill="#ede9fe"/><text x="430" y="77" text-anchor="middle" font-family="Syne, sans-serif" font-weight="700" font-size="20" fill="#4c1d95">+1</text></g>
+        <g class="hf-pulse"><rect x="200" y="110" width="120" height="80" rx="16" fill="#10b981"/><text x="260" y="146" text-anchor="middle" font-family="DM Sans, sans-serif" font-size="13" fill="#06281e">Saldo da casa</text><text x="260" y="170" text-anchor="middle" font-family="Syne, sans-serif" font-weight="700" font-size="18" fill="#06281e">R$ 2.418</text></g>
+      </svg>
+      <div style="position: absolute; right: 0; bottom: 8px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+        <span style="font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: #fef3c7; color: #92400e">Preço de fundador: 100 vagas</span>
+        <span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 22px">R$ 14,90<span style="font-family: 'DM Sans', system-ui, sans-serif; font-weight: 400; font-size: 14px; color: #475569"> /mês para a família</span></span>
+      </div>
+    </div>
+  </section>
+  <section style="display: flex; align-items: center; justify-content: center; padding: 48px; box-sizing: border-box">
+    <form class="hf-in" style="width: 420px; background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 16px; padding: 40px; box-sizing: border-box; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 1px 3px rgba(15,23,42,.06); display: flex; flex-direction: column; gap: 16px; animation-delay: .15s">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h2 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 26px; line-height: 32px">Criar conta</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 22px; color: #64748b">14 dias grátis, sem cartão de crédito.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="cad-nome" style="font-size: 13px; color: #475569">Seu nome</label>
+        <input id="cad-nome" type="text" placeholder="Como quer ser chamado" style="font: inherit; font-size: 15px; color: #0f172a; background: #eef1f5; border: 1px solid rgba(15,23,42,.12); border-radius: 8px; padding: 10px 14px">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="cad-email" style="font-size: 13px; color: #475569">E-mail</label>
+        <input id="cad-email" type="email" placeholder="voce@email.com" style="font: inherit; font-size: 15px; color: #0f172a; background: #eef1f5; border: 1px solid rgba(15,23,42,.12); border-radius: 8px; padding: 10px 14px">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="cad-senha" style="font-size: 13px; color: #475569">Senha</label>
+        <input id="cad-senha" type="password" placeholder="Mínimo de 8 caracteres" style="font: inherit; font-size: 15px; color: #0f172a; background: #eef1f5; border: 1px solid rgba(15,23,42,.12); border-radius: 8px; padding: 10px 14px">
+      </div>
+      <div style="display: flex; gap: 10px; align-items: flex-start">
+        <input id="cad-termos" type="checkbox" style="margin-top: 3px; width: 18px; height: 18px; accent-color: #10b981">
+        <label for="cad-termos" style="font-size: 13px; line-height: 19px; color: #475569">Li e aceito os <a href="https://hopefin.com.br/termos">Termos de Uso</a> e a <a href="https://hopefin.com.br/privacidade">Política de Privacidade</a>.</label>
+      </div>
+      <button type="button" style="margin-top: 4px; min-height: 44px; background: #10b981; color: #06281e; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .02em; border: none; border-radius: 8px; cursor: pointer">Começar teste grátis</button>
+      <div style="height: 1px; background: rgba(15,23,42,.07); margin: 4px 0"></div>
+      <p style="margin: 0; font-size: 14px; color: #64748b; text-align: center">Já tem conta? <a href="login.html" style="font-weight: 500">Entrar</a></p>
+    </form>
+  </section>
+</div>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lançar por voz</title>
+<!-- Referência de design do HopeFin. Tela: "Lançar por voz" (390x844px). Original: canvas Telas de entrada, arquivo VozOuvindo.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes hf-ring{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.9);opacity:0}}
+@keyframes hf-wave{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+@keyframes hf-type{0%{width:0}100%{width:100%}}
+@keyframes hf-slide{0%{transform:translateY(20px);opacity:0}100%{transform:translateY(0);opacity:1}}
+.hf-ring{transform-origin:center;animation:hf-ring 1.8s ease-out infinite}
+.hf-wave{transform-origin:center;transform-box:fill-box;animation:hf-wave .9s ease-in-out infinite}
+.hf-type{display:inline-block;overflow:hidden;white-space:nowrap;vertical-align:bottom;animation:hf-type 2.4s steps(36) both .4s}
+.hf-slide{animation:hf-slide .5s ease-out both 2.9s}
+@media (prefers-reduced-motion: reduce){.hf-ring,.hf-wave,.hf-type,.hf-slide{animation:none}}
+</style>
+</head>
+<body>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; font-family: 'DM Sans', system-ui, sans-serif; color: #0f172a; background: #f6f7f9">
+  <div aria-hidden="true" style="padding: 56px 20px 0; display: flex; flex-direction: column; gap: 12px">
+    <div style="height: 22px; width: 140px; border-radius: 6px; background: #e2e8f0"></div>
+    <div style="height: 110px; border-radius: 12px; background: #ffffff"></div>
+    <div style="height: 64px; border-radius: 12px; background: #ffffff"></div>
+    <div style="height: 64px; border-radius: 12px; background: #ffffff"></div>
+  </div>
+  <div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(15,23,42,.45)"></div>
+  <section aria-label="Lançar por voz" style="position: absolute; left: 0; right: 0; bottom: 0; height: 620px; background: #ffffff; border-radius: 24px 24px 0 0; padding: 12px 24px 32px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 20px">
+    <div aria-hidden="true" style="width: 40px; height: 4px; border-radius: 2px; background: #cbd5e1"></div>
+    <span style="font-size: 13px; color: #475569">Ouvindo…</span>
+    <div style="position: relative; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center">
+      <span class="hf-ring" aria-hidden="true" style="position: absolute; inset: 0; border-radius: 48px; background: #10b981"></span>
+      <span class="hf-ring" aria-hidden="true" style="position: absolute; inset: 0; border-radius: 48px; background: #10b981; animation-delay: .9s"></span>
+      <button type="button" aria-label="Parar de ouvir" style="position: relative; width: 80px; height: 80px; border-radius: 40px; border: none; background: #10b981; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="32" height="32" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="#06281e" stroke-width="2"/><path d="M5 11 a7 7 0 0 0 14 0 M12 18 v3" fill="none" stroke="#06281e" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <svg width="200" height="40" viewBox="0 0 200 40" aria-hidden="true">
+      <rect class="hf-wave" x="0" y="4" width="8" height="32" rx="4" fill="#10b981"/>
+      <rect class="hf-wave" x="16" y="4" width="8" height="32" rx="4" fill="#10b981" style="animation-delay: .1s"/>
+      <rect class="hf-wave" x="32" y="4" width="8" height="32" rx="4" fill="#10b981" style="animation-delay: .25s"/>
+      <rect class="hf-wave" x="48" y="4" width="8" height="32" rx="4" fill="#10b981" style="animation-delay: .05s"/>
+      <rect class="hf-wave" x="64" y="4" width="8" height="32" rx="4" fill="#10b981" style="animation-delay: .3s"/>
+      <rect class="hf-wave" x="80" y="4" width="8" height="32" rx="4" fill="#10b981" style="animation-delay: .15s"/>
+      <rect class="hf-wave" x="96" y="4" width="8" height="32" rx="4" fill="#10b981" style="animation-delay: .4s"/>
+      <rect class="hf-wave" x="112" y="4" width="8" height="32" rx="4" fill="#10b981" style="animation-delay: .2s"/>
+      <rect class="hf-wave" x="128" y="4" width="8" height="32" rx="4" fill="#10b981" style="animation-delay: .35s"/>
+      <rect class="hf-wave" x="144" y="4" width="8" height="32" rx="4" fill="#10b981" style="animation-delay: .1s"/>
+      <rect class="hf-wave" x="160" y="4" width="8" height="32" rx="4" fill="#10b981" style="animation-delay: .25s"/>
+      <rect class="hf-wave" x="176" y="4" width="8" height="32" rx="4" fill="#10b981" style="animation-delay: .05s"/>
+      <rect class="hf-wave" x="192" y="4" width="8" height="32" rx="4" fill="#10b981" style="animation-delay: .3s"/>
+    </svg>
+    <p style="margin: 0; font-size: 18px; line-height: 26px; text-align: center; min-height: 52px">“<span class="hf-type">gastei 50 reais no mercado no nubank</span>”</p>
+    <div class="hf-slide" style="width: 100%; border: 1px solid rgba(15,23,42,.12); border-radius: 12px; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span style="font-size: 13px; color: #475569">Entendi assim</span>
+        <span style="font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: rgba(239,68,68,.1); color: #b91c1c">Gasto</span>
+      </div>
+      <span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 28px">R$ 50,00</span>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; font-size: 13px">
+        <div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #475569">Categoria</span><span style="font-weight: 500">Mercado</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #475569">Cartão</span><span style="font-weight: 500">Nubank</span></div>
+        <div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #475569">Data</span><span style="font-weight: 500">Hoje</span></div>
+      </div>
+      <div style="display: flex; gap: 10px">
+        <button type="button" style="flex: 1; min-height: 44px; background: none; color: #475569; font: inherit; font-size: 14px; border: 1px solid rgba(15,23,42,.12); border-radius: 8px; cursor: pointer">Corrigir</button>
+        <button type="button" style="flex: 2; min-height: 44px; background: #10b981; color: #06281e; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 14px; letter-spacing: .02em; border: none; border-radius: 8px; cursor: pointer">Salvar gasto</button>
+      </div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

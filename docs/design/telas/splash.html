@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Abertura do HopeFin</title>
+<!-- Referência de design do HopeFin. Tela: "Abertura do app" (390x844px). Original: canvas Telas de entrada, arquivo Splash.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700&amp;family=DM+Sans:wght@400&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes hf-post{0%{transform:scaleY(0)}100%{transform:scaleY(1)}}
+@keyframes hf-bar{0%{stroke-dashoffset:160}100%{stroke-dashoffset:0}}
+@keyframes hf-box{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes hf-word{0%{opacity:0;letter-spacing:.2em}100%{opacity:1;letter-spacing:-.01em}}
+@keyframes hf-loop{0%{transform:scale(1)}50%{transform:scale(1.04)}100%{transform:scale(1)}}
+.hf-box{transform-origin:center;transform-box:fill-box;animation:hf-box .5s cubic-bezier(.2,.8,.2,1) both}
+.hf-post{transform-origin:bottom;transform-box:fill-box;animation:hf-post .45s ease-out both}
+.hf-bar{stroke-dasharray:160;animation:hf-bar .5s ease-out both 1s}
+.hf-word{animation:hf-word .7s ease-out both 1.3s}
+.hf-loop{animation:hf-loop 2.4s ease-in-out infinite 2s}
+@media (prefers-reduced-motion: reduce){.hf-box,.hf-post,.hf-bar,.hf-word,.hf-loop{animation:none}}
+</style>
+</head>
+<body>
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; background: #ffffff; font-family: 'DM Sans', system-ui, sans-serif; position: relative">
+  <svg class="hf-loop" width="132" height="132" viewBox="0 0 512 512" role="img" aria-label="HopeFin">
+    <rect class="hf-box" x="8" y="8" width="496" height="496" rx="108" fill="#ffffff" stroke="#10b981" stroke-width="16"/>
+    <rect class="hf-post" x="150" y="146" width="58" height="220" rx="18" fill="#10b981" style="animation-delay: .45s"/>
+    <rect class="hf-post" x="304" y="146" width="58" height="220" rx="18" fill="#10b981" style="animation-delay: .65s"/>
+    <path class="hf-bar" d="M190 300 L322 222" fill="none" stroke="#10b981" stroke-width="54" stroke-linecap="round"/>
+  </svg>
+  <span class="hf-word" style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 34px; color: #0f172a">hope<span style="color: #059669">fin</span></span>
+  <span style="position: absolute; bottom: 40px; font-size: 13px; color: #64748b">Finanças da família</span>
+</div>
+</body>
+</html>

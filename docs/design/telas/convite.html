@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convite da família</title>
+<!-- Referência de design do HopeFin. Tela: "Convite da família" (390x844px). Original: canvas Telas de entrada, arquivo Convite.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes hf-pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.1);opacity:1}100%{transform:scale(1)}}
+@keyframes hf-dash{0%{stroke-dashoffset:24}100%{stroke-dashoffset:0}}
+.hf-pop{animation:hf-pop .6s ease-out both}
+.hf-dash{stroke-dasharray:4 6;animation:hf-dash 1.2s linear infinite}
+@media (prefers-reduced-motion: reduce){.hf-pop,.hf-dash{animation:none}}
+</style>
+</head>
+<body>
+<div style="width: 390px; height: 844px; overflow: hidden; font-family: 'DM Sans', system-ui, sans-serif; color: #0f172a; background: #f6f7f9; padding: 52px 20px 28px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px">
+  <header style="display: flex; align-items: center; justify-content: space-between">
+    <a href="inicio.html" aria-label="Voltar" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #0f172a; margin-left: -12px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6 9 12l6 6"/></svg></a>
+    <h1 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 20px">Convidar para o grupo</h1>
+    <span style="width: 32px"></span>
+  </header>
+  <div style="display: flex; justify-content: center; align-items: center; gap: 0">
+    <svg width="300" height="92" viewBox="0 0 300 92" aria-hidden="true">
+      <path class="hf-dash" d="M78 46 H128 M172 46 H222" stroke="#10b981" stroke-width="3" stroke-linecap="round"/>
+      <g class="hf-pop"><circle cx="46" cy="46" r="32" fill="#d1fae5"/><text x="46" y="52" text-anchor="middle" font-family="Syne, sans-serif" font-weight="700" font-size="18" fill="#047857">AN</text></g>
+      <g class="hf-pop" style="animation-delay: .2s"><circle cx="150" cy="46" r="32" fill="#dbeafe"/><text x="150" y="52" text-anchor="middle" font-family="Syne, sans-serif" font-weight="700" font-size="18" fill="#1d4ed8">PE</text></g>
+      <g class="hf-pop" style="animation-delay: .4s"><circle cx="254" cy="46" r="32" fill="#ffffff" stroke="#10b981" stroke-width="3" stroke-dasharray="6 6"/><path d="M254 34 V58 M242 46 H266" stroke="#047857" stroke-width="3.5" stroke-linecap="round"/></g>
+    </svg>
+  </div>
+  <section aria-label="Cartão de convite" style="background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px; line-height: 24px">Casa Oliveira</span>
+      <span style="font-size: 14px; color: #475569">2 membros · plano Família</span>
+    </div>
+    <svg width="148" height="148" viewBox="0 0 21 21" role="img" aria-label="QR code de exemplo" shape-rendering="crispEdges">
+      <rect width="21" height="21" fill="#ffffff"/>
+      <g fill="#0f172a">
+        <path d="M0 0h7v7H0zM1 1v5h5V1zM2 2h3v3H2z"/><path d="M14 0h7v7h-7zM15 1v5h5V1zM16 2h3v3h-3z"/><path d="M0 14h7v7H0zM1 15v5h5v-5zM2 16h3v3H2z"/>
+        <path d="M8 0h1v1H8zM10 0h2v1h-2zM9 2h2v1H9zM8 3h1v2H8zM11 3h1v1h-1zM10 5h2v1h-2zM8 6h1v1H8zM12 7h2v1h-2zM8 8h3v1H8zM15 8h1v1h-1zM17 8h2v1h-2zM0 8h2v1H0zM3 8h2v1H3zM1 9h1v2H1zM4 10h3v1H4zM9 9h1v2H9zM11 10h3v1h-3zM16 10h1v2h-1zM19 9h2v1h-2zM18 11h1v1h-1zM0 12h3v1H0zM5 12h1v1H5zM8 12h2v1H8zM12 12h1v2h-1zM14 12h1v1h-1zM17 13h3v1h-3zM8 14h1v2H8zM10 14h1v1h-1zM14 14h2v1h-2zM19 15h2v1h-2zM9 16h3v1H9zM15 16h1v2h-1zM17 17h2v1h-2zM8 18h1v1H8zM11 18h2v1h-2zM14 19h1v2h-1zM16 19h2v1h-2zM9 20h2v1H9zM19 19h1v2h-1z"/>
+      </g>
+      <rect x="8.5" y="8.5" width="4" height="4" rx="1" fill="#ffffff"/><rect x="9" y="9" width="3" height="3" rx=".8" fill="#10b981"/>
+    </svg>
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 13px; color: #475569">Ou digite o código no app</span>
+      <span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: .12em">CASA-7K2P</span>
+    </div>
+  </section>
+  <p style="margin: 0; font-size: 14px; line-height: 20px; color: #475569; text-align: center">Quem entrar vê e lança nos mesmos gastos, contas e metas. Você pode remover alguém a qualquer momento.</p>
+  <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px">
+    <button type="button" style="min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 10px; background: #10b981; color: #06281e; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 16px; border: none; border-radius: 10px; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#06281e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/></svg>Enviar pelo WhatsApp</button>
+    <button type="button" style="min-height: 44px; background: none; color: #0f172a; font: inherit; font-size: 15px; border: 1px solid rgba(15,23,42,.12); border-radius: 10px; cursor: pointer">Copiar link do convite</button>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboarding HopeFin</title>
+<!-- Referência de design do HopeFin. Tela: "Onboarding · 3 telas" (1290x844px). Original: canvas Telas de entrada, arquivo Onboarding.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes hf-orbit{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+@keyframes hf-counter{0%{transform:rotate(0)}100%{transform:rotate(-360deg)}}
+@keyframes hf-ring{0%{transform:scale(1);opacity:.45}100%{transform:scale(1.8);opacity:0}}
+@keyframes hf-draw{0%{stroke-dashoffset:420}100%{stroke-dashoffset:0}}
+@keyframes hf-dot{0%,80%{opacity:0;transform:scale(.4)}100%{opacity:1;transform:scale(1)}}
+.hf-orbit{transform-origin:150px 130px;animation:hf-orbit 18s linear infinite}
+.hf-counter{transform-box:fill-box;transform-origin:center;animation:hf-counter 18s linear infinite}
+.hf-ring{transform-origin:center;animation:hf-ring 2s ease-out infinite}
+.hf-draw{stroke-dasharray:420;animation:hf-draw 2.4s ease-out infinite alternate}
+.hf-dot{transform-box:fill-box;transform-origin:center;animation:hf-dot 2.4s ease-out infinite alternate}
+@media (prefers-reduced-motion: reduce){.hf-orbit,.hf-counter,.hf-ring,.hf-draw,.hf-dot{animation:none}}
+</style>
+</head>
+<body>
+<div style="width: 1290px; height: 844px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 60px; font-family: 'DM Sans', system-ui, sans-serif; color: #0f172a; background: transparent">
+  <section aria-label="Tela 1 de 3" style="background: #ffffff; border-radius: 28px; padding: 64px 28px 36px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px">
+    <a href="#pular" style="align-self: flex-end; font-size: 14px; color: #475569; text-decoration: none; margin-top: -40px">Pular</a>
+    <div style="height: 300px; display: flex; align-items: center; justify-content: center; background: #ecfdf5; border-radius: 24px">
+      <svg width="300" height="260" viewBox="0 0 300 260" aria-hidden="true">
+        <circle cx="150" cy="130" r="92" fill="none" stroke="#a7f3d0" stroke-width="2" stroke-dasharray="4 8"/>
+        <rect x="110" y="100" width="80" height="60" rx="16" fill="#10b981"/>
+        <path d="M128 140 L146 126 L158 132 L174 116" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <g class="hf-orbit">
+          <g class="hf-counter"><circle cx="150" cy="38" r="24" fill="#ffffff" stroke="#10b981" stroke-width="3"/><text x="150" y="44" text-anchor="middle" font-family="Syne, sans-serif" font-weight="700" font-size="16" fill="#065f46">Eu</text></g>
+          <g class="hf-counter"><circle cx="230" cy="176" r="22" fill="#ffffff" stroke="#3b82f6" stroke-width="3"/><circle cx="230" cy="170" r="6" fill="#3b82f6"/><path d="M219 186 a11 9 0 0 1 22 0" fill="#3b82f6"/></g>
+          <g class="hf-counter"><circle cx="70" cy="176" r="22" fill="#ffffff" stroke="#8b5cf6" stroke-width="3"/><circle cx="70" cy="170" r="6" fill="#8b5cf6"/><path d="M59 186 a11 9 0 0 1 22 0" fill="#8b5cf6"/></g>
+        </g>
+      </svg>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 26px; line-height: 30px">A casa toda no mesmo app</h2>
+      <p style="margin: 0; font-size: 15px; line-height: 22px; color: #475569">Convide quem divide as contas com você. Cada um lança o seu, todos veem o mesmo saldo.</p>
+    </div>
+    <div style="margin-top: auto; display: flex; align-items: center; justify-content: space-between">
+      <div aria-hidden="true" style="display: flex; gap: 6px"><span style="width: 22px; height: 8px; border-radius: 4px; background: #10b981"></span><span style="width: 8px; height: 8px; border-radius: 4px; background: #cbd5e1"></span><span style="width: 8px; height: 8px; border-radius: 4px; background: #cbd5e1"></span></div>
+      <button type="button" style="min-height: 48px; padding: 0 28px; background: #10b981; color: #06281e; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 15px; border: none; border-radius: 8px; cursor: pointer">Próximo</button>
+    </div>
+  </section>
+  <section aria-label="Tela 2 de 3" style="background: #ffffff; border-radius: 28px; padding: 64px 28px 36px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px">
+    <a href="#pular" style="align-self: flex-end; font-size: 14px; color: #475569; text-decoration: none; margin-top: -40px">Pular</a>
+    <div style="height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; background: #eff6ff; border-radius: 24px">
+      <div style="position: relative; width: 104px; height: 104px; display: flex; align-items: center; justify-content: center">
+        <span class="hf-ring" aria-hidden="true" style="position: absolute; inset: 0; border-radius: 52px; background: #10b981"></span>
+        <span aria-hidden="true" style="position: relative; width: 88px; height: 88px; border-radius: 44px; background: #10b981; display: flex; align-items: center; justify-content: center"><svg width="36" height="36" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="#06281e" stroke-width="2"/><path d="M5 11 a7 7 0 0 0 14 0 M12 18 v3" fill="none" stroke="#06281e" stroke-width="2" stroke-linecap="round"/></svg></span>
+      </div>
+      <span style="background: #ffffff; border-radius: 16px 16px 16px 4px; padding: 12px 16px; font-size: 15px; box-shadow: 0 1px 3px rgba(15,23,42,.08)">“paguei a luz, 212 reais”</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 26px; line-height: 30px">Fale e está lançado</h2>
+      <p style="margin: 0; font-size: 15px; line-height: 22px; color: #475569">Toque no microfone e diga o gasto do seu jeito. O app entende valor, categoria e data.</p>
+    </div>
+    <div style="margin-top: auto; display: flex; align-items: center; justify-content: space-between">
+      <div aria-hidden="true" style="display: flex; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 4px; background: #cbd5e1"></span><span style="width: 22px; height: 8px; border-radius: 4px; background: #10b981"></span><span style="width: 8px; height: 8px; border-radius: 4px; background: #cbd5e1"></span></div>
+      <button type="button" style="min-height: 48px; padding: 0 28px; background: #10b981; color: #06281e; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 15px; border: none; border-radius: 8px; cursor: pointer">Próximo</button>
+    </div>
+  </section>
+  <section aria-label="Tela 3 de 3" style="background: #ffffff; border-radius: 28px; padding: 64px 28px 36px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px">
+    <span style="margin-top: -40px; height: 20px"></span>
+    <div style="height: 300px; display: flex; align-items: center; justify-content: center; background: #f5f3ff; border-radius: 24px">
+      <svg width="300" height="220" viewBox="0 0 300 220" aria-hidden="true">
+        <line x1="20" y1="190" x2="280" y2="190" stroke="#ddd6fe" stroke-width="2"/>
+        <line x1="20" y1="130" x2="280" y2="130" stroke="#ede9fe" stroke-width="2"/>
+        <line x1="20" y1="70" x2="280" y2="70" stroke="#ede9fe" stroke-width="2"/>
+        <path class="hf-draw" d="M20 160 L80 150 L130 166 L180 120 L230 100 L280 60" fill="none" stroke="#10b981" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M180 120 L230 100 L280 60" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="2 8" stroke-linecap="round"/>
+        <g class="hf-dot"><circle cx="280" cy="60" r="10" fill="#10b981"/><circle cx="280" cy="60" r="4" fill="#ffffff"/></g>
+        <rect x="196" y="16" width="98" height="30" rx="15" fill="#ffffff" stroke="#ddd6fe"/>
+        <text x="245" y="36" text-anchor="middle" font-family="DM Sans, sans-serif" font-weight="500" font-size="13" fill="#5b21b6">dezembro</text>
+      </svg>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 26px; line-height: 30px">Veja o mês antes dele chegar</h2>
+      <p style="margin: 0; font-size: 15px; line-height: 22px; color: #475569">Contas fixas, parcelas e faturas viram uma projeção do saldo, para decidir com calma.</p>
+    </div>
+    <div style="margin-top: auto; display: flex; flex-direction: column; gap: 14px">
+      <div aria-hidden="true" style="display: flex; gap: 6px; justify-content: center"><span style="width: 8px; height: 8px; border-radius: 4px; background: #cbd5e1"></span><span style="width: 8px; height: 8px; border-radius: 4px; background: #cbd5e1"></span><span style="width: 22px; height: 8px; border-radius: 4px; background: #10b981"></span></div>
+      <a href="cadastro.html" style="min-height: 48px; display: flex; align-items: center; justify-content: center; background: #10b981; color: #06281e; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 15px; border-radius: 8px; text-decoration: none">Começar teste grátis</a>
+      <a href="login.html" style="font-size: 14px; color: #047857; text-align: center; padding: 4px 0">Já tenho conta</a>
+    </div>
+  </section>
+</div>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feedback e comemorações</title>
+<!-- Referência de design do HopeFin. Tela: "Feedback e comemorações" (880x600px). Original: canvas Telas de entrada, arquivo Feedback.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes hf-toast{0%{transform:translateY(-16px);opacity:0}12%,88%{transform:translateY(0);opacity:1}100%{transform:translateY(-16px);opacity:0}}
+@keyframes hf-spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+@keyframes hf-conf{0%{transform:translateY(-30px) rotate(0);opacity:0}20%{opacity:1}100%{transform:translateY(90px) rotate(240deg);opacity:0}}
+@keyframes hf-fill{0%{width:0}100%{width:100%}}
+@keyframes hf-meter{0%{width:0}100%{width:82%}}
+@keyframes hf-shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
+.hf-toast{animation:hf-toast 4s ease-in-out infinite}
+.hf-spin{transform-origin:center;animation:hf-spin .9s linear infinite}
+.hf-conf{animation:hf-conf 2.6s ease-in infinite}
+.hf-fill{animation:hf-fill 2.6s ease-out infinite}
+.hf-meter{animation:hf-meter 1.6s ease-out both}
+.hf-shake{animation:hf-shake .5s ease-in-out infinite 1.5s}
+@media (prefers-reduced-motion: reduce){.hf-toast,.hf-spin,.hf-conf,.hf-fill,.hf-meter,.hf-shake{animation:none}}
+</style>
+</head>
+<body>
+<div style="width: 880px; height: 600px; box-sizing: border-box; padding: 32px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; font-family: 'DM Sans', system-ui, sans-serif; color: #0f172a; background: #f6f7f9">
+  <section aria-label="Avisos rápidos" style="background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+    <span style="font-size: 13px; color: #475569">Avisos rápidos</span>
+    <div class="hf-toast" role="status" style="display: flex; align-items: center; gap: 12px; background: #0f172a; color: #ffffff; border-radius: 12px; padding: 12px 14px">
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="11" fill="#10b981"/><path d="M6.5 11.5 L9.5 14.5 L15.5 8" fill="none" stroke="#06281e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span style="flex: 1; font-size: 14px">Gasto salvo: R$ 50,00 em Mercado</span>
+      <a href="#desfazer" style="font-size: 14px; font-weight: 500; color: #34d399">Desfazer</a>
+    </div>
+    <div class="hf-toast" role="status" style="display: flex; align-items: center; gap: 12px; background: #0f172a; color: #ffffff; border-radius: 12px; padding: 12px 14px; animation-delay: 1.3s">
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="11" fill="#3b82f6"/><path d="M6 8 H16 M6 11 H16 M6 14 H12" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/></svg>
+      <span style="flex: 1; font-size: 14px">Fatura do Nubank fecha em 3 dias</span>
+    </div>
+    <div class="hf-toast" role="alert" style="display: flex; align-items: center; gap: 12px; background: #fef2f2; color: #7f1d1d; border: 1px solid #fecaca; border-radius: 12px; padding: 12px 14px; animation-delay: 2.6s">
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="11" fill="#ef4444"/><path d="M11 6 V12 M11 15.5 V16" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/></svg>
+      <span style="flex: 1; font-size: 14px">Não foi possível salvar. Tente de novo.</span>
+    </div>
+  </section>
+  <section aria-label="Meta alcançada" style="position: relative; overflow: hidden; background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center">
+    <span class="hf-conf" aria-hidden="true" style="position: absolute; top: 10px; left: 40px; width: 8px; height: 14px; border-radius: 2px; background: #10b981"></span>
+    <span class="hf-conf" aria-hidden="true" style="position: absolute; top: 10px; left: 110px; width: 8px; height: 8px; border-radius: 4px; background: #fbbf24; animation-delay: .5s"></span>
+    <span class="hf-conf" aria-hidden="true" style="position: absolute; top: 10px; left: 190px; width: 8px; height: 14px; border-radius: 2px; background: #8b5cf6; animation-delay: 1.1s"></span>
+    <span class="hf-conf" aria-hidden="true" style="position: absolute; top: 10px; right: 90px; width: 8px; height: 8px; border-radius: 4px; background: #3b82f6; animation-delay: .3s"></span>
+    <span class="hf-conf" aria-hidden="true" style="position: absolute; top: 10px; right: 40px; width: 8px; height: 14px; border-radius: 2px; background: #10b981; animation-delay: 1.6s"></span>
+    <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="34" fill="#f5f3ff"/><path d="M24 40 c0-10 6-16 12-16 s12 6 12 16 v6 H24z" fill="#8b5cf6"/><circle cx="36" cy="20" r="4" fill="#fbbf24"/><rect x="26" y="46" width="20" height="6" rx="3" fill="#5b21b6"/></svg>
+    <h3 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 20px">Meta da viagem alcançada</h3>
+    <p style="margin: 0; font-size: 14px; color: #475569">R$ 3.000,00 guardados em 7 meses.</p>
+    <button type="button" style="min-height: 44px; padding: 0 20px; background: #8b5cf6; color: #ffffff; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 14px; border: none; border-radius: 8px; cursor: pointer">Ver cofrinho</button>
+  </section>
+  <section aria-label="Botões em ação" style="background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+    <span style="font-size: 13px; color: #475569">Botão salvando e conta paga</span>
+    <button type="button" aria-busy="true" style="min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; background: #059669; color: #ffffff; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 15px; border: none; border-radius: 8px">
+      <svg class="hf-spin" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2.5"/><path d="M9 2 a7 7 0 0 1 7 7" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/></svg>
+      Salvando
+    </button>
+    <div style="position: relative; overflow: hidden; border: 1px solid rgba(15,23,42,.12); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px">
+      <div class="hf-fill" aria-hidden="true" style="position: absolute; left: 0; top: 0; bottom: 0; background: rgba(16,185,129,.12)"></div>
+      <span style="position: relative; flex: 1; display: flex; flex-direction: column"><span style="font-weight: 500">Conta de luz</span><span style="font-size: 13px; color: #475569">Vence hoje · R$ 212,40</span></span>
+      <span style="position: relative; font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: rgba(16,185,129,.16); color: #047857">Pago</span>
+    </div>
+  </section>
+  <section aria-label="Orçamento perto do teto" style="background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; justify-content: space-between; align-items: center">
+      <span style="font-weight: 500">Restaurantes</span>
+      <span class="hf-shake" style="font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: #fef3c7; color: #92400e">82% do teto</span>
+    </div>
+    <div style="height: 10px; border-radius: 6px; background: #eef1f5; overflow: hidden"><div class="hf-meter" style="height: 100%; width: 82%; border-radius: 6px; background: #f59e0b"></div></div>
+    <div style="display: flex; justify-content: space-between; font-size: 13px; color: #475569"><span>R$ 492 de R$ 600</span><span>Faltam 12 dias</span></div>
+    <p style="margin: 4px 0 0; font-size: 14px; line-height: 20px; color: #0f172a; background: #fffbeb; border-radius: 8px; padding: 10px 12px">Para fechar o mês no teto, dá R$ 9 por dia até o fim de novembro.</p>
+  </section>
+</div>
+</body>
+</html>

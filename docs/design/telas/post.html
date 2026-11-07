@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Post HopeFin</title>
+<!-- Referência de design do HopeFin. Tela: "Post · 1:1" (540x540px). Original: canvas Telas de entrada, arquivo Post.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes hf-ring{0%{transform:scale(1);opacity:.4}100%{transform:scale(1.7);opacity:0}}
+@keyframes hf-pop{0%,40%{transform:translateY(10px);opacity:0}60%,100%{transform:translateY(0);opacity:1}}
+.hf-ring{transform-origin:center;animation:hf-ring 2s ease-out infinite}
+.hf-pop{animation:hf-pop 3.2s ease-out infinite alternate}
+@media (prefers-reduced-motion: reduce){.hf-ring,.hf-pop{animation:none}}
+</style>
+</head>
+<body>
+<div style="width: 540px; height: 540px; box-sizing: border-box; padding: 44px; display: flex; flex-direction: column; justify-content: space-between; background: #0f172a; color: #ffffff; font-family: 'DM Sans', system-ui, sans-serif">
+  <h1 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 44px; line-height: 46px">Fala que<br><span style="color: #34d399">o app anota.</span></h1>
+  <div style="display: flex; align-items: center; gap: 24px">
+    <div style="position: relative; width: 104px; height: 104px; flex: none; display: flex; align-items: center; justify-content: center">
+      <span class="hf-ring" aria-hidden="true" style="position: absolute; inset: 0; border-radius: 52px; background: #10b981"></span>
+      <span aria-hidden="true" style="position: relative; width: 88px; height: 88px; border-radius: 44px; background: #10b981; display: flex; align-items: center; justify-content: center"><svg width="36" height="36" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="#06281e" stroke-width="2"/><path d="M5 11 a7 7 0 0 0 14 0 M12 18 v3" fill="none" stroke="#06281e" stroke-width="2" stroke-linecap="round"/></svg></span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px; min-width: 0">
+      <span style="background: #1b253b; border-radius: 16px 16px 16px 4px; padding: 12px 16px; font-size: 17px">“gastei 50 no mercado”</span>
+      <span class="hf-pop" style="align-self: flex-start; background: #ffffff; color: #0f172a; border-radius: 12px; padding: 10px 14px; font-size: 15px; display: flex; gap: 10px; align-items: center"><span style="width: 10px; height: 10px; border-radius: 5px; background: #ef4444"></span>Mercado <b style="font-family: 'Syne', system-ui, sans-serif">− R$ 50,00</b></span>
+    </div>
+  </div>
+  <div style="display: flex; justify-content: space-between; align-items: center">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <svg width="30" height="30" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#ffffff"/><g fill="#10b981"><rect x="150" y="146" width="58" height="220" rx="18"/><rect x="304" y="146" width="58" height="220" rx="18"/></g><path d="M190 300 L322 222" fill="none" stroke="#10b981" stroke-width="54" stroke-linecap="round"/></svg>
+      <span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 18px">hope<span style="color: #10b981">fin</span></span>
+    </div>
+    <span style="font-size: 15px; color: #94a3b8">hopefin.com.br</span>
+  </div>
+</div>
+</body>
+</html>

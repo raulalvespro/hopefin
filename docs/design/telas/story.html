@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Story HopeFin</title>
+<!-- Referência de design do HopeFin. Tela: "Story · 9:16" (360x640px). Original: canvas Telas de entrada, arquivo Story.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+@keyframes hf-rise{0%{transform:scaleY(.2)}100%{transform:scaleY(1)}}
+@keyframes hf-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.hf-bar{transform-origin:bottom;transform-box:fill-box;animation:hf-rise 2s ease-in-out infinite alternate}
+.hf-bob{animation:hf-bob 3s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.hf-bar,.hf-bob{animation:none}}
+</style>
+</head>
+<body>
+<div style="width: 360px; height: 640px; box-sizing: border-box; padding: 48px 28px 36px; display: flex; flex-direction: column; justify-content: space-between; background: #10b981; color: #06281e; font-family: 'DM Sans', system-ui, sans-serif; position: relative; overflow: hidden">
+  <div style="display: flex; align-items: center; gap: 10px">
+    <svg width="32" height="32" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#ffffff"/><g fill="#10b981"><rect x="150" y="146" width="58" height="220" rx="18"/><rect x="304" y="146" width="58" height="220" rx="18"/></g><path d="M190 300 L322 222" fill="none" stroke="#10b981" stroke-width="54" stroke-linecap="round"/></svg>
+    <span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 20px">hopefin</span>
+  </div>
+  <h1 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 40px; line-height: 42px">Quem gastou o quê este mês?</h1>
+  <div class="hf-bob" style="background: #ffffff; border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px; color: #0f172a">
+    <span style="font-size: 13px; color: #475569">Gastos da casa em novembro</span>
+    <svg width="100%" height="120" viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true">
+      <rect class="hf-bar" x="10" y="50" width="56" height="70" rx="12" fill="#10b981"/>
+      <rect class="hf-bar" x="88" y="20" width="56" height="100" rx="12" fill="#3b82f6" style="animation-delay: .2s"/>
+      <rect class="hf-bar" x="166" y="70" width="56" height="50" rx="12" fill="#8b5cf6" style="animation-delay: .4s"/>
+      <rect class="hf-bar" x="244" y="88" width="56" height="32" rx="12" fill="#f59e0b" style="animation-delay: .6s"/>
+    </svg>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); font-size: 12px; text-align: center; color: #475569"><span>Você</span><span>Parceiro</span><span>Filhos</span><span>Casa</span></div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-start">
+    <span style="font-size: 16px; line-height: 22px">O app de finanças feito para a família inteira.</span>
+    <span style="background: #0f172a; color: #ffffff; border-radius: 24px; padding: 12px 20px; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 15px">14 dias grátis · hopefin.com.br</span>
+  </div>
+</div>
+</body>
+</html>

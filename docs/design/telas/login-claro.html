@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login versão clara</title>
+<!-- Referência de design do HopeFin. Tela: "Login · versão clara" (1280x800px). Original: canvas Telas de entrada, arquivo LoginClaro.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065f46}
+@keyframes hf-drift{0%,100%{transform:translate(0,0) rotate(0)}50%{transform:translate(-14px,10px) rotate(-2deg)}}
+@keyframes hf-up{0%{transform:translateY(16px);opacity:0}15%,85%{opacity:1}100%{transform:translateY(-40px);opacity:0}}
+@keyframes hf-fade{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+.hf-drift{animation:hf-drift 9s ease-in-out infinite}
+.hf-up{animation:hf-up 4s ease-in-out infinite}
+.hf-in{animation:hf-fade .6s ease-out both}
+@media (prefers-reduced-motion: reduce){.hf-drift,.hf-up,.hf-in{animation:none}}
+</style>
+</head>
+<body>
+<div style="width: 1280px; height: 800px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); font-family: 'DM Sans', system-ui, sans-serif; color: #0f172a; background: #ffffff">
+  <section aria-label="HopeFin" style="grid-column: span 7; position: relative; overflow: hidden; background: #10b981; margin: 24px 0 24px 24px; border-radius: 28px; padding: 48px 56px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box">
+    <svg class="hf-drift" width="520" height="520" viewBox="0 0 512 512" aria-hidden="true" style="position: absolute; right: -90px; bottom: -110px; opacity: .16"><g fill="#ffffff"><rect x="150" y="146" width="58" height="220" rx="18"/><rect x="304" y="146" width="58" height="220" rx="18"/></g><path d="M190 300 L322 222" fill="none" stroke="#ffffff" stroke-width="54" stroke-linecap="round"/></svg>
+    <div style="display: flex; align-items: center; gap: 12px; position: relative">
+      <svg width="40" height="40" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#ffffff"/><g fill="#10b981"><rect x="150" y="146" width="58" height="220" rx="18"/><rect x="304" y="146" width="58" height="220" rx="18"/></g><path d="M190 300 L322 222" fill="none" stroke="#10b981" stroke-width="54" stroke-linecap="round"/></svg>
+      <span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 24px; color: #06281e">hopefin</span>
+    </div>
+    <div class="hf-in" style="position: relative; display: flex; flex-direction: column; gap: 16px; max-width: 480px">
+      <h1 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 48px; line-height: 52px; color: #06281e">Cada real da casa, no lugar certo.</h1>
+      <p style="margin: 0; font-size: 17px; line-height: 26px; color: #064e3b">Veja o mês inteiro antes dele acontecer: contas, faturas e o que ainda sobra.</p>
+    </div>
+    <div style="position: relative; display: flex; gap: 12px; align-items: flex-end">
+      <div class="hf-up" style="background: #ffffff; border-radius: 14px; padding: 12px 16px; display: flex; gap: 10px; align-items: center; box-shadow: 0 1px 3px rgba(15,23,42,.08)"><span style="width: 10px; height: 10px; border-radius: 5px; background: #10b981"></span><span style="font-size: 14px">Salário</span><span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 14px; color: #047857">+ R$ 5.200</span></div>
+      <div class="hf-up" style="background: #ffffff; border-radius: 14px; padding: 12px 16px; display: flex; gap: 10px; align-items: center; box-shadow: 0 1px 3px rgba(15,23,42,.08); animation-delay: 1.3s"><span style="width: 10px; height: 10px; border-radius: 5px; background: #ef4444"></span><span style="font-size: 14px">Mercado</span><span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 14px; color: #b91c1c">− R$ 186</span></div>
+      <div class="hf-up" style="background: #ffffff; border-radius: 14px; padding: 12px 16px; display: flex; gap: 10px; align-items: center; box-shadow: 0 1px 3px rgba(15,23,42,.08); animation-delay: 2.6s"><span style="width: 10px; height: 10px; border-radius: 5px; background: #8b5cf6"></span><span style="font-size: 14px">Viagem</span><span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 14px; color: #5b21b6">62%</span></div>
+    </div>
+  </section>
+  <section style="grid-column: span 5; display: flex; align-items: center; justify-content: center; padding: 48px; box-sizing: border-box">
+    <form class="hf-in" style="width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 16px; animation-delay: .15s">
+      <h2 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 30px; line-height: 36px">Entrar</h2>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="lc-email" style="font-size: 13px; color: #475569">E-mail</label>
+        <input id="lc-email" type="email" placeholder="voce@email.com" style="font: inherit; font-size: 15px; color: #0f172a; background: #eef1f5; border: 1px solid rgba(15,23,42,.12); border-radius: 8px; padding: 12px 14px">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="lc-senha" style="font-size: 13px; color: #475569">Senha</label>
+        <input id="lc-senha" type="password" placeholder="Sua senha" style="font: inherit; font-size: 15px; color: #0f172a; background: #eef1f5; border: 1px solid rgba(15,23,42,.12); border-radius: 8px; padding: 12px 14px">
+      </div>
+      <button type="button" style="min-height: 48px; background: #0f172a; color: #ffffff; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .02em; border: none; border-radius: 8px; cursor: pointer">Entrar</button>
+      <a href="#esqueci" style="font-size: 14px; text-align: center; padding: 6px 0">Esqueci minha senha</a>
+      <p style="margin: 12px 0 0; font-size: 14px; color: #64748b; text-align: center">Ainda não tem conta? <a href="cadastro.html" style="font-weight: 500">Criar conta grátis</a></p>
+    </form>
+  </section>
+</div>
+</body>
+</html>

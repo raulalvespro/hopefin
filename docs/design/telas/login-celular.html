@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login HopeFin no celular</title>
+<!-- Referência de design do HopeFin. Tela: "Login · celular" (390x844px). Original: canvas Telas de entrada, arquivo LoginCelular.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065f46}
+@keyframes hf-rise{0%{transform:scaleY(.25)}100%{transform:scaleY(1)}}
+@keyframes hf-draw{0%{stroke-dashoffset:160}60%,100%{stroke-dashoffset:0}}
+.hf-bar{transform-origin:bottom;animation:hf-rise 2.6s ease-in-out infinite alternate}
+.hf-stroke{stroke-dasharray:160;animation:hf-draw 3s ease-out infinite alternate}
+@media (prefers-reduced-motion: reduce){.hf-bar,.hf-stroke{animation:none}}
+</style>
+</head>
+<body>
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; font-family: 'DM Sans', system-ui, sans-serif; color: #0f172a; background: #f6f7f9; overflow: hidden">
+  <section aria-label="HopeFin" style="position: relative; background: #0f172a; padding: 56px 24px 0; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; height: 340px; overflow: hidden">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <svg width="36" height="36" viewBox="0 0 512 512" aria-hidden="true"><rect x="8" y="8" width="496" height="496" rx="108" fill="#ffffff" stroke="#10b981" stroke-width="16"/><g fill="#10b981"><rect x="150" y="146" width="58" height="220" rx="18"/><rect x="304" y="146" width="58" height="220" rx="18"/></g><path class="hf-stroke" d="M190 300 L322 222" fill="none" stroke="#10b981" stroke-width="54" stroke-linecap="round"/></svg>
+      <span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 22px; color: #e2e8f0">hope<span style="color: #10b981">fin</span></span>
+    </div>
+    <h1 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 28px; line-height: 32px; color: #ffffff">O dinheiro da casa, no mesmo lugar.</h1>
+    <svg width="342" height="130" viewBox="0 0 342 130" aria-hidden="true" style="position: absolute; left: 24px; bottom: 0">
+      <rect class="hf-bar" x="0" y="80" width="40" height="70" rx="20" fill="#1b253b"/>
+      <rect class="hf-bar" x="60" y="62" width="40" height="88" rx="20" fill="#1b253b" style="animation-delay: .2s"/>
+      <rect class="hf-bar" x="120" y="44" width="40" height="106" rx="20" fill="#0ea371" style="animation-delay: .4s"/>
+      <rect class="hf-bar" x="180" y="24" width="40" height="126" rx="20" fill="#10b981" style="animation-delay: .6s"/>
+      <rect class="hf-bar" x="240" y="4" width="40" height="146" rx="20" fill="#10b981" style="animation-delay: .8s"/>
+    </svg>
+  </section>
+  <form style="flex: 1; margin-top: -24px; background: #ffffff; border-radius: 24px 24px 0 0; padding: 28px 24px 32px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px; position: relative">
+    <h2 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 22px">Entrar</h2>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="m-email" style="font-size: 13px; color: #475569">E-mail</label>
+      <input id="m-email" type="email" placeholder="voce@email.com" style="font: inherit; font-size: 16px; color: #0f172a; background: #eef1f5; border: 1px solid rgba(15,23,42,.12); border-radius: 8px; padding: 12px 14px">
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="m-senha" style="font-size: 13px; color: #475569">Senha</label>
+      <input id="m-senha" type="password" placeholder="Sua senha" style="font: inherit; font-size: 16px; color: #0f172a; background: #eef1f5; border: 1px solid rgba(15,23,42,.12); border-radius: 8px; padding: 12px 14px">
+      <a href="#esqueci" style="align-self: flex-end; font-size: 13px; padding: 6px 0">Esqueci minha senha</a>
+    </div>
+    <button type="button" style="min-height: 48px; background: #10b981; color: #06281e; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 16px; letter-spacing: .02em; border: none; border-radius: 8px; cursor: pointer">Entrar</button>
+    <p style="margin: auto 0 0; font-size: 14px; color: #64748b; text-align: center">Ainda não tem conta? <a href="cadastro.html" style="font-weight: 500">Criar conta grátis</a></p>
+  </form>
+</div>
+</body>
+</html>

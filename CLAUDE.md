@@ -29,10 +29,31 @@ Rodar local: `npm run dev` (porta 5173, ver `.claude/launch.json`).
 - `src/contexts/` — `AuthContext`, `ThemeContext`, `ToastContext`.
 - `src/hooks/` — `useDb`, `useCategorias`, `useAlertas`, `useVoz`.
 - `src/lib/` — `supabase.js` (client), `format.js`, `push.js`.
-- `docs/` — `ROADMAP_HOPEFIN.md` (auditoria + plano comercial), LGPD (política + termos).
+- `docs/` — `ROADMAP_HOPEFIN.md` (auditoria + plano comercial), LGPD (política + termos),
+  **`design/`** (biblioteca de design v2 — ver seção abaixo).
 - `supabase/` — `schema.sql` (espelho de leitura), `migrations/`, `functions/`, `seed/`,
   `README.md`, `.env.local` (gitignored, com token/segredos).
 - `scripts/` — `db.mjs`, `set-secrets.mjs`, `gen-vapid.mjs`, `setup-cron.mjs`.
+
+---
+
+## Design — fonte única de visual (`docs/design/`)
+
+Toda tela, e-mail ou componente **novo** segue a biblioteca de design em `docs/design/`
+(instalada em 06/11/2026, "biblioteca de design v2"). Regras:
+
+- **`docs/design/tokens/tokens.json` é a fonte oficial dos tokens** (cores com variantes
+  de contraste, fontes **Syne** para títulos/display + **DM Sans** para corpo, espaços,
+  raios, sombra). Quando uma tela de referência diverge do `tokens.json`, **vale o
+  `tokens.json`**.
+- `docs/design/telas/*.html` são referência **de visual**, não de conteúdo nem de
+  estrutura — o app atual manda no que já existe. Mapa prompt→arquivo e os estilos oficiais
+  (ícone claro/limpo = estilo 6; noite = conteúdo sério; divertido = campanhas) estão no
+  `docs/design/README.md`.
+- E-mails usam `docs/design/telas/email-topo.html` como base de cabeçalho
+  (`supabase/functions/_shared/email.ts`).
+- **Escopo:** o redesenho de todas as telas do app é o bloco dos **prompts 14–20**. Fora
+  disso, só coisas novas já nascem no design; não refazer telas existentes sem tarefa.
 
 ---
 

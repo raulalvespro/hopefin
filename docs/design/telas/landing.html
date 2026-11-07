@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HopeFin landing page</title>
+<!-- Referência de design do HopeFin. Tela: "Landing page · hopefin.com.br" (página fluida). Original: canvas Telas de entrada, arquivo Landing.dc.html. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&amp;family=DM+Sans:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#047857}a:hover{color:#065f46}
+@keyframes hf-rise{0%{transform:scaleY(.25)}100%{transform:scaleY(1)}}
+@keyframes hf-ring{0%{transform:scale(1);opacity:.45}100%{transform:scale(1.8);opacity:0}}
+@keyframes hf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.hf-bar{transform-origin:bottom;transform-box:fill-box;animation:hf-rise 2.6s ease-in-out infinite alternate}
+.hf-ring{animation:hf-ring 2s ease-out infinite}
+.hf-float{animation:hf-float 5s ease-in-out infinite}
+details summary{cursor:pointer;list-style:none}
+details summary::-webkit-details-marker{display:none}
+@media (prefers-reduced-motion: reduce){.hf-bar,.hf-ring,.hf-float{animation:none}}
+</style>
+</head>
+<body>
+<div style="font-family: 'DM Sans', system-ui, sans-serif; color: #0f172a; background: #ffffff">
+  <header style="max-width: 1160px; margin: 0 auto; padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between">
+    <a href="#topo" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #0f172a">
+      <svg width="34" height="34" viewBox="0 0 512 512" aria-hidden="true"><rect x="8" y="8" width="496" height="496" rx="108" fill="#ffffff" stroke="#10b981" stroke-width="16"/><g fill="#10b981"><rect x="150" y="146" width="58" height="220" rx="18"/><rect x="304" y="146" width="58" height="220" rx="18"/></g><path d="M190 300 L322 222" fill="none" stroke="#10b981" stroke-width="54" stroke-linecap="round"/></svg>
+      <span style="font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: 22px">hope<span style="color: #059669">fin</span></span>
+    </a>
+    <nav aria-label="Seções" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center; font-size: 15px">
+      <a href="#como" style="color: #475569; text-decoration: none">Como funciona</a>
+      <a href="#precos" style="color: #475569; text-decoration: none">Preços</a>
+      <a href="#perguntas" style="color: #475569; text-decoration: none">Perguntas</a>
+      <a href="login.html" style="color: #0f172a; font-weight: 500; text-decoration: none">Entrar</a>
+      <a href="cadastro.html" style="min-height: 44px; padding: 0 18px; display: inline-flex; align-items: center; background: #10b981; color: #06281e; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; border-radius: 8px; text-decoration: none">Testar grátis</a>
+    </nav>
+  </header>
+
+  <section id="topo" style="max-width: 1160px; margin: 0 auto; padding: 48px 24px 72px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center">
+    <div style="flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+      <span style="align-self: flex-start; font-size: 14px; font-weight: 500; padding: 5px 12px; border-radius: 20px; background: #fef3c7; color: #92400e">Preço de fundador para os 100 primeiros</span>
+      <h1 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: clamp(40px, 6vw, 64px); line-height: 1.02">O dinheiro da casa, finalmente no mesmo lugar.</h1>
+      <p style="margin: 0; font-size: 19px; line-height: 29px; color: #475569; max-width: 520px">Gastos, contas fixas, cartões e metas da família inteira num app só. Cada um lança no próprio celular, até falando, e todo mundo vê o mesmo saldo.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+        <a href="cadastro.html" style="min-height: 52px; padding: 0 26px; display: inline-flex; align-items: center; background: #10b981; color: #06281e; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; border-radius: 10px; text-decoration: none">Começar 14 dias grátis</a>
+        <span style="font-size: 14px; color: #475569">Sem cartão de crédito</span>
+      </div>
+    </div>
+    <div style="flex: 1 1 380px; min-width: 0; position: relative; display: flex; justify-content: center">
+      <div style="position: relative; width: 100%; max-width: 440px; aspect-ratio: 1 / 1; background: #10b981; border-radius: 32px; overflow: hidden">
+        <svg viewBox="0 0 440 440" width="100%" height="100%" aria-hidden="true" style="position: absolute; inset: 0">
+          <rect class="hf-bar" x="40" y="300" width="48" height="140" rx="24" fill="#ffffff" fill-opacity=".2"/>
+          <rect class="hf-bar" x="108" y="250" width="48" height="190" rx="24" fill="#ffffff" fill-opacity=".3" style="animation-delay: .2s"/>
+          <rect class="hf-bar" x="176" y="200" width="48" height="240" rx="24" fill="#ffffff" fill-opacity=".42" style="animation-delay: .4s"/>
+          <rect class="hf-bar" x="244" y="150" width="48" height="290" rx="24" fill="#ffffff" fill-opacity=".56" style="animation-delay: .6s"/>
+          <rect class="hf-bar" x="312" y="100" width="48" height="340" rx="24" fill="#ffffff" fill-opacity=".72" style="animation-delay: .8s"/>
+        </svg>
+        <div class="hf-float" style="position: absolute; left: 28px; top: 32px; width: 230px; background: #ffffff; border-radius: 18px; padding: 16px 18px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 8px 24px rgba(15,23,42,.12)">
+          <span style="font-size: 13px; color: #475569">Saldo previsto da casa</span>
+          <span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 28px">R$ 2.418,30</span>
+          <span style="align-self: flex-start; font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: rgba(16,185,129,.14); color: #047857">No azul em novembro</span>
+        </div>
+        <div class="hf-float" style="position: absolute; right: 24px; bottom: 36px; background: #0f172a; color: #ffffff; border-radius: 16px; padding: 12px 16px; font-size: 15px; animation-delay: 1.2s">“gastei 50 no mercado”</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="como" style="background: #f6f7f9">
+    <div style="max-width: 1160px; margin: 0 auto; padding: 72px 24px; display: flex; flex-direction: column; gap: 32px">
+      <h2 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: clamp(30px, 4vw, 40px); line-height: 1.1">Três passos e o mês aparece</h2>
+      <ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px">
+        <li style="background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+          <span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: #047857">1</span>
+          <h3 style="margin: 0; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px">Crie o grupo da casa</h3>
+          <p style="margin: 0; font-size: 15px; line-height: 22px; color: #475569">Convide quem divide as contas com você pelo WhatsApp. Um preço só para todo mundo.</p>
+        </li>
+        <li style="background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+          <span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: #047857">2</span>
+          <h3 style="margin: 0; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px">Lance falando</h3>
+          <p style="margin: 0; font-size: 15px; line-height: 22px; color: #475569">Toque no microfone e diga o gasto. O app entende valor, categoria, cartão e data.</p>
+        </li>
+        <li style="background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+          <span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: #047857">3</span>
+          <h3 style="margin: 0; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px">Veja o mês antes dele chegar</h3>
+          <p style="margin: 0; font-size: 15px; line-height: 22px; color: #475569">Contas fixas, parcelas e faturas viram uma projeção do saldo, com aviso antes de vencer.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section aria-label="Lançar por voz" style="background: #0f172a; color: #ffffff">
+    <div style="max-width: 1160px; margin: 0 auto; padding: 72px 24px; display: flex; flex-wrap: wrap; gap: 40px; align-items: center">
+      <div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+        <h2 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: clamp(30px, 4vw, 44px); line-height: 1.08">Fala que o app anota.</h2>
+        <p style="margin: 0; font-size: 18px; line-height: 27px; color: #94a3b8; max-width: 480px">Ninguém da casa precisa abrir planilha. Disse, conferiu e salvou, em menos de cinco segundos.</p>
+      </div>
+      <div style="flex: 1 1 360px; min-width: 0; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+        <div style="position: relative; width: 104px; height: 104px; flex: none; display: flex; align-items: center; justify-content: center">
+          <span class="hf-ring" aria-hidden="true" style="position: absolute; inset: 0; border-radius: 52px; background: #10b981"></span>
+          <span aria-hidden="true" style="position: relative; width: 88px; height: 88px; border-radius: 44px; background: #10b981; display: flex; align-items: center; justify-content: center"><svg width="36" height="36" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="#06281e" stroke-width="2"/><path d="M5 11 a7 7 0 0 0 14 0 M12 18 v3" fill="none" stroke="#06281e" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; min-width: 0">
+          <span style="background: #1b253b; border-radius: 16px 16px 16px 4px; padding: 12px 16px; font-size: 17px">“paguei a escola, 540 reais”</span>
+          <span style="align-self: flex-start; background: #ffffff; color: #0f172a; border-radius: 12px; padding: 10px 14px; font-size: 15px">Escola · <b style="font-family: 'Syne', sans-serif">− R$ 540,00</b> · hoje</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="precos">
+    <div style="max-width: 1160px; margin: 0 auto; padding: 72px 24px; display: flex; flex-direction: column; gap: 32px; align-items: center; text-align: center">
+      <div style="display: flex; flex-direction: column; gap: 12px; align-items: center">
+        <h2 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: clamp(30px, 4vw, 40px); line-height: 1.1">Um preço para a casa toda</h2>
+        <p style="margin: 0; font-size: 17px; color: #475569">Até 6 pessoas no mesmo grupo. Preço de fundador travado enquanto assinar.</p>
+      </div>
+      <div style="width: 100%; max-width: 760px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; text-align: left">
+        <div style="border: 2px solid #10b981; background: #ecfdf5; border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap"><span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px">Família anual</span><span style="font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: #0f172a; color: #ffffff">Mais escolhido</span></div>
+          <span style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap"><span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 40px">R$ 119,90</span><span style="color: #475569">/ano</span><span style="color: #475569; text-decoration: line-through">R$ 149,90</span></span>
+          <span style="font-size: 15px; color: #047857; font-weight: 500">R$ 9,99 por mês para a família inteira</span>
+          <a href="cadastro.html" style="margin-top: 8px; min-height: 48px; display: flex; align-items: center; justify-content: center; background: #10b981; color: #06281e; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; border-radius: 10px; text-decoration: none">Testar 14 dias grátis</a>
+        </div>
+        <div style="border: 1px solid rgba(15,23,42,.12); border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 10px">
+          <span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px">Família mensal</span>
+          <span style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap"><span style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 40px">R$ 14,90</span><span style="color: #475569">/mês</span><span style="color: #475569; text-decoration: line-through">R$ 19,90</span></span>
+          <span style="font-size: 15px; color: #475569">Cancele quando quiser</span>
+          <a href="cadastro.html" style="margin-top: 8px; min-height: 48px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(15,23,42,.2); color: #0f172a; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; border-radius: 10px; text-decoration: none">Testar 14 dias grátis</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="perguntas" style="background: #f6f7f9">
+    <div style="max-width: 760px; margin: 0 auto; padding: 72px 24px; display: flex; flex-direction: column; gap: 20px">
+      <h2 style="margin: 0; font-family: 'Syne', system-ui, sans-serif; font-weight: 700; font-size: clamp(28px, 4vw, 36px)">Perguntas frequentes</h2>
+      <details open style="background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 14px; padding: 18px 20px"><summary style="font-weight: 500; font-size: 17px">O HopeFin acessa minha conta do banco?</summary><p style="margin: 10px 0 0; font-size: 15px; line-height: 22px; color: #475569">Não. Você lança por voz, digitando ou importando o extrato. O app nunca movimenta dinheiro.</p></details>
+      <details style="background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 14px; padding: 18px 20px"><summary style="font-weight: 500; font-size: 17px">Quantas pessoas podem usar o mesmo plano?</summary><p style="margin: 10px 0 0; font-size: 15px; line-height: 22px; color: #475569">Até 6 pessoas no mesmo grupo, pelo preço de um plano.</p></details>
+      <details style="background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 14px; padding: 18px 20px"><summary style="font-weight: 500; font-size: 17px">Como funciona o preço de fundador?</summary><p style="margin: 10px 0 0; font-size: 15px; line-height: 22px; color: #475569">Os 100 primeiros assinantes pagam R$ 14,90 por mês ou R$ 119,90 por ano enquanto mantiverem a assinatura ativa.</p></details>
+      <details style="background: #ffffff; border: 1px solid rgba(15,23,42,.07); border-radius: 14px; padding: 18px 20px"><summary style="font-weight: 500; font-size: 17px">Posso cancelar quando quiser?</summary><p style="margin: 10px 0 0; font-size: 15px; line-height: 22px; color: #475569">Pode, em Configurações. Na primeira assinatura, você tem 7 dias para desistir com reembolso.</p></details>
+    </div>
+  </section>
+
+  <footer style="max-width: 1160px; margin: 0 auto; padding: 32px 24px 40px; display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; font-size: 14px; color: #475569">
+    <span>HopeFin © 2026</span>
+    <span style="display: flex; flex-wrap: wrap; gap: 20px"><a href="https://hopefin.com.br/termos">Termos de Uso</a><a href="https://hopefin.com.br/privacidade">Privacidade</a><span>contato@hopefin.com.br</span></span>
+  </footer>
+</div>
+</body>
+</html>
