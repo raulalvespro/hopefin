@@ -431,6 +431,32 @@ export const copy = {
     ],
   },
 
+  pix: {
+    titulo: 'Pague com Pix',
+    subtitulo: 'A liberação é na hora, assim que o pagamento cair.',
+    totalLabel: 'Total a pagar',
+    qrAlt: 'QR Code do Pix',
+    ouCopie: 'Ou use o Pix copia e cola',
+    copiar: 'Copiar código Pix',
+    copiado: 'Código copiado!',
+    validoAte: (d) => 'Este código vale até ' + d,
+    expirou: 'Este código expirou. Gere um novo para pagar.',
+    gerarNovo: 'Gerar novo código',
+    comoPagar: 'Como pagar',
+    passos: [
+      'Abra o app do seu banco e escolha a opção Pix.',
+      'Leia o QR Code com a câmera ou cole o código (Pix copia e cola).',
+      'Confira o valor e confirme. Pronto: a sua assinatura é liberada sozinha.',
+    ],
+    aguardando: 'Aguardando o pagamento…',
+    aguardandoSub: 'Pode deixar esta tela aberta: a confirmação aparece sozinha.',
+    jaPaguei: 'Já paguei',
+    verificando: 'Verificando…',
+    aindaNao: 'Ainda não recebemos o pagamento. Pode levar alguns segundos depois de pagar.',
+    outraForma: 'Escolher outra forma de pagamento',
+    seguro: 'Pagamento processado com segurança pelo Asaas.',
+  },
+
   boasVindas: {
     titulo: 'Bem-vindo ao HopeFin',
     subtitulo: 'Três passos e o mês da sua casa já aparece organizado.',

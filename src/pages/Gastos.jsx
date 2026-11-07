@@ -45,7 +45,7 @@ export default function Gastos() {
 
     const gastosItens = (gastos || []).map(g => ({
       id: 'g-' + g.id, rawId: g.id, tipo: 'gasto',
-      descricao: g.descricao, valor: Number(g.valor), categoria: g.categoria, data: g.data,
+      descricao: g.descricao, valor: Number(g.valor), categoria: g.categoria, data: g.data, criado: g.criado_em || '',
       tipo_pagamento: g.tipo_pagamento, cartao_id: g.cartao_id,
       origem: g.cartoes?.nome || g.tipo_pagamento, pessoa: g.usuarios?.nome?.split(' ')[0],
     }))
@@ -53,10 +53,12 @@ export default function Gastos() {
       id: 'p-' + p.id, tipo: 'parcela',
       descricao: p.parcelamentos?.descricao, valor: Number(p.valor), categoria: p.parcelamentos?.categoria, data: p.data_vencimento,
       origem: p.parcelamentos?.cartoes?.nome || 'Parcelado', pessoa: p.parcelamentos?.usuarios?.nome?.split(' ')[0],
-      numero: p.numero, totalParcelas: p.parcelamentos?.num_parcelas,
+      numero: p.numero, totalParcelas: p.parcelamentos?.num_parcelas, criado: p.criado_em || '',
     }))
 
-    setItens([...gastosItens, ...parcelasItens].sort((a, b) => b.data.localeCompare(a.data)))
+    // Os ÚLTIMOS LANÇADOS aparecem primeiro (pelo momento em que foram lançados). A data do gasto continua
+    // aparecendo em cada linha; em caso de empate, vale a data mais recente.
+    setItens([...gastosItens, ...parcelasItens].sort((a, b) => (b.criado || '').localeCompare(a.criado || '') || b.data.localeCompare(a.data)))
     setLoading(false)
   }
 

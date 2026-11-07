@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { fmt } from '../lib/format'
 import { track } from '../lib/analytics'
 import { precosVigentes } from '../lib/precos'
+import { copy } from '../copy/pt-BR'
 
 const METODOS = [
   { id: 'pix', label: 'Pix', icon: QrCode },
@@ -38,6 +39,9 @@ export default function Checkout() {
   const [pix, setPix] = useState(null)
   const [boleto, setBoleto] = useState(null)
   const [copiado, setCopiado] = useState(false)
+  const [verificando, setVerificando] = useState(false)
+  const [aindaNao, setAindaNao] = useState(false)
+  const [agora, setAgora] = useState(() => Date.now()) // relógio p/ a validade do código Pix
 
   useEffect(() => { supabase.rpc('planos_publicos').then(({ data }) => data && setPlanos(data)) }, [])
   useEffect(() => {
@@ -50,15 +54,38 @@ export default function Checkout() {
     }))
   }, [perfil])
 
+  // SÓ EM DESENVOLVIMENTO: /checkout?demo=pix mostra a tela do Pix com dados de exemplo (não cobra nada).
+  useEffect(() => {
+    if (!import.meta.env.DEV || params.get('demo') !== 'pix') return
+    const amanha = new Date(Date.now() + 86400000).toISOString().slice(0, 19).replace('T', ' ')
+    const codigo = '00020126580014br.gov.bcb.pix0136exemplo-de-codigo-pix-copia-e-cola5204000053039865802BR5909HopeFin6009SAO PAULO62070503***6304ABCD'
+    import('qrcode').then(m => m.toDataURL(codigo, { margin: 1, width: 464 })).then(img => { setPix({ imagem: img, copiaECola: codigo, vencimento: amanha }); setEtapa('pix') })
+  }, [])
+
   // Confirmação em tempo real: o webhook ativa a assinatura; aqui só observamos.
+  async function verificarPagamento() {
+    const { data } = await supabase.from('subscriptions').select('status').maybeSingle()
+    if (data?.status === 'active') { setEtapa('sucesso'); return true }
+    return false
+  }
   useEffect(() => {
     if (etapa !== 'pix' && etapa !== 'boleto') return
-    const id = setInterval(async () => {
-      const { data } = await supabase.from('subscriptions').select('status').maybeSingle()
-      if (data?.status === 'active') { clearInterval(id); setEtapa('sucesso') }
-    }, 4000)
+    const id = setInterval(async () => { if (await verificarPagamento()) clearInterval(id) }, 4000)
     return () => clearInterval(id)
   }, [etapa])
+  // Relógio do Pix (atualiza a validade na tela)
+  useEffect(() => {
+    if (etapa !== 'pix') return
+    const id = setInterval(() => setAgora(Date.now()), 15000)
+    return () => clearInterval(id)
+  }, [etapa])
+
+  async function jaPaguei() {
+    setVerificando(true); setAindaNao(false)
+    const ok = await verificarPagamento()
+    setVerificando(false)
+    if (!ok) setAindaNao(true)
+  }
 
   // Fim do funil: assinatura ativada (Pix/boleto confirmados pelo webhook ou cartão).
   useEffect(() => {
@@ -123,18 +150,82 @@ export default function Checkout() {
 
   // ---------- Pix ----------
   if (etapa === 'pix') {
+    const tp = copy.pix
+    // Validade do código (o Asaas manda "AAAA-MM-DD HH:MM:SS", horário de Brasília)
+    const venc = pix?.vencimento ? new Date(String(pix.vencimento).replace(' ', 'T') + '-03:00') : null
+    const vencValido = venc && !Number.isNaN(venc.getTime())
+    const expirou = vencValido && venc.getTime() < agora
+    const validoAte = vencValido ? venc.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).replace(',', ' às') : null
     return (
-      <div style={{ textAlign: 'center' }}>
-        <h2 style={{ fontSize: 20, marginBottom: 6 }}>Pague com Pix</h2>
-        <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 18 }}>Escaneie o QR Code ou use o copia-e-cola. A liberação é na hora.</p>
-        {pix?.imagem && <img src={pix.imagem} alt="QR Code Pix" style={{ width: 220, height: 220, margin: '0 auto 16px', borderRadius: 'var(--radius-sm)', background: '#fff', padding: 8 }} />}
-        <button onClick={() => copiar(pix?.copiaECola)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--text)', fontSize: 13, fontWeight: 600 }}>
-          {copiado ? <><Check size={15} color="var(--accent)" /> Copiado!</> : <><Copy size={15} /> Copiar código Pix</>}
-        </button>
-        <p style={{ fontSize: 12.5, color: 'var(--text3)', marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <span className="spin" style={{ width: 13, height: 13, border: '2px solid var(--border2)', borderTopColor: 'var(--accent)', borderRadius: '50%', display: 'inline-block' }} />
-          Aguardando o pagamento…
-        </p>
+      <div style={{ maxWidth: 420, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{ fontSize: 22, marginBottom: 4 }}>{tp.titulo}</h2>
+          <p style={{ fontSize: 14, color: 'var(--text2)' }}>{tp.subtitulo}</p>
+        </div>
+
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center' }}>
+          <div>
+            <p style={{ fontSize: 12.5, color: 'var(--text2)' }}>{tp.totalLabel}</p>
+            <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 30 }}>{fmt(centavos / 100)}</p>
+          </div>
+
+          {pix?.imagem && (
+            <div style={{ position: 'relative' }}>
+              <img src={pix.imagem} alt={tp.qrAlt} style={{ width: 232, height: 232, borderRadius: 'var(--radius)', background: '#fff', padding: 10, border: '1px solid var(--border)', opacity: expirou ? 0.25 : 1 }} />
+            </div>
+          )}
+
+          {expirou ? (
+            <>
+              <p style={{ fontSize: 13.5, color: 'var(--red-text)' }}>{tp.expirou}</p>
+              <button className="btn-primary" onClick={() => { setPix(null); setEtapa('dados') }} style={{ width: '100%', minHeight: 48 }}>{tp.gerarNovo}</button>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: 12.5, color: 'var(--text3)' }}>{tp.ouCopie}</p>
+              <div style={{ width: '100%', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', fontSize: 12, color: 'var(--text2)', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>
+                {pix?.copiaECola}
+              </div>
+              <button className="btn-primary" onClick={() => copiar(pix?.copiaECola)} style={{ width: '100%', minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                {copiado ? <><Check size={18} /> {tp.copiado}</> : <><Copy size={18} /> {tp.copiar}</>}
+              </button>
+              {validoAte && <p style={{ fontSize: 12, color: 'var(--text3)' }}>{tp.validoAte(validoAte)}</p>}
+            </>
+          )}
+        </div>
+
+        {/* Status ao vivo */}
+        {!expirou && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 'var(--radius-pill)', background: 'var(--amber-dim)', color: 'var(--amber-text)', fontSize: 14, fontWeight: 500 }}>
+              <span className="spin" style={{ width: 14, height: 14, border: '2px solid var(--amber-dim)', borderTopColor: 'var(--amber-text)', borderRadius: '50%', display: 'inline-block' }} />
+              {tp.aguardando}
+            </span>
+            <p style={{ fontSize: 12.5, color: 'var(--text3)' }}>{tp.aguardandoSub}</p>
+            <button onClick={jaPaguei} disabled={verificando} style={{ minHeight: 44, padding: '0 20px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--text)', fontSize: 14, fontWeight: 600 }}>
+              {verificando ? tp.verificando : tp.jaPaguei}
+            </button>
+            {aindaNao && <p role="status" style={{ fontSize: 12.5, color: 'var(--text2)' }}>{tp.aindaNao}</p>}
+          </div>
+        )}
+
+        {/* Como pagar */}
+        <div className="card">
+          <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 14, marginBottom: 10 }}>{tp.comoPagar}</p>
+          <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {tp.passos.map((txt, i) => (
+              <li key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13.5, lineHeight: 1.45, color: 'var(--text2)' }}>
+                <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--accent-dim)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                {txt}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => { setPix(null); setEtapa('dados') }} style={{ fontSize: 14, color: 'var(--accent-text)', fontWeight: 500, minHeight: 44 }}>{tp.outraForma}</button>
+          <p style={{ fontSize: 11.5, color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: 6 }}><ShieldCheck size={13} /> {tp.seguro}</p>
+        </div>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin .8s linear infinite}`}</style>
       </div>
     )

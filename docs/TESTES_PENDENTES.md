@@ -423,3 +423,15 @@ falha transitória de leitura ainda não foi identificada; a blindagem no front 
   0032 (idempotente) + **0033** (trava `FOR UPDATE` na linha do usuário, para chamadas simultâneas). Apaguei esses 7 vazios.
 - **Não identificado:** o que disparou a falha às 18:10 (depois da 0031). Pode ter sido a mesma corrida/um erro transitório. Agora, se a leitura
   falhar, o app NÃO cria nada, mostra o motivo e avisa o Sentry; e o `npm run smoke` alerta se aparecerem >3 grupos vazios em 24h.
+
+## 🔧 Ajustes pedidos nos testes do Worker (07/11/2026)  `branch: fix/gastos-ordem-e-pix`
+
+- **Gastos: últimos lançados primeiro.** A lista ordenava pela *data do gasto*; como os dados de demonstração têm datas futuras
+  (até 25/11), um gasto lançado hoje ficava no fim. Agora ordena pelo **momento do lançamento** (a data continua em cada linha;
+  empate → data mais recente). Conferido: o "teste" de R$ 1,00 aparece no topo.
+- **Tela "Pague com Pix" refeita:** total em destaque, QR centralizado maior, código copia-e-cola com botão grande, validade do
+  código ("vale até dd/mm às hh:mm", e aviso + "Gerar novo código" se expirar), indicador "Aguardando o pagamento…", botão
+  **"Já paguei"** (confere na hora), passo a passo "Como pagar", "Escolher outra forma de pagamento" e selo de segurança.
+  Textos em `copy.pix`. Modo de demonstração só em DEV: `/checkout?demo=pix` (não cobra nada).
+- [ ] Conferir no celular real: QR legível, copiar o código e colar no app do banco.
+- [ ] Conferir o aviso quando o código expira (esperar vencer ou simular).
