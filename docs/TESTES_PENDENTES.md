@@ -382,3 +382,18 @@ WhatsApp, link, código). Cada passo mostra "onde fica" no menu e uma amostra vi
 - [ ] Criar uma conta nova e ver o fluxo completo: cadastro → tour → primeiros passos → Início.
 - Observação: o "visto" é por aparelho; quem entrar em outro celular vê o tour de novo (dá pra mover para o banco depois).
 - Pendente de push também: `fix/perfil-ambiguidade` (blindagem do login).
+
+## 🩹 Incidente: tela em branco depois da 0028 (07/11/2026) — corrigido
+
+- **Causa:** a migração 0028 criou a FK `grupos.criado_por → usuarios`; com duas relações entre `grupos` e `usuarios`, o
+  select do login (`usuarios?select=*,grupos(*)`) passou a falhar (PGRST201). Sem perfil, o app ficava em "Carregando…" e o
+  fallback do `AuthContext` **criava um grupo novo a cada tentativa** (20 grupos vazios no total), tirando a conta de teste do
+  grupo com dados. Contas novas também ficaram em branco (sem onboarding).
+- **Correção no banco (já no ar):** migração `0031` remove a FK (a coluna `criado_por` continua, sem FK). Conferido: login da
+  conta de teste volta com os dados (170 gastos).
+- **Limpeza:** conta de teste devolvida ao grupo "Família Teste" (com a Larissa) e 20 grupos vazios apagados. Sua conta
+  (`raullerickson@gmail.com`, grupo "Família Alves") está íntegra; a assinatura de teste (7 dias) é criada no próximo acesso.
+- **Blindagem no front (commit, aguardando push):** o `AuthContext` usa hint explícito na relação e **não cria mais grupo/usuário
+  se a leitura do perfil falhar**.
+- **Lição:** eu deveria ter testado o login logado após a 0028. Testei só a remoção por RPC. Daqui pra frente, depois de toda
+  migração de schema, rodo o select do login com um usuário real antes de dar por concluído.

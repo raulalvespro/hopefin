@@ -31,9 +31,13 @@ export function AuthProvider({ children }) {
   // dos metadados guardados no cadastro — inclusive criando/entrando no grupo.
   async function carregarPerfil(authUser) {
     setLoading(true)
-    let perfilRow = await buscarPerfil(authUser.id)
+    let { row: perfilRow, erro: erroPerfil } = await buscarPerfil(authUser.id)
 
-    if (!perfilRow) {
+    // Só cria a linha/grupo se a consulta DEU CERTO e o usuário realmente não existe. Se a consulta
+    // falhou (ex.: erro de relacionamento no banco), NÃO criamos nada: antes, uma falha aqui
+    // fazia o app criar um grupo novo a cada tentativa e tirava a pessoa do grupo dela.
+    if (erroPerfil) console.error('[auth] não foi possível carregar o perfil:', erroPerfil.message)
+    if (!perfilRow && !erroPerfil) {
       const md = authUser.user_metadata || {}
       const nome = md.nome || authUser.email?.split('@')[0] || 'Usuário'
 
@@ -52,7 +56,7 @@ export function AuthProvider({ children }) {
       } else if (md.nome_grupo) {
         await supabase.rpc('criar_grupo', { p_nome: md.nome_grupo })
       }
-      perfilRow = await buscarPerfil(authUser.id)
+      perfilRow = (await buscarPerfil(authUser.id)).row
     }
 
     // Garante a assinatura em trial do grupo (idempotente: não recria se já existe).
@@ -69,9 +73,10 @@ export function AuthProvider({ children }) {
   }
 
   async function buscarPerfil(userId) {
-    const { data } = await supabase
-      .from('usuarios').select('*, grupos(*)').eq('id', userId).maybeSingle()
-    return data
+    // Hint explícito da relação (usuarios.grupo_id -> grupos): evita ambiguidade se surgir outra FK entre as tabelas.
+    const { data, error } = await supabase
+      .from('usuarios').select('*, grupos!usuarios_grupo_id_fkey(*)').eq('id', userId).maybeSingle()
+    return { row: data, erro: error }
   }
 
   async function login(email, senha) {
