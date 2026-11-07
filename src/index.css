@@ -296,8 +296,10 @@ select option { background: var(--bg3); }
 @keyframes hf-meter { from { width: 0; } }
 @keyframes hf-shimmer { 0% { background-position: -240px 0; } 100% { background-position: 240px 0; } }
 @keyframes hf-toast-in { from { transform: translateY(-12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes hf-grow { 0% { transform: scaleY(.2); } 100% { transform: scaleY(1); } }
 
 .hf-spin { transform-origin: center; animation: hf-spin .9s linear infinite; }
+.hf-grow { transform-origin: bottom; transform-box: fill-box; animation: hf-grow .8s var(--ease) both; }
 
 .ui-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;

@@ -95,6 +95,33 @@ export const copy = {
     tagline: 'Finanças da família',
   },
 
+  inicio: {
+    saudacao: 'Olá',
+    grupoFallback: 'Sua casa',
+    caixaLabel: 'Saldo em caixa',
+    noAzul: 'No azul',
+    noVermelho: 'No vermelho',
+    projecaoMes: 'projeção fim do mês',
+    // Balões de ajuda (InfoDica) — linguagem simples, no momento da dúvida
+    dicaCaixaTitulo: 'Saldo em caixa',
+    dicaCaixa: 'O que você tem hoje de verdade: o que já entrou menos o que já saiu da conta. Não conta o que ainda vai cair nem o que ainda vai vencer.',
+    dicaProjecaoTitulo: 'Projeção do fim do mês',
+    dicaProjecao: 'Como seu saldo deve terminar o mês, somando o que ainda falta entrar e as contas que ainda vão vencer.',
+    // Bloco "O mês até agora" (realizado × previsto)
+    mesAteAgora: 'O mês até agora',
+    entrou: 'Entrou',
+    saiu: 'Saiu',
+    de: (v) => `de ${v}`,
+    aReceberLabel: 'a receber',
+    aPagarLabel: 'a pagar',
+    // Atalho único: tudo que falta pagar no mês (contas + parcelas + faturas)
+    aVencer: (n) => `${n} ${n === 1 ? 'conta a vencer' : 'contas a vencer'}`,
+    contasVencerSub: 'contas, parcelas e faturas',
+    emDia: 'Contas em dia',
+    emDiaSub: 'Nada a vencer',
+    carregando: 'Carregando suas contas…',
+  },
+
   boasVindas: {
     titulo: 'Bem-vindo ao HopeFin',
     subtitulo: 'Três passos e o mês da sua casa já aparece organizado.',

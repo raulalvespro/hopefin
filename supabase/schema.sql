@@ -57,6 +57,7 @@ create table if not exists public.gastos (
   tipo_pagamento text default 'cartao',  -- cartao | pix | dinheiro
   cartao_id      uuid references public.cartoes(id) on delete set null,
   data           date not null default current_date,
+  origem         text not null default 'app' check (origem in ('app','voz','texto','whatsapp')),  -- 0026
   criado_em      timestamptz not null default now()
 );
 

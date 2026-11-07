@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Mic, MicOff, X, Check, Loader, Sparkles, Send, AlertTriangle } from 'lucide-react'
+import { MicButton } from './ui'
 import { useVoz } from '../hooks/useVoz'
 import { useAuth } from '../contexts/AuthContext'
 import { useCategorias } from '../hooks/useCategorias'
@@ -26,6 +27,7 @@ export default function BotaoVoz({ onSalvo }) {
   const [salvando, setSalvando] = useState(false)
   const [sucesso, setSucesso] = useState(false)
   const [cartoes, setCartoes] = useState([])
+  const [origemLanc, setOrigemLanc] = useState('app') // 'voz' | 'texto' — como o lançamento começou
 
   // Carrega os cartões do grupo ao abrir (para o select).
   useEffect(() => {
@@ -39,6 +41,7 @@ export default function BotaoVoz({ onSalvo }) {
     const limpo = (txt || '').trim()
     if (!limpo) return
     setTexto(limpo); setErro(''); setForm(null); setInterpretando(true)
+    setOrigemLanc(origem === 'voz' ? 'voz' : 'texto')
     try {
       const { data, error } = await supabase.functions.invoke('interpretar-lancamento', {
         body: { texto: limpo, origem },
@@ -128,7 +131,7 @@ export default function BotaoVoz({ onSalvo }) {
         grupo_id: perfil.grupo_id, usuario_id: perfil.id, descricao: form.descricao,
         valor, categoria: form.categoria,
         tipo_pagamento: form.cartao_id ? 'cartao' : form.tipo_pagamento,
-        cartao_id: form.cartao_id || null, data: form.data,
+        cartao_id: form.cartao_id || null, data: form.data, origem: origemLanc,
       })
     }
 
@@ -157,13 +160,9 @@ export default function BotaoVoz({ onSalvo }) {
   return (
     <>
       {!aberto && (
-        <button
-          onClick={() => setAberto(true)}
-          aria-label="Lançar por voz ou texto"
-          style={{ position: 'fixed', bottom: 80, right: 20, width: 56, height: 56, borderRadius: '50%', background: 'var(--accent)', color: 'var(--on-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(16,185,129,0.35)', zIndex: 50 }}
-        >
-          <Sparkles size={24} strokeWidth={2} />
-        </button>
+        <div style={{ position: 'fixed', bottom: 78, left: '50%', transform: 'translateX(-50%)', zIndex: 50 }}>
+          <MicButton onClick={() => setAberto(true)} aria-label="Lançar por voz ou texto" />
+        </div>
       )}
 
       {aberto && (

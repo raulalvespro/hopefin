@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths, isSameMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, TrendingUp, PieChart as PieIcon, Target, Wallet } from 'lucide-react'
+import { ChevronLeft, ChevronRight, TrendingUp, PieChart as PieIcon, Target, Wallet, CalendarClock } from 'lucide-react'
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
   PieChart, Pie, Cell,
@@ -12,7 +12,10 @@ import {
 import BotaoVoz from '../components/BotaoVoz'
 import Onboarding from '../components/Onboarding'
 import { useCategorias } from '../hooks/useCategorias'
+import { InfoDica } from '../components/ui'
+import { copy } from '../copy/pt-BR'
 
+const t = copy.inicio
 const fmt = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const fmtCurto = v => {
   const n = Number(v || 0)
@@ -21,6 +24,13 @@ const fmtCurto = v => {
 }
 const CORES = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b', '#8b5cf6', '#14b8a6', '#ec4899', '#0ea5e9']
 const corBarra = pct => (pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--accent)')
+const iniciais = n => (n || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
+const AVCOR = [
+  { bg: 'var(--accent-dim)', fg: 'var(--accent-text)' },
+  { bg: 'var(--blue-dim)', fg: 'var(--blue-text)' },
+  { bg: 'var(--purple-dim)', fg: 'var(--purple-text)' },
+  { bg: 'var(--amber-dim)', fg: 'var(--amber-text)' },
+]
 
 export default function Dashboard() {
   const { perfil } = useAuth()
@@ -29,11 +39,25 @@ export default function Dashboard() {
   const [dados, setDados] = useState(null)
   const [dadosAnt, setDadosAnt] = useState(null)
   const [historico, setHistorico] = useState([])
+  const [grupo, setGrupo] = useState(null)      // { nome }
+  const [membros, setMembros] = useState([])    // [{ id, nome }]
   const [loading, setLoading] = useState(true)
 
   const ehMesAtual = isSameMonth(mes, new Date())
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil, mes])
+  useEffect(() => { if (perfil?.grupo_id) carregarGrupo() }, [perfil?.grupo_id])
+
+  // Nome do grupo + membros (cabeçalho do Início). Carrega uma vez.
+  async function carregarGrupo() {
+    const gid = perfil.grupo_id
+    const [{ data: g }, { data: ms }] = await Promise.all([
+      supabase.from('grupos').select('nome').eq('id', gid).single(),
+      supabase.from('usuarios').select('id, nome').eq('grupo_id', gid),
+    ])
+    setGrupo(g || null)
+    setMembros(ms || [])
+  }
 
   // Tendência dos últimos 6 meses (entradas, saídas, saldo)
   async function carregarHistorico() {
@@ -70,7 +94,7 @@ export default function Dashboard() {
 
     const competencia = format(data, 'yyyy-MM')
 
-    const [{ data: gastos }, { data: entradas }, { data: fixas }, { data: parcelas }, { data: assinaturas }, { data: lancFixas }, { data: contasPagas }, { data: orcamentos }] = await Promise.all([
+    const [{ data: gastos }, { data: entradas }, { data: fixas }, { data: parcelas }, { data: assinaturas }, { data: lancFixas }, { data: contasPagas }, { data: orcamentos }, { data: cartoes }] = await Promise.all([
       supabase.from('gastos').select('id, descricao, valor, categoria, data, cartao_id, usuarios(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
       supabase.from('entradas').select('valor, recebido').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
       supabase.from('contas_fixas').select('id, valor, categoria').eq('grupo_id', gid).eq('ativo', true),
@@ -79,6 +103,7 @@ export default function Dashboard() {
       supabase.from('fixas_lancamentos').select('conta_fixa_id, valor_real, pago').eq('grupo_id', gid).eq('competencia', competencia),
       supabase.from('contas_pagas').select('tipo, referencia_id, pago').eq('grupo_id', gid).eq('competencia', competencia),
       supabase.from('orcamentos').select('categoria, valor').eq('grupo_id', gid),
+      supabase.from('cartoes').select('id, nome').eq('grupo_id', gid).eq('ativo', true),
     ])
 
     // valor efetivo de cada conta fixa = real lançado no mês (se houver) senão o previsto
@@ -127,6 +152,26 @@ export default function Dashboard() {
     })
     const saldoCaixa = recebidoEntradas - saiuSaidas
 
+    // --- Atalhos do Início ---
+    // Fatura (aprox. do mês) por cartão: gastos + parcelas + assinaturas no cartão.
+    const fatPorCartao = {}
+    const addFat = (cid, v) => { if (cid) fatPorCartao[cid] = (fatPorCartao[cid] || 0) + v }
+    ;(gastos || []).forEach(g => addFat(g.cartao_id, Number(g.valor)))
+    ;(parcelas || []).forEach(p => addFat(p.parcelamentos?.cartao_id, Number(p.valor)))
+    ;(assinaturas || []).forEach(a => addFat(a.cartao_id, Number(a.valor)))
+    // Faturas: soma de TODOS os cartões com fatura em aberto (um card só, resumo).
+    let faturasTotal = 0, faturasCount = 0
+    ;(cartoes || []).forEach(c => {
+      const v = fatPorCartao[c.id] || 0
+      if (v > 0 && !faturaPaga[c.id]) { faturasTotal += v; faturasCount++ }
+    })
+    // Contas a vencer = contas fixas + parcelas avulsas + assinaturas avulsas ainda não
+    // pagas. As faturas NÃO entram aqui (ficam no card de Faturas, pra não contar 2x).
+    let aVencerCount = 0, aVencerTotal = 0
+    ;(fixas || []).forEach(f => { if (!fixaPaga[f.id]) { aVencerCount++; aVencerTotal += valorFixa(f) } })
+    ;(parcelas || []).forEach(p => { if (!p.parcelamentos?.cartao_id && !p.paga) { aVencerCount++; aVencerTotal += Number(p.valor) } })
+    ;(assinaturas || []).forEach(a => { if (!a.cartao_id && !assinaturaPaga[a.id]) { aVencerCount++; aVencerTotal += Number(a.valor) } })
+
     // Visão por NATUREZA: categorias só dos gastos variáveis
     const porCategoria = {}
     ;(gastos || []).forEach(g => { porCategoria[g.categoria] = (porCategoria[g.categoria] || 0) + Number(g.valor) })
@@ -170,7 +215,7 @@ export default function Dashboard() {
       porPessoa[nome] = (porPessoa[nome] || 0) + Number(g.valor)
     })
 
-    return { totalEntradas, recebidoEntradas, aReceber, totalGastos, totalFixas, totalParcelas, totalAssint, totalSaidas, saiuSaidas, aPagar, saldo, saldoCaixa, previstoSaidas, saldoPrevisto, orcamentoCats, porCategoria, porCategoriaUni, porPessoa, gastos: gastos || [] }
+    return { totalEntradas, recebidoEntradas, aReceber, totalGastos, totalFixas, totalParcelas, totalAssint, totalSaidas, saiuSaidas, aPagar, saldo, saldoCaixa, previstoSaidas, saldoPrevisto, orcamentoCats, porCategoria, porCategoriaUni, porPessoa, gastos: gastos || [], faturasTotal, faturasCount, aVencerCount, aVencerTotal }
   }
 
   async function carregar() {
@@ -184,10 +229,23 @@ export default function Dashboard() {
     setLoading(false)
   }
 
+  // Carregando: esqueleto com brilho (referência estados.html)
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', flexDirection: 'column', gap: 12 }}>
-      <div style={{ width: 32, height: 32, border: '3px solid var(--border2)', borderTop: '3px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="ui-skel" style={{ height: 13, width: 120 }} />
+          <div className="ui-skel" style={{ height: 22, width: 160 }} />
+        </div>
+        <div className="ui-skel" style={{ width: 64, height: 34, borderRadius: 17 }} />
+      </div>
+      <div className="ui-skel" style={{ height: 150, borderRadius: 'var(--radius-lg)', marginBottom: 12 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+        <div className="ui-skel" style={{ height: 68, borderRadius: 'var(--radius)' }} />
+        <div className="ui-skel" style={{ height: 68, borderRadius: 'var(--radius)' }} />
+      </div>
+      <div className="ui-skel" style={{ height: 180, borderRadius: 'var(--radius)' }} />
+      <p style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 13, marginTop: 16 }}>{t.carregando}</p>
     </div>
   )
 
@@ -213,15 +271,34 @@ export default function Dashboard() {
   const livreMes = dados.totalEntradas - compromissos - dados.totalGastos
   const porDia = Math.max(0, livreMes) / diasRestantes
 
+  // Hero: saldo previsto no azul/vermelho + mini-barras com o saldo dos últimos meses
+  const azul = dados.saldoPrevisto >= 0
+  const barMax = Math.max(1, ...historico.map(h => Math.abs(h.saldo)))
+  // Bloco "O mês até agora": progresso do realizado sobre o previsto
+  const pctEntrou = dados.totalEntradas > 0 ? Math.min(100, (dados.recebidoEntradas / dados.totalEntradas) * 100) : 0
+  const pctSaiu = dados.previstoSaidas > 0 ? Math.min(100, (dados.saiuSaidas / dados.previstoSaidas) * 100) : 0
+  // Atalho único: tudo que falta pagar no mês = contas + parcelas + faturas em aberto
+  const vencerCount = dados.aVencerCount + dados.faturasCount
+  const vencerTotal = dados.aVencerTotal + dados.faturasTotal
+
   return (
     <div>
-      {/* Saudação */}
-      <div style={{ marginBottom: 20 }}>
-        <p style={{ color: 'var(--text2)', fontSize: 13 }}>
-          {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
-        </p>
-        <h2 style={{ fontSize: 22, marginTop: 2 }}>Olá, {perfil?.nome?.split(' ')[0]} 👋</h2>
-      </div>
+      {/* Cabeçalho: grupo + saudação + avatares dos membros */}
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          <span style={{ fontSize: 13, color: 'var(--text2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{grupo?.nome || t.grupoFallback}</span>
+          <h2 style={{ fontSize: 22, fontFamily: 'Syne', fontWeight: 700 }}>{t.saudacao}, {perfil?.nome?.split(' ')[0]}</h2>
+        </div>
+        {membros.length > 0 && (
+          <div aria-label={`${membros.length} membros`} style={{ display: 'flex', flexShrink: 0 }}>
+            {membros.slice(0, 4).map((m, i) => (
+              <span key={m.id} title={m.nome} style={{ width: 34, height: 34, borderRadius: 17, background: AVCOR[i % AVCOR.length].bg, color: AVCOR[i % AVCOR.length].fg, fontFamily: 'Syne', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--bg)', marginLeft: i ? -10 : 0 }}>
+                {iniciais(m.nome)}
+              </span>
+            ))}
+          </div>
+        )}
+      </header>
 
       <Onboarding />
 
@@ -232,40 +309,72 @@ export default function Dashboard() {
         <button onClick={() => setMes(m => addMonths(m, 1))}><ChevronRight size={20} color="var(--text2)" /></button>
       </div>
 
-      {/* Saldo em caixa (fluxo realizado) */}
-      <div className="card" style={{ marginBottom: 16, background: dados.saldoCaixa >= 0 ? 'var(--accent-dim)' : 'var(--red-dim)', borderColor: dados.saldoCaixa >= 0 ? 'var(--accent)' : 'var(--red)' }}>
-        <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Saldo em caixa</p>
-        <p style={{ fontSize: 34, fontFamily: 'Syne', fontWeight: 700, color: dados.saldoCaixa >= 0 ? 'var(--accent)' : 'var(--red)' }}>{fmt(dados.saldoCaixa)}</p>
-        <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>o que já entrou menos o que já saiu</p>
-        <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'var(--text2)' }}>
-            Projeção do mês: <strong style={{ color: dados.saldoPrevisto >= 0 ? 'var(--accent)' : 'var(--red)' }}>{fmt(dados.saldoPrevisto)}</strong>
+      {/* Card principal: saldo em caixa (número principal) + projeção do mês abaixo */}
+      <section style={{ background: 'var(--panel-ink)', color: '#fff', borderRadius: 'var(--radius-lg)', padding: 20, marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#94a3b8' }}>
+            {t.caixaLabel}
+            <InfoDica titulo={t.dicaCaixaTitulo} texto={t.dicaCaixa} cor="#cbd5e1" alinhar="left" />
           </span>
-          {dadosAnt && <span style={{ fontSize: 12, color: 'var(--text2)' }}>Mês anterior: {fmt(dadosAnt.saldoPrevisto)}</span>}
+          <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 20, background: azul ? 'rgba(16,185,129,.2)' : 'rgba(239,68,68,.2)', color: azul ? '#34d399' : '#fca5a5' }}>{azul ? t.noAzul : t.noVermelho}</span>
         </div>
-      </div>
+        <div>
+          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 36, lineHeight: '40px', color: dados.saldoCaixa >= 0 ? '#fff' : '#fca5a5' }}>{fmt(dados.saldoCaixa)}</span>
+          <p style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', fontSize: 13, color: '#94a3b8', marginTop: 6 }}>
+            <span>{t.projecaoMes} <strong style={{ color: azul ? '#34d399' : '#fca5a5' }}>{fmt(dados.saldoPrevisto)}</strong></span>
+            <InfoDica titulo={t.dicaProjecaoTitulo} texto={t.dicaProjecao} cor="#cbd5e1" alinhar="right" tamanho={14} />
+          </p>
+        </div>
+        {historico.length > 0 && (
+          <svg width="100%" height="48" viewBox="0 0 310 48" preserveAspectRatio="none" aria-hidden="true">
+            {historico.map((h, i) => {
+              const alt = Math.max(5, (Math.abs(h.saldo) / barMax) * 46)
+              const larg = 310 / historico.length
+              const ultimo = i === historico.length - 1
+              return <rect key={i} x={i * larg + 4} y={48 - alt} width={larg - 8} height={alt} rx={6}
+                fill={ultimo ? '#10b981' : (h.saldo >= 0 ? '#1b253b' : '#3b2130')} className="hf-grow" style={{ animationDelay: `${i * 0.05}s` }} />
+            })}
+          </svg>
+        )}
+      </section>
 
-      {/* Entradas e saídas: realizado × previsto */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-        <div className="card">
-          <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Entradas</p>
-          <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--accent-text)' }}>{fmt(dados.recebidoEntradas)}</p>
-          <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>já recebido</p>
-          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text2)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span>Previsto: {fmt(dados.totalEntradas)}</span>
-            {dados.aReceber > 0.005 && <span style={{ color: 'var(--amber-text)' }}>A receber: {fmt(dados.aReceber)}</span>}
+      {/* Atalho único: tudo que falta pagar no mês (contas + parcelas + faturas).
+          Detalhe item a item, com vencimentos, abre na tela Contas do mês. */}
+      <Link to="/contas-do-mes" className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, textDecoration: 'none', color: 'var(--text)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 500, color: vencerCount > 0 ? 'var(--amber-text)' : 'var(--accent-text)' }}>
+            <CalendarClock size={16} style={{ flexShrink: 0 }} /> {vencerCount > 0 ? t.aVencer(vencerCount) : t.emDia}
+          </span>
+          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{vencerCount > 0 ? t.contasVencerSub : t.emDiaSub}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {vencerCount > 0 && <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20 }}>{fmt(vencerTotal)}</span>}
+          <ChevronRight size={18} color="var(--text3)" />
+        </div>
+      </Link>
+
+      {/* O mês até agora: realizado × previsto em barras (menos número solto) */}
+      <section className="card" style={{ marginBottom: 20 }}>
+        <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>{t.mesAteAgora}</p>
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, fontSize: 13, marginBottom: 6 }}>
+            <span>{t.entrou} <strong style={{ fontFamily: 'Syne' }}>{fmt(dados.recebidoEntradas)}</strong> <span style={{ color: 'var(--text3)', fontSize: 12 }}>{t.de(fmt(dados.totalEntradas))}</span></span>
+            {dados.aReceber > 0.005 && <span style={{ color: 'var(--text3)', fontSize: 12, whiteSpace: 'nowrap' }}>{t.aReceberLabel} {fmt(dados.aReceber)}</span>}
+          </div>
+          <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+            <div style={{ width: `${pctEntrou}%`, height: '100%', background: 'var(--accent)', borderRadius: 4, transition: 'width 0.4s' }} />
           </div>
         </div>
-        <div className="card">
-          <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Saídas</p>
-          <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--red-text)' }}>{fmt(dados.saiuSaidas)}</p>
-          <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>já saiu</p>
-          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text2)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span>Previsto: {fmt(dados.previstoSaidas)}</span>
-            {dados.aPagar > 0.005 && <span style={{ color: 'var(--amber-text)' }}>A pagar: {fmt(dados.aPagar)}</span>}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, fontSize: 13, marginBottom: 6 }}>
+            <span>{t.saiu} <strong style={{ fontFamily: 'Syne' }}>{fmt(dados.saiuSaidas)}</strong> <span style={{ color: 'var(--text3)', fontSize: 12 }}>{t.de(fmt(dados.previstoSaidas))}</span></span>
+            {dados.aPagar > 0.005 && <span style={{ color: 'var(--text3)', fontSize: 12, whiteSpace: 'nowrap' }}>{t.aPagarLabel} {fmt(dados.aPagar)}</span>}
+          </div>
+          <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+            <div style={{ width: `${pctSaiu}%`, height: '100%', background: 'var(--red)', borderRadius: 4, transition: 'width 0.4s' }} />
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Quanto posso gastar (mês corrente) */}
       {ehMesAtual && (
@@ -281,7 +390,7 @@ export default function Dashboard() {
             </p>
             <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
               {livreMes > 0
-                ? `~${fmt(porDia)} por dia nos próximos ${diasRestantes} dias`
+                ? `cerca de ${fmt(porDia)} por dia nos próximos ${diasRestantes} dias`
                 : 'Renda já comprometida com contas e gastos do mês'}
             </p>
           </div>
