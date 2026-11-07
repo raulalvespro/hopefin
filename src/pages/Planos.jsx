@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, Check, Sparkles, Users, Infinity as InfinityIcon, LineChart, PiggyBank, Smartphone, ShieldCheck, Tag as TagIcon } from 'lucide-react'
+import { ChevronLeft, ChevronDown, Check, Sparkles, Users, Infinity as InfinityIcon, LineChart, PiggyBank, Smartphone, ShieldCheck, Tag as TagIcon, Mic, CalendarCheck, Bell, ClipboardCheck, Upload, Moon, Lock, Unlock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { fmt } from '../lib/format'
 import { PRECOS_PADRAO, precosVigentes, economiaPct, porMesReais } from '../lib/precos'
@@ -10,8 +10,11 @@ import { copy } from '../copy/pt-BR'
 
 const t = copy.planos
 
-// Ícones na mesma ordem de copy.planos.beneficios.
-const ICONES = [Users, InfinityIcon, LineChart, PiggyBank, Smartphone, ShieldCheck]
+const ICONES = {
+  familia: Users, voz: Mic, projecao: LineChart, contasMes: CalendarCheck, lembrete: Bell, ilimitado: InfinityIcon,
+  cofrinho: PiggyBank, fechamento: ClipboardCheck, importar: Upload, app: Smartphone, tema: Moon, dados: ShieldCheck,
+  travado: Lock, 'sem-fidelidade': Unlock,
+}
 
 const dataLanc = iso => {
   try { return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) }
@@ -24,7 +27,9 @@ export default function Planos() {
   const [cupom, setCupom] = useState('')
   const [cupomMsg, setCupomMsg] = useState(null) // { ok, texto }
   const [resgatando, setResgatando] = useState(false)
-  const { emTrial, vencida, status, diasRestantes } = useAssinatura()
+  const [verTudo, setVerTudo] = useState(false)
+  const [uso, setUso] = useState(null) // { dias, gastos, contas } durante o teste
+  const { assinatura, emTrial, vencida, status, diasRestantes } = useAssinatura()
 
   useEffect(() => {
     supabase.rpc('planos_publicos').then(({ data, error }) => {
@@ -34,6 +39,20 @@ export default function Planos() {
   }, [])
 
   const p = precosVigentes(cfg)
+
+  // Resumo real do teste: o que a família já fez desde que o teste começou.
+  const inicioTeste = assinatura?.trial_started_at
+  useEffect(() => {
+    if (!inicioTeste || status === 'active') return
+    const desde = new Date(inicioTeste)
+    const desdeData = desde.toISOString().slice(0, 10)
+    const dias = Math.max(1, Math.round((Date.now() - desde.getTime()) / 86400000))
+    Promise.all([
+      supabase.from('gastos').select('id', { count: 'exact', head: true }).gte('criado_em', desde.toISOString()),
+      supabase.from('fixas_lancamentos').select('id', { count: 'exact', head: true }).eq('pago', true).gte('data_pagamento', desdeData),
+      supabase.from('contas_pagas').select('id', { count: 'exact', head: true }).eq('pago', true).gte('data_pagamento', desdeData),
+    ]).then(([g, f, c]) => setUso({ dias, gastos: g.count || 0, contas: (f.count || 0) + (c.count || 0) }))
+  }, [inicioTeste, status])
 
   async function resgatarCupom() {
     const codigo = cupom.trim()
@@ -79,7 +98,9 @@ export default function Planos() {
         <h2 style={{ fontSize: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
           <Sparkles size={22} color="var(--accent)" /> {t.titulo}
         </h2>
-        <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.6 }}>{t.subtitulo}</p>
+        <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.6 }}>
+          {uso && uso.gastos > 0 ? t.resumoTeste(uso.dias, uso.gastos, uso.contas) : t.subtitulo}
+        </p>
       </div>
 
       {/* Trial */}
@@ -140,12 +161,12 @@ export default function Planos() {
       </fieldset>
 
       {/* Benefícios */}
-      <ul style={{ margin: '0 0 20px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {t.beneficios.map((texto, i) => {
-          const Icon = ICONES[i] || Check
+      <ul style={{ margin: '0 0 10px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {[...t.beneficios, ...(verTudo ? [...t.beneficiosExtras, ...(p.lancamentoAtivo ? [t.beneficioPrecoTravado] : [])] : [])].map(({ icone, texto }) => {
+          const Icon = ICONES[icone] || Check
           return (
             <li key={texto} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, lineHeight: 1.5 }}>
-              <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 0 }}>
+              <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Icon size={13} color="var(--accent-text)" strokeWidth={2} aria-hidden="true" />
               </span>
               {texto}
@@ -153,6 +174,11 @@ export default function Planos() {
           )
         })}
       </ul>
+      <button type="button" onClick={() => setVerTudo(v => !v)} aria-expanded={verTudo}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, margin: '0 0 20px', fontSize: 14, fontWeight: 500, color: 'var(--accent-text)' }}>
+        {verTudo ? t.verMenos : t.verTudo}
+        <ChevronDown size={16} style={{ transform: verTudo ? 'rotate(180deg)' : 'none', transition: 'transform var(--dur-2) var(--ease)' }} />
+      </button>
 
       {/* Ações do plano escolhido */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
@@ -194,7 +220,9 @@ export default function Planos() {
         )}
       </div>
 
-      <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', lineHeight: 1.6 }}>{t.rodape}</p>
+      <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', lineHeight: 1.6 }}>
+        {t.rodapeAntes}<Link to="/configuracoes" style={{ color: 'var(--accent-text)', fontWeight: 500 }}>{t.rodapeLink}</Link>{t.rodapeDepois}
+      </p>
     </div>
   )
 }

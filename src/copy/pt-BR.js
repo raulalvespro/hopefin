@@ -232,14 +232,34 @@ export const copy = {
     mensalNome: 'Família mensal',
     mensalAo: '/mês',
     mensalSub: 'Pix ou cartão · sem fidelidade',
+    // Os 6 primeiros aparecem direto; o resto abre em "Ver tudo o que está incluso".
     beneficios: [
-      'Família inclusa — até 6 pessoas, sem cobrar por usuário',
-      'Lançamentos, cartões e contas ilimitados',
-      'Planejado × praticado e projeção dos próximos meses',
-      'Cofrinhos, metas e orçamento por categoria',
-      'App instalável no celular (PWA), funciona offline',
-      'Seus dados são seus: exportação e exclusão a qualquer hora',
+      { icone: 'familia', texto: 'Família inclusa — até 6 pessoas, sem cobrar por usuário' },
+      { icone: 'voz', texto: 'Lance falando ou digitando: a IA entende valor, categoria e data' },
+      { icone: 'projecao', texto: 'Planejado × praticado e projeção dos próximos meses' },
+      { icone: 'contasMes', texto: 'Contas do mês: tudo que vence num lugar só, com o que já foi pago' },
+      { icone: 'lembrete', texto: 'Lembretes de contas a vencer no celular e por e-mail' },
+      { icone: 'ilimitado', texto: 'Lançamentos, cartões e contas ilimitados' },
     ],
+    beneficiosExtras: [
+      { icone: 'cofrinho', texto: 'Cofrinhos, metas e orçamento por categoria' },
+      { icone: 'fechamento', texto: 'Fechamento do mês comparando com o mês anterior, e resumo por e-mail' },
+      { icone: 'importar', texto: 'Importe extratos e planilhas (CSV)' },
+      { icone: 'app', texto: 'App instalável no celular (PWA), funciona offline' },
+      { icone: 'tema', texto: 'Modo claro e escuro' },
+      { icone: 'dados', texto: 'Seus dados são seus: exportação e exclusão a qualquer hora' },
+      { icone: 'sem-fidelidade', texto: 'Sem fidelidade: cancele quando quiser em Configurações' },
+    ],
+    beneficioPrecoTravado: { icone: 'travado', texto: 'Preço de lançamento travado nas renovações, enquanto a assinatura seguir ativa' },
+    verTudo: 'Ver tudo o que está incluso',
+    verMenos: 'Mostrar menos',
+    // Resumo do que a família fez durante o teste (dados reais)
+    resumoTeste: (dias, gastos, contas) => {
+      const d = dias === 1 ? '1 dia' : dias + ' dias'
+      const g = gastos + (gastos === 1 ? ' gasto' : ' gastos')
+      if (contas > 0) return 'Em ' + d + ' a família lançou ' + g + ' e marcou ' + contas + (contas === 1 ? ' conta como paga' : ' contas como pagas') + '.'
+      return 'Em ' + d + ' a família lançou ' + g + '.'
+    },
     assinarPix: 'Assinar com Pix',
     pagarCartao: 'Pagar com cartão',
     pagarCartao12x: (v) => `Pagar com cartão — 12x de ${v}`,
@@ -252,7 +272,9 @@ export const copy = {
     cupomJaResgatou: 'Seu grupo já resgatou um cupom.',
     cupomInvalido: 'Cupom inválido, expirado ou esgotado.',
     cupomErro: 'Não foi possível resgatar o cupom. Tente de novo.',
-    rodape: 'Preços em reais (BRL). Cancele quando quiser em Configurações — o acesso segue até o fim do período já pago. Teste sem cartão; depois do pagamento, você tem 7 dias de arrependimento (art. 49 do CDC).',
+    rodapeAntes: 'Preços em reais (BRL). Cancele quando quiser em ',
+    rodapeLink: 'Configurações',
+    rodapeDepois: ' — o acesso segue até o fim do período já pago e não há novas cobranças. Teste sem cartão; depois do pagamento, você tem 7 dias de arrependimento (art. 49 do CDC).',
   },
 
   convite: {

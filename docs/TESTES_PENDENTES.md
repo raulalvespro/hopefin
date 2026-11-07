@@ -199,3 +199,19 @@ build + console limpo (exige login).
 - [ ] Safari/iOS: sem suporte a voz, segue só o campo de texto (como antes).
 - Observação: não consigo testar microfone aqui; validado por build.
 - Removido da lista: **"débito automático"** (você explicou que o app é só controle) — não será criado.
+
+## ➕ Planos: mais vantagens + frase do teste  `branch: feat/planos-extras`  (sobre `feat/voz-ao-vivo`)
+
+Fiz um levantamento do que o app **realmente** faz e que não estava na lista de benefícios dos Planos.
+Só entrou o que existe no código (por isso **WhatsApp ficou de fora** — não há função dele ainda).
+
+- [ ] **Benefícios:** 6 direto (família, voz/texto com IA, planejado × praticado, contas do mês, lembretes,
+      ilimitado) + "**Ver tudo o que está incluso**" com mais 7: cofrinhos/orçamento, fechamento + resumo por
+      e-mail, importar CSV, PWA, modo claro/escuro, dados seus, sem fidelidade — e, **só durante o
+      lançamento**, "preço de lançamento travado nas renovações".
+- [ ] **Frase do teste (real):** no lugar do subtítulo, "Em N dias a família lançou X gastos e marcou Y
+      contas como pagas." Aparece para quem está em teste/venceu e já lançou algo; some se X = 0 e para quem
+      já é assinante. (Troquei "no prazo" por "marcou como pagas" — o banco não sabe se foi no prazo.)
+- [ ] **Rodapé:** "Configurações" virou link clicável.
+- Perguntas: (1) a lista de lembretes (push/e-mail) depende do usuário ativar notificações — o texto está ok
+  pra você? (2) quer que eu inclua o WhatsApp assim que a função existir?
