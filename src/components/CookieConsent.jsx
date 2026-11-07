@@ -23,7 +23,7 @@ export default function CookieConsent() {
       <Cookie size={22} color="var(--accent)" style={{ flexShrink: 0 }} />
       <p style={{ flex: '1 1 240px', fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.45, margin: 0 }}>
         Usamos cookies essenciais pra você entrar na conta e, se você permitir, cookies
-        de análise pra melhorar o app. <Link to="/privacidade" style={{ color: 'var(--accent)' }}>Saiba mais</Link>.
+        de análise pra melhorar o app. <Link to="/privacidade" style={{ color: 'var(--accent-text)' }}>Saiba mais</Link>.
       </p>
       <div style={{ display: 'flex', gap: 8, flex: '0 0 auto' }}>
         <button onClick={() => decidir('recusado')} className="btn-ghost"

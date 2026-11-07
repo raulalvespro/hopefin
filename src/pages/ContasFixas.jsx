@@ -79,7 +79,7 @@ export default function ContasFixas() {
 
       <div className="card" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <span style={{ color: 'var(--text2)', fontSize: 13 }}>Total mensal fixo</span>
-        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--blue)' }}>{fmt(total)}</span>
+        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--blue-text)' }}>{fmt(total)}</span>
       </div>
 
       {loading ? <div className="empty-state">Carregando...</div>
@@ -94,7 +94,7 @@ export default function ContasFixas() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ color: 'var(--blue)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(c.valor)}</span>
+              <span style={{ color: 'var(--blue-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(c.valor)}</span>
               <button onClick={() => editar(c)}><Pencil size={14} color="var(--text3)" /></button>
               <button onClick={() => excluir(c.id)}><Trash2 size={15} color="var(--text3)" /></button>
             </div>

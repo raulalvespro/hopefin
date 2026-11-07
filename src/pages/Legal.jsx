@@ -17,7 +17,7 @@ function inline(txt, key) {
     if (m[1] != null) partes.push(<strong key={key + '-b' + i}>{m[1]}</strong>)
     else partes.push(
       m[3].startsWith('http')
-        ? <a key={key + '-l' + i} href={m[3]} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>{m[2]}</a>
+        ? <a key={key + '-l' + i} href={m[3]} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-text)' }}>{m[2]}</a>
         : <span key={key + '-l' + i}>{m[2]}</span>  // links internos a outros .md: mostra só o texto
     )
     resto = resto.slice(m.index + m[0].length); i++
@@ -54,7 +54,7 @@ export default function Legal({ doc }) {
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '20px 18px 80px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
           <Link to="/login" className="btn-ghost" style={{ padding: 8, display: 'flex' }} aria-label="Voltar"><ArrowLeft size={18} /></Link>
-          <span style={{ fontSize: 14, color: 'var(--accent)', fontFamily: 'Syne, sans-serif', fontWeight: 700 }}>HopeFin</span>
+          <span style={{ fontSize: 14, color: 'var(--accent-text)', fontFamily: 'Syne, sans-serif', fontWeight: 700 }}>HopeFin</span>
         </div>
         <div style={{ fontSize: 14.5 }}>{corpo}</div>
         <div style={{ marginTop: 32, display: 'flex', gap: 16, fontSize: 13 }}>

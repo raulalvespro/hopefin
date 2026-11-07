@@ -45,7 +45,7 @@ export default function RedefinirSenha() {
             <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.5 }}>
               Este link é inválido ou expirou. Volte ao login e peça um novo link de redefinição.
             </p>
-            <button onClick={() => navigate('/login')} style={{ marginTop: 24, fontSize: 14, color: 'var(--accent)', fontWeight: 600 }}>
+            <button onClick={() => navigate('/login')} style={{ marginTop: 24, fontSize: 14, color: 'var(--accent-text)', fontWeight: 600 }}>
               Ir para o login
             </button>
           </div>
@@ -59,7 +59,7 @@ export default function RedefinirSenha() {
               <label>Repita a nova senha</label>
               <input type="password" placeholder="digite de novo" value={form.senha2} onChange={e => setForm(p => ({ ...p, senha2: e.target.value }))} minLength={6} autoComplete="new-password" required />
             </div>
-            {erro && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
+            {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
             <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={loading || temSessao === null}>
               {loading ? 'Salvando...' : 'Salvar nova senha'}
             </button>

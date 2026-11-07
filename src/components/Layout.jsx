@@ -142,7 +142,7 @@ export default function Layout() {
                     ))
                   )}
                   <button onClick={() => irPara('/historico')}
-                    style={{ width: '100%', padding: '11px 16px', fontSize: 12.5, color: 'var(--accent)', fontWeight: 500, textAlign: 'center', borderTop: alertas.length > 0 ? '1px solid var(--border)' : 'none' }}>
+                    style={{ width: '100%', padding: '11px 16px', fontSize: 12.5, color: 'var(--accent-text)', fontWeight: 500, textAlign: 'center', borderTop: alertas.length > 0 ? '1px solid var(--border)' : 'none' }}>
                     Ver histórico
                   </button>
                 </div>

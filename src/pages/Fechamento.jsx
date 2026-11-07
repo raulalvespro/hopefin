@@ -134,7 +134,7 @@ export default function Fechamento() {
                   <TrendingUp size={15} color="var(--accent)" />
                   <span style={{ fontSize: 12, color: 'var(--text2)' }}>Entrou</span>
                 </div>
-                <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 19, color: 'var(--accent)' }}>{fmt(atual.receitas)}</p>
+                <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 19, color: 'var(--accent-text)' }}>{fmt(atual.receitas)}</p>
                 <Delta atual={atual.receitas} anterior={anterior?.receitas} />
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -142,7 +142,7 @@ export default function Fechamento() {
                   <span style={{ fontSize: 12, color: 'var(--text2)' }}>Saiu</span>
                   <TrendingDown size={15} color="var(--red)" />
                 </div>
-                <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 19, color: 'var(--red)' }}>{fmt(atual.despesas)}</p>
+                <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 19, color: 'var(--red-text)' }}>{fmt(atual.despesas)}</p>
                 <Delta atual={atual.despesas} anterior={anterior?.despesas} invertido />
               </div>
             </div>
@@ -214,7 +214,7 @@ export default function Fechamento() {
               <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 14 }}>Quanto você guardou</p>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--accent)' }}>{fmt(atual.guardado)}</span>
+              <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--accent-text)' }}>{fmt(atual.guardado)}</span>
               {atual.poupanca != null && (
                 <span style={{ fontSize: 12, color: 'var(--text2)' }}>
                   {Math.round(atual.poupanca * 100)}% do que entrou

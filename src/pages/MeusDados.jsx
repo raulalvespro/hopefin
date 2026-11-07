@@ -157,7 +157,7 @@ export default function MeusDados() {
       <div className="card" style={{ borderColor: 'var(--red)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <ShieldAlert size={18} color="var(--red)" />
-          <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15, color: 'var(--red)' }}>Apagar meus dados</p>
+          <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15, color: 'var(--red-text)' }}>Apagar meus dados</p>
         </div>
         <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 16, lineHeight: 1.6 }}>
           Remove <strong>todos</strong> os lançamentos financeiros do grupo <strong>{nomeGrupo}</strong>: gastos, entradas, contas fixas, cartões, parcelamentos, cofrinhos e assinaturas. A conta e o grupo continuam existindo. <strong>Esta ação não pode ser desfeita</strong> — faça o backup antes.
@@ -166,7 +166,7 @@ export default function MeusDados() {
         {!confirmando ? (
           <button
             onClick={() => setConfirmando(true)}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 'var(--radius-sm)', background: 'var(--red-dim)', color: 'var(--red)', fontWeight: 600, fontSize: 13, border: '1px solid var(--red)' }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 'var(--radius-sm)', background: 'var(--red-dim)', color: 'var(--red-text)', fontWeight: 600, fontSize: 13, border: '1px solid var(--red)' }}
           >
             <Trash2 size={15} /> Apagar todos os meus dados
           </button>

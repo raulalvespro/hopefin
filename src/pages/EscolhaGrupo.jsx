@@ -81,7 +81,7 @@ export default function EscolhaGrupo() {
               <input placeholder="Cole o código que recebeu" value={codigo} onChange={e => setCodigo(e.target.value)} autoFocus />
               <p style={{ fontSize:12, color:'var(--text3)', marginTop:6 }}>Peça o código nas configurações do app de quem te convidou.</p>
             </div>
-            {erro && <p style={{ color:'var(--red)', fontSize:13, marginBottom:14 }}>{erro}</p>}
+            {erro && <p style={{ color:'var(--red-text)', fontSize:13, marginBottom:14 }}>{erro}</p>}
             <button className="btn-primary" style={{ width:'100%' }} onClick={handleEntrar} disabled={loading}>
               {loading ? 'Entrando...' : 'Entrar no grupo'}
             </button>

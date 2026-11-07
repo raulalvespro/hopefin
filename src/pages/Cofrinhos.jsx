@@ -147,7 +147,7 @@ export default function Cofrinhos() {
 
       <div className="card" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ color: 'var(--text2)', fontSize: 13 }}>Total guardado</span>
-        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--accent)' }}>{fmt(totalCofrinhos)}</span>
+        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--accent-text)' }}>{fmt(totalCofrinhos)}</span>
       </div>
 
       {loading ? <div className="empty-state">Carregando...</div>

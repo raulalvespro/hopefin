@@ -157,7 +157,7 @@ export default function Projecao() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, textTransform: 'capitalize' }}>
-                  {m.label} {m.isAtual && <span style={{ fontSize: 11, color: 'var(--accent)', marginLeft: 6 }}>● atual</span>}
+                  {m.label} {m.isAtual && <span style={{ fontSize: 11, color: 'var(--accent-text)', marginLeft: 6 }}>● atual</span>}
                 </p>
                 <p style={{ fontSize: 13, color: m.saldo >= 0 ? 'var(--accent)' : 'var(--red)', marginTop: 2 }}>
                   Saldo projetado: {fmt(m.saldo)}
@@ -189,7 +189,7 @@ export default function Projecao() {
                     <span style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <FileText size={13} color="var(--blue)" /> Contas fixas
                     </span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--blue)' }}>{fmt(m.totalFixas)}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--blue-text)' }}>{fmt(m.totalFixas)}</span>
                   </div>
                   {m.fixas.map(f => (
                     <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
@@ -208,7 +208,7 @@ export default function Projecao() {
                     <span style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Layers size={13} color="var(--purple)" /> Parcelamentos
                     </span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--purple)' }}>{fmt(m.totalParcelasFora)}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--purple-text)' }}>{fmt(m.totalParcelasFora)}</span>
                   </div>
                   {m.parcelasFora.map(p => (
                     <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
@@ -228,7 +228,7 @@ export default function Projecao() {
                       <CreditCard size={13} color="var(--amber)" /> {bandeiras[f.cartao.bandeira] || '💳'} {f.cartao.nome}
                       <span style={{ color: 'var(--text3)' }}>· vence {format(f.venc, 'dd/MM')}</span>
                     </span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--amber)' }}>{fmt(f.total)}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--amber-text)' }}>{fmt(f.total)}</span>
                   </div>
                   <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>
                     {f.compras > 0 && `${fmt(f.compras)} em compras`}
@@ -247,11 +247,11 @@ export default function Projecao() {
               <div className="divider" style={{ margin: '10px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
                 <span style={{ color: 'var(--text2)' }}>Entradas</span>
-                <span style={{ color: 'var(--accent)', fontWeight: 500 }}>{fmt(m.entradas)}</span>
+                <span style={{ color: 'var(--accent-text)', fontWeight: 500 }}>{fmt(m.entradas)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 10 }}>
                 <span style={{ color: 'var(--text2)' }}>Saídas totais</span>
-                <span style={{ color: 'var(--red)', fontWeight: 500 }}>{fmt(m.totalSaidas)}</span>
+                <span style={{ color: 'var(--red-text)', fontWeight: 500 }}>{fmt(m.totalSaidas)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontFamily: 'Syne' }}>
                 <span>Saldo projetado</span>

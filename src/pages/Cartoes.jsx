@@ -181,7 +181,7 @@ export default function Cartoes() {
                     <span style={{ fontSize: 11, color: 'var(--text3)' }}>{usoPct}% do limite de {fmt(c.limite)}</span>
                   </>
                 )}
-                <p style={{ fontSize: 11, color: 'var(--accent)', marginTop: 8 }}>Ver o que compõe esta fatura →</p>
+                <p style={{ fontSize: 11, color: 'var(--accent-text)', marginTop: 8 }}>Ver o que compõe esta fatura →</p>
               </button>
 
               {/* Próxima fatura */}
@@ -211,13 +211,13 @@ export default function Cartoes() {
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 6 }}>
                       {it.descricao || 'Sem descrição'}
-                      {it.tipo === 'parcela' && <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--blue)', padding: '1px 6px', borderRadius: 10 }}>{it.numero}/{it.total}x</span>}
-                      {it.tipo === 'assinatura' && <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--purple)', padding: '1px 6px', borderRadius: 10 }}>assinatura</span>}
+                      {it.tipo === 'parcela' && <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--blue-text)', padding: '1px 6px', borderRadius: 10 }}>{it.numero}/{it.total}x</span>}
+                      {it.tipo === 'assinatura' && <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--purple-text)', padding: '1px 6px', borderRadius: 10 }}>assinatura</span>}
                     </p>
                     <p style={{ fontSize: 11, color: 'var(--text3)' }}>{it.tipo === 'assinatura' ? (it.diaCobranca ? `Todo dia ${it.diaCobranca}` : 'Mensal') : fmtData(it.data, 'dd/MM')}</p>
                   </div>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--red)', flexShrink: 0 }}>{fmt(it.valor)}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--red-text)', flexShrink: 0 }}>{fmt(it.valor)}</span>
               </div>
             ))}
           </div>

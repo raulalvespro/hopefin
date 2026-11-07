@@ -261,11 +261,11 @@ export default function Importar() {
             </div>
             <div>
               <p style={{ fontSize: 11, color: 'var(--text2)' }}>Gastos</p>
-              <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--red)' }}>{fmt(totalGasto)}</p>
+              <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--red-text)' }}>{fmt(totalGasto)}</p>
             </div>
             <div>
               <p style={{ fontSize: 11, color: 'var(--text2)' }}>Entradas</p>
-              <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--accent)' }}>{fmt(totalEntrada)}</p>
+              <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--accent-text)' }}>{fmt(totalEntrada)}</p>
             </div>
           </div>
 
@@ -280,7 +280,7 @@ export default function Importar() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.descricao}</p>
                   <p style={{ fontSize: 11, color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {l.valido ? fmtData(l.data) : <span style={{ color: 'var(--red)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><AlertCircle size={11} /> linha inválida</span>}
+                    {l.valido ? fmtData(l.data) : <span style={{ color: 'var(--red-text)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><AlertCircle size={11} /> linha inválida</span>}
                     {l.valido && l.tipo === 'gasto' && (
                       <select value={l.categoria} onChange={e => setOv(l.i, { categoria: e.target.value })} onClick={e => e.stopPropagation()}
                         style={{ fontSize: 11, padding: '1px 4px', width: 'auto', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text2)' }}>

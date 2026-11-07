@@ -83,7 +83,7 @@ export default function Configuracoes() {
           Compartilhe o código abaixo com sua esposa, familiar ou quem quiser convidar. Quando a pessoa entrar no app com o Google, deve escolher "Entrar em um grupo" e colar esse código.
         </p>
         <div style={{ background:'var(--bg3)', borderRadius:'var(--radius-sm)', padding:'12px 14px', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-          <code style={{ fontSize:12, color:'var(--accent)', wordBreak:'break-all', flex:1 }}>{codigoGrupo}</code>
+          <code style={{ fontSize:12, color:'var(--accent-text)', wordBreak:'break-all', flex:1 }}>{codigoGrupo}</code>
           <button onClick={copiar} style={{ marginLeft:12, color: copiado?'var(--accent)':'var(--text2)', flexShrink:0 }}>
             {copiado ? <Check size={18} /> : <Copy size={18} />}
           </button>
@@ -192,7 +192,7 @@ export default function Configuracoes() {
             </span>
           </button>
           <div>
-            <button onClick={() => fotoRef.current?.click()} disabled={salvandoFoto} style={{ fontSize:13, fontWeight:600, color:'var(--accent)' }}>
+            <button onClick={() => fotoRef.current?.click()} disabled={salvandoFoto} style={{ fontSize:13, fontWeight:600, color:'var(--accent-text)' }}>
               {salvandoFoto ? 'Salvando...' : (perfil?.foto_url ? 'Trocar foto' : 'Adicionar foto')}
             </button>
             {perfil?.foto_url && (

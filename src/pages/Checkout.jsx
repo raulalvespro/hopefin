@@ -231,7 +231,7 @@ export default function Checkout() {
         </div>
       )}
 
-      {erro && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 12 }}>{erro}</p>}
+      {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, marginBottom: 12 }}>{erro}</p>}
 
       {/* Reforço de segurança */}
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '11px 13px', borderRadius: 'var(--radius-sm)', background: 'var(--bg2)', border: '1px solid var(--border)', marginBottom: 12 }}>

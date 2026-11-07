@@ -223,7 +223,7 @@ export default function ContasDoMes() {
                 </div>
                 <div>
                   <p style={{ fontSize: 12, color: 'var(--text2)' }}>Já pago {pagas.length}/{linhas.length}</p>
-                  <p style={{ fontSize: 18, fontFamily: 'Syne', fontWeight: 700, color: 'var(--accent)' }}>{fmt(totalPago)}</p>
+                  <p style={{ fontSize: 18, fontFamily: 'Syne', fontWeight: 700, color: 'var(--accent-text)' }}>{fmt(totalPago)}</p>
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 10 }}>

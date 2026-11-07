@@ -131,12 +131,12 @@ export default function Entradas() {
       <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ color: 'var(--text2)', fontSize: 13 }}>Total de entradas</span>
-          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--accent)' }}>{fmt(total)}</span>
+          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--accent-text)' }}>{fmt(total)}</span>
         </div>
         {aReceber > 0.009 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 12 }}>
-            <span style={{ color: 'var(--text2)' }}>Recebido <strong style={{ color: 'var(--accent)' }}>{fmt(totalRecebido)}</strong></span>
-            <span style={{ color: 'var(--text2)' }}>A receber <strong style={{ color: 'var(--amber)' }}>{fmt(aReceber)}</strong></span>
+            <span style={{ color: 'var(--text2)' }}>Recebido <strong style={{ color: 'var(--accent-text)' }}>{fmt(totalRecebido)}</strong></span>
+            <span style={{ color: 'var(--text2)' }}>A receber <strong style={{ color: 'var(--amber-text)' }}>{fmt(aReceber)}</strong></span>
           </div>
         )}
       </div>

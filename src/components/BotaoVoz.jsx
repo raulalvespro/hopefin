@@ -214,7 +214,7 @@ export default function BotaoVoz({ onSalvo }) {
                   </p>
                 )}
                 {interpretando && <p style={{ fontSize: 13, color: 'var(--accent2)', marginTop: 10 }}>Interpretando…</p>}
-                {erro && <p style={{ color: 'var(--red)', fontSize: 13, marginTop: 12 }}>{erro}</p>}
+                {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, marginTop: 12 }}>{erro}</p>}
               </>
             )}
 
@@ -295,7 +295,7 @@ export default function BotaoVoz({ onSalvo }) {
                 )}
 
                 {avisoLimite && (
-                  <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--amber)', marginBottom: 12 }}>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--amber-text)', marginBottom: 12 }}>
                     <AlertTriangle size={14} /> {avisoLimite}
                   </p>
                 )}

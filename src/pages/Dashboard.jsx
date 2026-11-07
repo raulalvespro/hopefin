@@ -249,20 +249,20 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
         <div className="card">
           <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Entradas</p>
-          <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--accent)' }}>{fmt(dados.recebidoEntradas)}</p>
+          <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--accent-text)' }}>{fmt(dados.recebidoEntradas)}</p>
           <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>já recebido</p>
           <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text2)', display: 'flex', flexDirection: 'column', gap: 2 }}>
             <span>Previsto: {fmt(dados.totalEntradas)}</span>
-            {dados.aReceber > 0.005 && <span style={{ color: 'var(--amber)' }}>A receber: {fmt(dados.aReceber)}</span>}
+            {dados.aReceber > 0.005 && <span style={{ color: 'var(--amber-text)' }}>A receber: {fmt(dados.aReceber)}</span>}
           </div>
         </div>
         <div className="card">
           <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Saídas</p>
-          <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--red)' }}>{fmt(dados.saiuSaidas)}</p>
+          <p style={{ fontSize: 20, fontFamily: 'Syne', fontWeight: 700, color: 'var(--red-text)' }}>{fmt(dados.saiuSaidas)}</p>
           <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>já saiu</p>
           <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text2)', display: 'flex', flexDirection: 'column', gap: 2 }}>
             <span>Previsto: {fmt(dados.previstoSaidas)}</span>
-            {dados.aPagar > 0.005 && <span style={{ color: 'var(--amber)' }}>A pagar: {fmt(dados.aPagar)}</span>}
+            {dados.aPagar > 0.005 && <span style={{ color: 'var(--amber-text)' }}>A pagar: {fmt(dados.aPagar)}</span>}
           </div>
         </div>
       </div>
@@ -296,7 +296,7 @@ export default function Dashboard() {
               <Target size={18} color="var(--accent)" />
               <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Orçamento do mês</p>
             </div>
-            <Link to="/orcamento" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Ver tudo</Link>
+            <Link to="/orcamento" style={{ fontSize: 12, color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 600 }}>Ver tudo</Link>
           </div>
           {dados.orcamentoCats.slice(0, 5).map(({ categoria, teto, realizado }) => {
             const pct = teto > 0 ? Math.round((realizado / teto) * 100) : 0

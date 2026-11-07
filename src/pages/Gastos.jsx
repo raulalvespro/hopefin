@@ -157,7 +157,7 @@ export default function Gastos() {
           <CalendarCheck size={15} color="var(--accent)" /> Gastos + parcelas do mês
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--red)' }}>{fmt(total)}</span>
+          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--red-text)' }}>{fmt(total)}</span>
           <ChevronRight size={16} color="var(--text3)" />
         </span>
       </button>
@@ -173,7 +173,7 @@ export default function Gastos() {
               <p style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
                 {it.descricao}
                 {it.tipo === 'parcela' && (
-                  <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--blue)', padding: '1px 7px', borderRadius: 10 }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--blue-text)', padding: '1px 7px', borderRadius: 10 }}>
                     {it.numero}/{it.totalParcelas}x
                   </span>
                 )}
@@ -184,7 +184,7 @@ export default function Gastos() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ color: 'var(--red)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(it.valor)}</span>
+            <span style={{ color: 'var(--red-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(it.valor)}</span>
             {it.tipo === 'gasto' ? (
               <>
                 <button onClick={() => editarGasto(it)}><Pencil size={14} color="var(--text3)" /></button>
@@ -198,7 +198,7 @@ export default function Gastos() {
       {/* Ver todos / ver menos */}
       {!loading && itens.length > 10 && (
         <button onClick={() => setVerTodos(v => !v)}
-          style={{ width: '100%', padding: '10px', marginTop: 4, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--accent)', fontSize: 13, fontWeight: 600 }}>
+          style={{ width: '100%', padding: '10px', marginTop: 4, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--accent-text)', fontSize: 13, fontWeight: 600 }}>
           {verTodos ? 'Ver menos' : `Ver todos (${itens.length})`}
         </button>
       )}

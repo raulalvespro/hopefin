@@ -172,7 +172,7 @@ export default function Notificacoes() {
 
         {push.inscrito && (
           <button onClick={testarPush} disabled={pushBusy}
-            style={{ marginTop: 14, fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>
+            style={{ marginTop: 14, fontSize: 13, fontWeight: 600, color: 'var(--accent-text)' }}>
             {pushBusy ? 'Enviando…' : 'Enviar notificação de teste'}
           </button>
         )}
@@ -184,12 +184,12 @@ export default function Notificacoes() {
           </p>
         )}
         {push.permissao === 'denied' && (
-          <p style={{ fontSize: 12, color: 'var(--amber)', marginTop: 12, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12, color: 'var(--amber-text)', marginTop: 12, lineHeight: 1.5 }}>
             As notificações estão bloqueadas para este site. Libere nas configurações do navegador para ativar.
           </p>
         )}
         {pushErro && (
-          <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 12, lineHeight: 1.5 }}>{pushErro}</p>
+          <p style={{ fontSize: 12, color: 'var(--red-text)', marginTop: 12, lineHeight: 1.5 }}>{pushErro}</p>
         )}
       </div>
 

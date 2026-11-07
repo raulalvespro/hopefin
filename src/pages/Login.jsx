@@ -53,7 +53,7 @@ export default function Login() {
               <input type="password" placeholder="••••••••" value={form.senha} onChange={e => setForm(p => ({ ...p, senha: e.target.value }))} autoComplete="current-password" required />
             </div>
 
-            {erro && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
+            {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
 
             <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={loading}>
               {loading ? 'Entrando...' : 'Entrar'}
@@ -66,7 +66,7 @@ export default function Login() {
 
             <p style={{ textAlign: 'center', marginTop: 28, fontSize: 14, color: 'var(--text2)' }}>
               Primeiro acesso?{' '}
-              <Link to="/cadastro" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Criar minha conta</Link>
+              <Link to="/cadastro" style={{ color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 600 }}>Criar minha conta</Link>
             </p>
           </form>
         )}
@@ -79,7 +79,7 @@ export default function Login() {
               <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
                 Se houver uma conta para <strong>{form.email}</strong>, enviamos um link para você criar uma nova senha.
               </p>
-              <button onClick={() => { setModo('login'); setEnviado(false) }} style={{ marginTop: 24, fontSize: 14, color: 'var(--accent)', fontWeight: 600 }}>
+              <button onClick={() => { setModo('login'); setEnviado(false) }} style={{ marginTop: 24, fontSize: 14, color: 'var(--accent-text)', fontWeight: 600 }}>
                 Voltar para o login
               </button>
             </div>
@@ -92,7 +92,7 @@ export default function Login() {
                 <label>E-mail</label>
                 <input type="email" placeholder="seu@email.com" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} autoComplete="email" required />
               </div>
-              {erro && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
+              {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
               <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={loading}>
                 {loading ? 'Enviando...' : 'Enviar link'}
               </button>

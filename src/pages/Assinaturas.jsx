@@ -81,7 +81,7 @@ export default function Assinaturas() {
 
       <div className="card" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <span style={{ color: 'var(--text2)', fontSize: 13 }}>Total mensal em assinaturas</span>
-        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--purple)' }}>{fmt(total)}</span>
+        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--purple-text)' }}>{fmt(total)}</span>
       </div>
 
       {loading ? <div className="empty-state">Carregando...</div>
@@ -99,7 +99,7 @@ export default function Assinaturas() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ color: 'var(--purple)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(a.valor)}</span>
+              <span style={{ color: 'var(--purple-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(a.valor)}</span>
               <button onClick={() => editar(a)}><Pencil size={14} color="var(--text3)" /></button>
               <button onClick={() => excluir(a.id)}><Trash2 size={15} color="var(--text3)" /></button>
             </div>

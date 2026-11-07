@@ -128,7 +128,7 @@ export default function Orcamento() {
           <p style={{ fontSize:12, color:'var(--text2)', marginTop:8 }}>Sobra {fmt(totalOrcado-totalGasto)} no orçamento</p>
         )}
         {totalGasto>totalOrcado && totalOrcado>0 && (
-          <p style={{ fontSize:12, color:'var(--red)', marginTop:8 }}>Estourou {fmt(totalGasto-totalOrcado)}</p>
+          <p style={{ fontSize:12, color:'var(--red-text)', marginTop:8 }}>Estourou {fmt(totalGasto-totalOrcado)}</p>
         )}
       </div>
 

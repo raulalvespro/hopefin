@@ -123,8 +123,8 @@ export default function Cadastro() {
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--text2)', marginBottom: 12, cursor: 'pointer', lineHeight: 1.45 }}>
             <input type="checkbox" checked={form.aceite} onChange={e => set('aceite', e.target.checked)} style={{ marginTop: 2, flexShrink: 0, width: 'auto' }} />
             <span>Li e aceito os{' '}
-              <Link to="/termos" target="_blank" style={{ color: 'var(--accent)', fontWeight: 600 }}>Termos de Uso</Link> e a{' '}
-              <Link to="/privacidade" target="_blank" style={{ color: 'var(--accent)', fontWeight: 600 }}>Política de Privacidade</Link>.
+              <Link to="/termos" target="_blank" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>Termos de Uso</Link> e a{' '}
+              <Link to="/privacidade" target="_blank" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>Política de Privacidade</Link>.
             </span>
           </label>
 
@@ -133,7 +133,7 @@ export default function Cadastro() {
             Quero receber dicas e novidades do HopeFin por WhatsApp e e-mail. Dá pra cancelar quando quiser.
           </label>
 
-          {erro && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
+          {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
 
           <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={loading}>
             {loading ? 'Criando conta...' : 'Criar conta e entrar'}
@@ -142,7 +142,7 @@ export default function Cadastro() {
 
         <p style={{ textAlign: 'center', marginTop: 24, fontSize: 14, color: 'var(--text2)' }}>
           Já tem conta?{' '}
-          <Link to="/login" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>Entrar</Link>
+          <Link to="/login" style={{ color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 600 }}>Entrar</Link>
         </p>
       </div>
     </div>

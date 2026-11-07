@@ -30,6 +30,13 @@
   --purple: #8b5cf6;
   --purple-dim: rgba(139,92,246,0.12);
 
+  /* Texto colorido legível (contraste AA) — use em valores, links e legendas */
+  --accent-text: #047857;
+  --red-text: #b91c1c;
+  --amber-text: #92400e;
+  --blue-text: #1d4ed8;
+  --purple-text: #5b21b6;
+
   /* Sombra suave para elevação dos cards */
   --shadow-sm: 0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.06);
 
@@ -62,6 +69,13 @@
   --amber-dim: rgba(251,191,36,0.18);
   --purple: #a78bfa;
   --purple-dim: rgba(167,139,250,0.18);
+
+  /* Texto colorido legível (contraste AA) — versão escura */
+  --accent-text: #34d399;
+  --red-text: #fca5a5;
+  --amber-text: #fcd34d;
+  --blue-text: #93c5fd;
+  --purple-text: #c4b5fd;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.35);
 }
 
@@ -95,6 +109,13 @@
     --amber-dim: rgba(251,191,36,0.18);
     --purple: #a78bfa;
     --purple-dim: rgba(167,139,250,0.18);
+
+    /* Texto colorido legível (contraste AA) — versão escura */
+    --accent-text: #34d399;
+    --red-text: #fca5a5;
+    --amber-text: #fcd34d;
+    --blue-text: #93c5fd;
+    --purple-text: #c4b5fd;
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.35);
   }
 }
@@ -183,10 +204,10 @@ select option { background: var(--bg3); }
   border-radius: 20px;
   font-weight: 500;
 }
-.tag-green { background: var(--accent-dim); color: var(--accent); }
-.tag-red { background: var(--red-dim); color: var(--red); }
-.tag-blue { background: var(--blue-dim); color: var(--blue); }
-.tag-amber { background: var(--amber-dim); color: var(--amber); }
+.tag-green { background: var(--accent-dim); color: var(--accent-text); }
+.tag-red { background: var(--red-dim); color: var(--red-text); }
+.tag-blue { background: var(--blue-dim); color: var(--blue-text); }
+.tag-amber { background: var(--amber-dim); color: var(--amber-text); }
 
 .modal-overlay {
   position: fixed; inset: 0;
