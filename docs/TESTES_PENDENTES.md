@@ -364,3 +364,10 @@ Checklist para você, logado (depois do push do front):
 - [ ] Configurações → Minha assinatura: nos 7 primeiros dias aparecem "Cancelar e pedir reembolso" e "Cancelar e usar até …";
       depois dos 7 dias só o cancelamento simples.
 - [ ] E-mails: aviso de renovação (D-7), renovado, falha na renovação, cancelamento com reembolso.
+
+## 🔒 Trava no banco contra grupos duplicados (07/11/2026, 18:13) — migração 0032 aplicada
+
+Mesmo depois da 0031, o app (ainda sem a blindagem, que aguarda push) continuou criando grupos quando uma leitura do perfil
+falhava e trocou o grupo da conta `raullerickson@gmail.com` outra vez (18:10). A `criar_grupo()` agora **devolve o grupo atual
+quando a pessoa já tem um** — não cria outro. Limpei os grupos vazios criados hoje (restaram 41 no total). A causa exata da
+falha transitória de leitura ainda não foi identificada; a blindagem no front (`fix/perfil-ambiguidade`) é a proteção definitiva.
