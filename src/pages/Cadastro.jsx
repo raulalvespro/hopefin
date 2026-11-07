@@ -15,37 +15,38 @@ const brl = c => (c / 100).toLocaleString('pt-BR', { style: 'currency', currency
 // Arte do painel do cadastro: a família ligada ao saldo único + selo do preço de
 // lançamento (lido da config). Fica no painel escuro, nos dois temas.
 function ArteCadastro({ preco }) {
+  // 3 avatares (você + família) ligados ao mesmo saldo central.
   const AV = [
-    { cx: 70, cy: 70, bg: 'rgba(16,185,129,.22)', fg: '#34d399', txt: t.avVoce, delay: '.1s' },
-    { cx: 70, cy: 190, bg: 'rgba(96,165,250,.22)', fg: '#93c5fd', txt: t.avMais, delay: '.25s' },
-    { cx: 430, cy: 70, bg: 'rgba(167,139,250,.22)', fg: '#c4b5fd', txt: t.avMais, delay: '.4s' },
+    { cx: 56, cy: 54, bg: 'rgba(16,185,129,.22)', fg: '#34d399', txt: t.avVoce, delay: '.1s' },
+    { cx: 56, cy: 186, bg: 'rgba(96,165,250,.22)', fg: '#93c5fd', txt: t.avMais, delay: '.25s' },
+    { cx: 444, cy: 120, bg: 'rgba(167,139,250,.22)', fg: '#c4b5fd', txt: t.avMais, delay: '.4s' },
   ]
   const dataFmt = preco.lancamentoAte ? new Date(preco.lancamentoAte).toLocaleDateString('pt-BR') : ''
   return (
-    <div className="entrada-arte" style={{ height: 240 }}>
-      <svg className="entrada-barras" viewBox="0 0 520 240" aria-hidden="true" style={{ width: 'min(520px, 96%)', height: 'auto' }}>
-        <path className="hf-line" d="M70 70 C 150 70, 170 150, 250 150" fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="3" strokeLinecap="round" style={{ animationDelay: '.5s' }} />
-        <path className="hf-line" d="M70 190 C 150 190, 170 150, 250 150" fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="3" strokeLinecap="round" style={{ animationDelay: '.7s' }} />
-        <path className="hf-line" d="M430 70 C 350 70, 330 150, 270 150" fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="3" strokeLinecap="round" style={{ animationDelay: '.9s' }} />
+    <div className="entrada-arte-cad">
+      <svg className="cad-rede" viewBox="0 0 500 240" aria-hidden="true">
+        <path className="hf-line" d="M56 54 C 150 54, 160 120, 230 120" fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="3" strokeLinecap="round" style={{ animationDelay: '.5s' }} />
+        <path className="hf-line" d="M56 186 C 150 186, 160 120, 230 120" fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="3" strokeLinecap="round" style={{ animationDelay: '.7s' }} />
+        <path className="hf-line" d="M444 120 C 360 120, 350 120, 290 120" fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="3" strokeLinecap="round" style={{ animationDelay: '.9s' }} />
         {AV.map((a, i) => (
           <g key={i} className="hf-pop" style={{ animationDelay: a.delay }}>
-            <circle cx={a.cx} cy={a.cy} r="34" fill={a.bg} />
-            <text x={a.cx} y={a.cy + 7} textAnchor="middle" fontFamily="Syne, sans-serif" fontWeight="700" fontSize="20" fill={a.fg}>{a.txt}</text>
+            <circle cx={a.cx} cy={a.cy} r="32" fill={a.bg} />
+            <text x={a.cx} y={a.cy + 6} textAnchor="middle" fontFamily="Syne, sans-serif" fontWeight="700" fontSize="18" fill={a.fg}>{a.txt}</text>
           </g>
         ))}
         <g className="hf-pulse">
-          <rect x="200" y="110" width="120" height="80" rx="16" fill="#10b981" />
-          <text x="260" y="146" textAnchor="middle" fontFamily="DM Sans, sans-serif" fontSize="13" fill="#06281e">{t.saldoCasaLabel}</text>
-          <text x="260" y="170" textAnchor="middle" fontFamily="Syne, sans-serif" fontWeight="700" fontSize="18" fill="#06281e">{t.saldoCasaValor}</text>
+          <rect x="200" y="86" width="120" height="68" rx="16" fill="#10b981" />
+          <text x="260" y="114" textAnchor="middle" fontFamily="DM Sans, sans-serif" fontSize="13" fill="#06281e">{t.saldoCasaLabel}</text>
+          <text x="260" y="138" textAnchor="middle" fontFamily="Syne, sans-serif" fontWeight="700" fontSize="18" fill="#06281e">{t.saldoCasaValor}</text>
         </g>
       </svg>
       {preco.lancamentoAtivo && (
-        <div className="entrada-saldo" style={{ position: 'absolute', right: 0, bottom: 8, flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-          <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 20, background: 'rgba(251,191,36,.18)', color: '#fcd34d' }}>{t.seloLabel}</span>
-          <span style={{ fontFamily: "'Syne', system-ui, sans-serif", fontWeight: 700, fontSize: 22, color: '#ffffff' }}>
-            {brl(preco.anualPix)}<span style={{ fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 400, fontSize: 13, color: '#94a3b8' }}> {t.seloAno}</span>
+        <div className="cad-selo">
+          <span className="cad-selo-tag">{t.seloLabel}</span>
+          <span className="cad-selo-valor">
+            {brl(preco.anualPix)}<span className="cad-selo-ano"> {t.seloAno}</span>
           </span>
-          {dataFmt && <span style={{ fontSize: 12, color: '#94a3b8' }}>{t.seloAte(dataFmt)}</span>}
+          {dataFmt && <span className="cad-selo-ate">{t.seloAte(dataFmt)}</span>}
         </div>
       )}
     </div>
