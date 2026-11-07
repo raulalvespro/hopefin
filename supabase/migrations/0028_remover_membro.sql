@@ -7,7 +7,7 @@
 -- Por segurança, não se remove a si mesmo nem quem fez a assinatura (titular).
 
 alter table public.grupos
-  add column if not exists criado_por uuid references public.usuarios(id) on delete set null;
+  add column if not exists criado_por uuid; -- SEM FK: uma FK aqui cria ambiguidade no embed grupos(*) do PostgREST (ver 0031)
 
 -- Grupos existentes: dono = o membro mais antigo.
 update public.grupos g

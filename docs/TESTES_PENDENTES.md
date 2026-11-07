@@ -364,3 +364,18 @@ Checklist para você, logado (depois do push do front):
 - [ ] Configurações → Minha assinatura: nos 7 primeiros dias aparecem "Cancelar e pedir reembolso" e "Cancelar e usar até …";
       depois dos 7 dias só o cancelamento simples.
 - [ ] E-mails: aviso de renovação (D-7), renovado, falha na renovação, cancelamento com reembolso.
+
+## 🩹 Incidente: tela em branco depois da 0028 (07/11/2026) — corrigido
+
+- **Causa:** a migração 0028 criou a FK `grupos.criado_por → usuarios`; com duas relações entre `grupos` e `usuarios`, o
+  select do login (`usuarios?select=*,grupos(*)`) passou a falhar (PGRST201). Sem perfil, o app ficava em "Carregando…" e o
+  fallback do `AuthContext` **criava um grupo novo a cada tentativa** (20 grupos vazios no total), tirando a conta de teste do
+  grupo com dados. Contas novas também ficaram em branco (sem onboarding).
+- **Correção no banco (já no ar):** migração `0031` remove a FK (a coluna `criado_por` continua, sem FK). Conferido: login da
+  conta de teste volta com os dados (170 gastos).
+- **Limpeza:** conta de teste devolvida ao grupo "Família Teste" (com a Larissa) e 20 grupos vazios apagados. Sua conta
+  (`raullerickson@gmail.com`, grupo "Família Alves") está íntegra; a assinatura de teste (7 dias) é criada no próximo acesso.
+- **Blindagem no front (commit, aguardando push):** o `AuthContext` usa hint explícito na relação e **não cria mais grupo/usuário
+  se a leitura do perfil falhar**.
+- **Lição:** eu deveria ter testado o login logado após a 0028. Testei só a remoção por RPC. Daqui pra frente, depois de toda
+  migração de schema, rodo o select do login com um usuário real antes de dar por concluído.

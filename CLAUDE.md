@@ -99,6 +99,11 @@ em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `L
   node scripts/db.mjs -e "select count(*) from gastos" # SQL pontual
   node scripts/db.mjs --migrate                        # roda todas (idempotentes)
   ```
+- **NUNCA criar FK extra entre `grupos` e `usuarios`** (ex.: `grupos.criado_por -> usuarios`): o app faz
+  `usuarios?select=*,grupos(*)` no login e o PostgREST passa a recusar com PGRST201 ("more than one relationship"),
+  o perfil não carrega e a tela fica em branco. Aconteceu em 07/11/2026 (migração 0028, corrigida na 0031: `criado_por`
+  é só uuid, sem FK). Se precisar de outra ligação, use coluna sem FK ou hint explícito (`grupos!usuarios_grupo_id_fkey(*)`,
+  já usado no AuthContext). O AuthContext também não cria mais grupo quando a leitura do perfil FALHA.
 - **RLS por grupo:** helper `meu_grupo_id()` (SECURITY DEFINER evita recursão). Entrar/
   criar grupo via RPC (`entrar_no_grupo`, `criar_grupo`). Tabelas de dados usam política
   `FOR ALL ... using (grupo_id = meu_grupo_id())`.
