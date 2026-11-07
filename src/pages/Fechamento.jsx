@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, PiggyBank, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, PiggyBank, ArrowUpRight, ArrowDownRight, Share2 } from 'lucide-react'
 import { useCategorias } from '../hooks/useCategorias'
 import { fmt } from '../lib/format'
 import { copy } from '../copy/pt-BR'
+import ResumoCartao from '../components/ResumoCartao'
+import { Button } from '../components/ui'
+import { useToast } from '../contexts/ToastContext'
+import { compartilharImagem } from '../lib/compartilharImagem'
 
 const t = copy.resumoMes
 
@@ -81,7 +85,10 @@ function Delta({ atual, anterior, invertido = false }) {
 
 export default function Fechamento() {
   const { perfil } = useAuth()
+  const { toast } = useToast()
   const { emojiDe } = useCategorias()
+  const exportRef = useRef(null)
+  const [gerando, setGerando] = useState(false)
   const [mes, setMes] = useState(startOfMonth(new Date()))
   const [atual, setAtual] = useState(null)
   const [anterior, setAnterior] = useState(null)
@@ -114,6 +121,33 @@ export default function Fechamento() {
   const positivo = atual && atual.resultado >= 0
   const maxCat = atual && atual.categorias.length ? atual.categorias[0][1] : 0
 
+  const mesNome = format(mes, 'MMMM', { locale: ptBR })
+  const propsCartao = atual ? {
+    nomeMes: mesNome,
+    nomeMesAnterior: format(subMonths(mes, 1), 'MMMM', { locale: ptBR }),
+    grupoNome: perfil?.grupos?.nome,
+    positivo, resultado: atual.resultado,
+    difAnt: anterior && (anterior.receitas > 0 || anterior.despesas > 0) ? atual.resultado - anterior.resultado : null,
+    meta, fixasTotal: atual.fixasTotal, fixasPagas: atual.fixasPagas, vozPct: atual.vozPct,
+  } : null
+
+  async function compartilhar() {
+    setGerando(true)
+    await new Promise(r => setTimeout(r, 200)) // espera a versão da imagem montar
+    try {
+      const r = await compartilharImagem(exportRef.current, {
+        nomeArquivo: 'hopefin-resumo-' + ym + '.png',
+        titulo: t.tituloCompartilhar(mesNome), texto: t.textoCompartilhar,
+      })
+      if (r === 'baixado') toast(t.okBaixado, 'ok')
+    } catch (e) {
+      console.error('[resumo] compartilhar:', e)
+      toast(t.erroCompartilhar, 'erro')
+    } finally {
+      setGerando(false)
+    }
+  }
+
   const linhasSaida = atual ? [
     ['Gastos variáveis', atual.gastosVar, 'var(--red)'],
     ['Contas fixas', atual.fixas, 'var(--amber)'],
@@ -136,72 +170,16 @@ export default function Fechamento() {
       {loading || !atual ? <div className="empty-state">{t.carregando}</div> : (
         <>
           {/* Cartão de resumo (estilo noite): resultado, meta e indicadores do mês */}
-          {(() => {
-            const mesNome = format(mes, 'MMMM', { locale: ptBR })
-            const mesAntNome = format(subMonths(mes, 1), 'MMMM', { locale: ptBR })
-            const difAnt = anterior ? atual.resultado - anterior.resultado : null
-            const circ = 251 // 2·π·40
-            const painelInterno = { background: 'rgba(255,255,255,.07)', borderRadius: 16, padding: 16 }
-            return (
-              <div style={{ position: 'relative', overflow: 'hidden', marginBottom: 16, padding: 24, borderRadius: 'var(--radius-xl)', background: 'var(--panel-ink)', color: '#ffffff', display: 'flex', flexDirection: 'column', gap: 18 }}>
-                {/* Barrinhas decorativas (mesma marca do painel do Início) */}
-                <svg width="160" height="160" viewBox="0 0 480 240" aria-hidden="true" style={{ position: 'absolute', right: -30, top: -16, opacity: 0.16 }}>
-                  <g fill="#10b981"><rect x="248" y="72" width="32" height="192" rx="16" /><rect x="304" y="48" width="32" height="216" rx="16" /><rect x="360" y="24" width="32" height="240" rx="16" /><rect x="416" y="0" width="32" height="264" rx="16" /></g>
-                </svg>
-                <span style={{ position: 'relative', fontSize: 13, color: '#94a3b8', textTransform: 'capitalize' }}>
-                  {t.mesNaCasa(mesNome, perfil?.grupos?.nome || t.grupoFallback)}
-                </span>
-                <div className="hf-count" style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 15, color: '#94a3b8' }}>{positivo ? t.sobrou : t.faltou}</span>
-                  <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 44, lineHeight: '48px', color: positivo ? '#34d399' : '#fca5a5' }}>
-                    {fmt(Math.abs(atual.resultado))}
-                  </span>
-                  {difAnt != null && anterior && (anterior.receitas > 0 || anterior.despesas > 0) && (
-                    <span style={{ fontSize: 14, color: '#e2e8f0' }}>
-                      {Math.abs(difAnt) < 0.01 ? t.igualA(mesAntNome) : difAnt > 0 ? t.aMaisQue(fmt(difAnt), mesAntNome) : t.aMenosQue(fmt(Math.abs(difAnt)), mesAntNome)}
-                    </span>
-                  )}
-                  <span style={{ marginTop: 2 }}><Delta atual={atual.resultado} anterior={anterior?.resultado} /></span>
-                </div>
-
-                {meta && (
-                  <div className="hf-count" style={{ ...painelInterno, position: 'relative', display: 'flex', gap: 16, alignItems: 'center', animationDelay: '.2s' }}>
-                    <svg width="92" height="92" viewBox="0 0 92 92" role="img" aria-label={t.metaAria(meta.pct)} style={{ flexShrink: 0 }}>
-                      <circle cx="46" cy="46" r="40" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="10" />
-                      <circle className="hf-arc" cx="46" cy="46" r="40" fill="none" stroke="#a78bfa" strokeWidth="10" strokeLinecap="round" transform="rotate(-90 46 46)" style={{ strokeDashoffset: circ - (circ * meta.pct) / 100 }} />
-                      <text x="46" y="52" textAnchor="middle" fontFamily="Syne, sans-serif" fontWeight="700" fontSize="18" fill="#ffffff">{meta.pct}%</text>
-                    </svg>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-                      <span style={{ fontSize: 13, color: '#94a3b8' }}>{t.metaDe(meta.nome)}</span>
-                      <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18 }}>{t.metaDeTotal(fmt(meta.saldo), fmt(meta.meta))}</span>
-                    </div>
-                  </div>
-                )}
-
-                {(atual.fixasTotal > 0 || atual.vozPct != null) && (
-                  <div className="hf-count" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, animationDelay: '.35s' }}>
-                    {atual.fixasTotal > 0 && (
-                      <div style={{ ...painelInterno, padding: 14, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ fontSize: 12, color: '#94a3b8' }}>{t.contasFixasPagas}</span>
-                        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 22 }}>{t.contasFixasDe(atual.fixasPagas, atual.fixasTotal)}</span>
-                      </div>
-                    )}
-                    {atual.vozPct != null && (
-                      <div style={{ ...painelInterno, padding: 14, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ fontSize: 12, color: '#94a3b8' }}>{t.lancadoPorVoz}</span>
-                        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 22 }}>{atual.vozPct}%</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 13, color: '#94a3b8' }}>{t.rodapeMarca}</span>
-                  <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14 }}>{t.rodapeSite}</span>
-                </div>
-              </div>
-            )
-          })()}
+          <ResumoCartao {...propsCartao} delta={<Delta atual={atual.resultado} anterior={anterior?.resultado} />} />
+          <Button variant="secondary" onClick={compartilhar} loading={gerando} style={{ width: '100%', marginBottom: 16 }}>
+            <Share2 size={18} /> {gerando ? t.gerando : t.compartilhar}
+          </Button>
+          {/* Versão 360×640 fora da tela: é ela que vira a imagem compartilhada */}
+          {gerando && (
+            <div aria-hidden="true" style={{ position: 'fixed', left: -10000, top: 0 }}>
+              <div ref={exportRef}><ResumoCartao {...propsCartao} exportar /></div>
+            </div>
+          )}
 
           {/* Receitas × Despesas */}
           <div className="card" style={{ marginBottom: 16 }}>

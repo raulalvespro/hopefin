@@ -11,6 +11,7 @@
     "@sentry/react": "^11.11.0",
     "@supabase/supabase-js": "^2.39.0",
     "date-fns": "^3.2.0",
+    "html-to-image": "^1.11.13",
     "lucide-react": "^0.309.0",
     "posthog-js": "^1.447.0",
     "qrcode": "^1.5.4",

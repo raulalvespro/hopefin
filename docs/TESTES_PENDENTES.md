@@ -282,3 +282,21 @@ Testar logado:
 - [ ] Após a migração: dono remove um membro; o removido, ao entrar, cai na escolha de grupo.
 - [ ] O link usa o domínio de onde você abriu (em produção: app.hopefin.com.br).
 - Pergunta: quando alguém é removido, devo avisar por e-mail? (não fiz).
+
+## ➕ Compartilhar resumo do mês  `branch: feat/resumo-compartilhar`  (sobre `feat/convite-extras`)
+
+Botão **"Compartilhar resumo"** no Fechamento (logo abaixo do cartão escuro). Gera uma imagem PNG 360×640
+(formato story/WhatsApp, em alta resolução) do cartão, com os dados reais do grupo, e abre a folha de
+compartilhar do celular; no desktop, baixa o arquivo. Nova dependência: **`html-to-image`** (só carrega ao
+clicar). O cartão virou componente `ResumoCartao` (usado na tela e na imagem). Na vitrine `/dev/componentes`
+há uma demo com dados de exemplo — testei a geração lá: saiu um PNG 360×640 correto (fontes da marca incluídas).
+
+- [ ] No **celular** (Chrome/Safari): tocar em "Compartilhar resumo" → abre a folha de compartilhar com a
+      imagem → mandar pro WhatsApp. Conferir se a imagem ficou igual ao cartão (fonte, cores, rodapé).
+- [ ] No **desktop**: baixa `hopefin-resumo-AAAA-MM.png`; aparece o aviso "Imagem baixada".
+- [ ] Mês com resultado negativo → "Faltou no mês" em vermelho claro.
+- [ ] A imagem **mostra seus valores reais** (resultado do mês, meta, nº de contas) — só sai do aparelho se
+      você mandar. Sem "%" de variação (só a frase "R$ X a mais que {mês}").
+- Observação: no meu navegador de teste o `requestAnimationFrame` fica pausado (painel oculto), então só
+  consegui validar a geração com um ajuste temporário; em janela visível funciona normalmente.
+- Mascote continua pendente (aguardando as imagens 3D).

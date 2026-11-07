@@ -2,13 +2,15 @@
 // em App.jsx é cercada por import.meta.env.DEV. Serve pra conferir Button, Card,
 // Tag, Money, ListItem, Meter, Avatar, EmptyState, MicButton, IconeCategoria e
 // Toast nos dois temas (claro/escuro) sem depender do tema do sistema.
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { PiggyBank } from 'lucide-react'
 import {
   Button, Card, Tag, Money, ListItem, Meter, EmptyState, MicButton,
   IconeCategoria, Avatar,
 } from '../components/ui'
 import { useToast } from '../contexts/ToastContext'
+import ResumoCartao from '../components/ResumoCartao'
+import { compartilharImagem } from '../lib/compartilharImagem'
 
 function Secao({ titulo, children }) {
   return (
@@ -30,6 +32,7 @@ const CATS = [
 
 export default function DevComponentes() {
   const { toast } = useToast()
+  const resumoRef = useRef(null)
   const [tema, setTema] = useState('auto')
   const [salvando, setSalvando] = useState(false)
   const [ouvindo, setOuvindo] = useState(false)
@@ -156,6 +159,17 @@ export default function DevComponentes() {
           <Button variant="secondary" onClick={() => toast('Tudo certo por aqui', 'ok')}>Sucesso</Button>
           <Button variant="secondary" onClick={() => toast('Algo deu errado', 'erro')}>Erro</Button>
           <Button variant="secondary" onClick={() => toast('Dica: você pode usar a voz', 'info')}>Info</Button>
+        </Secao>
+
+        <Secao titulo="Resumo do mês (cartão compartilhável) — dados de exemplo">
+          <div ref={resumoRef}>
+            <ResumoCartao exportar nomeMes="novembro" nomeMesAnterior="outubro" grupoNome="Casa Exemplo" positivo resultado={1240} difAnt={380}
+              meta={{ nome: 'Viagem', saldo: 2100, meta: 3000, pct: 70 }} fixasTotal={12} fixasPagas={12} vozPct={64} />
+          </div>
+          <Button onClick={async () => {
+            try { const r = await compartilharImagem(resumoRef.current, { nomeArquivo: 'resumo-exemplo.png' }); toast('Imagem: ' + r, 'ok') }
+            catch (e) { console.error(e); toast('Falhou: ' + e.message, 'erro') }
+          }}>Gerar imagem</Button>
         </Secao>
 
         <Secao titulo="Estado vazio">
