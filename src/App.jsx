@@ -28,6 +28,7 @@ import Admin from './pages/Admin'
 import Legal from './pages/Legal'
 import Layout from './components/Layout'
 import CookieConsent from './components/CookieConsent'
+import DevComponentes from './pages/DevComponentes'
 
 function RotaProtegida({ children }) {
   const { user, loading, precisaGrupo } = useAuth()
@@ -65,6 +66,7 @@ export default function App() {
       <Route path="/termos" element={<Legal doc="termos" />} />
       <Route path="/privacidade" element={<Legal doc="privacidade" />} />
       <Route path="/admin" element={<RotaAdmin><Admin /></RotaAdmin>} />
+      {import.meta.env.DEV && <Route path="/dev/componentes" element={<DevComponentes />} />}
       <Route path="/" element={<RotaProtegida><Layout /></RotaProtegida>}>
         <Route index element={<Dashboard />} />
         <Route path="gastos" element={<Gastos />} />
