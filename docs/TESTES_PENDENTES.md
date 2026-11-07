@@ -215,3 +215,41 @@ Só entrou o que existe no código (por isso **WhatsApp ficou de fora** — não
 - [ ] **Rodapé:** "Configurações" virou link clicável.
 - Perguntas: (1) a lista de lembretes (push/e-mail) depende do usuário ativar notificações — o texto está ok
   pra você? (2) quer que eu inclua o WhatsApp assim que a função existir?
+
+## ➕ Cancelar assinatura  `branch: feat/cancelar-assinatura`  (sobre `feat/planos-extras`)
+
+Cumpre a promessa do rodapé de Planos ("Cancele quando quiser em Configurações — o acesso segue
+até o fim do período já pago") e garante que **não haja nova cobrança**.
+
+**Código (tudo local — NADA foi aplicado/deployado no Supabase/Asaas):**
+- `supabase/functions/asaas-cancelar` (nova): só o titular cancela. Marca `cancel_at_period_end` **antes**,
+  apaga no Asaas as cobranças em aberto (PENDING/OVERDUE) e **depois** a assinatura (impede a próxima
+  cobrança). Se o Asaas falhar, desfaz a marca e avisa — nunca fica "cancelado" com cobrança viva.
+- `asaas-webhook`: as remoções que o próprio cancelamento causa **não** cortam o acesso na hora.
+- Migração `0027_cancelamento_assinatura.sql`: `grupo_pode_lancar()` respeita o fim do período;
+  `encerrar_assinaturas_canceladas()` vira `canceled` o que já venceu (chamada pelo cron `fim-de-trial`).
+- Tela: **Configurações → "Minha assinatura"** (`AssinaturaCard`): mostra Ativa/Teste/Cortesia/Pendente/
+  Cancelada/Encerrada, renovação, e o botão **Cancelar assinatura** com confirmação clara.
+
+**Para ativar (precisa do seu ok — mexe em produção):**
+1. Backup antes da migração (regra do CLAUDE.md, plano Free sem backup).
+2. `node scripts/db.mjs supabase/migrations/0027_cancelamento_assinatura.sql`
+3. Deploy: `asaas-cancelar` (com JWT), `asaas-webhook` e `fim-de-trial` (os dois com `--no-verify-jwt`, como já são).
+
+**Testar no sandbox do Asaas (depois de ativar):**
+- [ ] Assinar mensal no Pix (sandbox), confirmar pagamento → card mostra "Ativa · renova em …".
+- [ ] Cancelar → toast "acesso até DD/MM"; card vira "Cancelamento agendado"; app segue liberado.
+- [ ] No painel do Asaas: assinatura e cobranças futuras **removidas** (nada pendente/vencendo).
+- [ ] Webhook `PAYMENT_DELETED`/`SUBSCRIPTION_DELETED` aparece no log do /admin como "ignorado: cancelamento
+      agendado" e o status continua `active`.
+- [ ] Simular fim do período (ajustar `current_period_end` pro passado) → lançar fica bloqueado e, após o cron,
+      status vira `canceled`.
+- [ ] Segundo membro do grupo (não titular) vê "Só quem fez a assinatura pode cancelar".
+- [ ] Teste/cortesia: não aparece botão de cancelar (teste: "nada é cobrado a menos que você assine").
+
+**Pontos em aberto / perguntas:**
+- **Reembolso dos 7 dias (art. 49 CDC)** não é automático: o texto manda escrever para contato@hopefin.com.br.
+  Quer que eu automatize (Asaas tem estorno de cobrança) quando cancelar nos 7 primeiros dias?
+- **E-mail de confirmação do cancelamento** não foi criado (precisa de template no `_shared/email.ts`).
+- Anual no cartão "12x": se o Asaas tratar como parcelamento, cancelar a assinatura pode deixar parcelas já
+  geradas — o código apaga as em aberto; conferir no sandbox.

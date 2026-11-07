@@ -424,7 +424,8 @@ create policy planos_config_select on public.planos_config
 -- Funções (SECURITY DEFINER) — ver 0017/0019 para o corpo completo:
 --   iniciar_trial_familia(int default null) -> cria trial do grupo (idempotente, 7 dias)
 --   planos_publicos()        -> json de preços + lancamento_ativo (grant anon)
---   grupo_pode_lancar()      -> cortesia | active | trial válido | legado (sem linha)
+--   grupo_pode_lancar()      -> cortesia | active (cancelada: até current_period_end — 0027) | trial válido | legado (sem linha)
+--   encerrar_assinaturas_canceladas() -> cron: active cancelada vencida vira 'canceled' (0027)
 --   limite_ia_status()       -> json de uso/limite de IA do grupo (0019)
 --   registrar_consumo_ia(text,int,int) -> grava um uso de IA (0019)
 --   resgatar_cupom(text)     -> resgate atômico de cortesia; 1 cupom por grupo (0019)

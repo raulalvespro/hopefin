@@ -34,14 +34,20 @@ export function useAssinatura() {
     ? Math.max(0, Math.ceil((fimTrial - new Date()) / 86400000))
     : null
 
+  // Cancelada pelo usuário: o acesso vai até o fim do período já pago (espelha o banco).
+  const cancelaNoFim = !!assinatura?.cancel_at_period_end && status === 'active'
+  const fimPeriodo = assinatura?.current_period_end ? new Date(assinatura.current_period_end) : null
+  const ativaPaga = status === 'active' && (!cancelaNoFim || !fimPeriodo || fimPeriodo > new Date())
+
   const podeLancar = !assinatura
     ? true
-    : status === 'active' || trialValido
+    : ativaPaga || trialValido
 
   const vencida = !!assinatura && !podeLancar
 
   return {
     assinatura, status, loading, recarregar,
     podeLancar, vencida, emTrial: trialValido, diasRestantes,
+    cancelaNoFim, acessoAte: cancelaNoFim ? fimPeriodo : null,
   }
 }

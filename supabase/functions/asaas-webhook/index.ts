@@ -10,6 +10,7 @@
 //     is_lancamento na 1ª ativação, se a assinatura foi feita no preço de lançamento)
 //   PAYMENT_OVERDUE                      -> status 'past_due'
 //   PAYMENT_DELETED / _REFUNDED / SUBSCRIPTION_DELETED -> 'canceled'
+//     (exceto remoção causada pelo cancelamento do usuário: acesso segue até o fim do período)
 //
 // Sempre responde 200 rápido (o Asaas re-tenta em erro).
 
@@ -96,6 +97,14 @@ Deno.serve(async (req) => {
     }
 
     if (event === 'PAYMENT_DELETED' || event === 'PAYMENT_REFUNDED' || event === 'SUBSCRIPTION_DELETED') {
+      // Cancelamento pedido pelo usuário (asaas-cancelar): as remoções no Asaas chegam
+      // aqui, mas o acesso segue até o fim do período já pago. O estado final
+      // ('canceled') é aplicado por encerrar_assinaturas_canceladas() (cron diário).
+      const fim = sub.current_period_end ? new Date(sub.current_period_end) : null
+      if (event !== 'PAYMENT_REFUNDED' && sub.cancel_at_period_end && fim && fim > new Date()) {
+        await fecharLog('ignorado: cancelamento agendado até o fim do período')
+        return json({ ok: true, ignorado: 'cancelamento agendado' })
+      }
       await admin.from('subscriptions').update({
         status: 'canceled', canceled_at: new Date().toISOString(),
       }).eq('id', sub.id)

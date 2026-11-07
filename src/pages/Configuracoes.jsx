@@ -6,6 +6,7 @@ import { useToast } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
 import Avatar from '../components/Avatar'
 import ConviteGrupo from '../components/ConviteGrupo'
+import AssinaturaCard from '../components/AssinaturaCard'
 import { Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera, Bell, Upload } from 'lucide-react'
 
 // Redimensiona (corte quadrado central) para um data URL leve.
@@ -117,6 +118,9 @@ export default function Configuracoes() {
         </div>
         <ChevronRight size={18} color="var(--text3)" />
       </Link>
+
+      {/* Minha assinatura (ver status e cancelar) */}
+      <AssinaturaCard />
 
       {/* Planos e assinatura */}
       <Link to="/planos" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>

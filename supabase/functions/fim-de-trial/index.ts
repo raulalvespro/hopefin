@@ -67,6 +67,9 @@ Deno.serve(async (req) => {
     return json({ erro: 'não autorizado' }, 401)
   }
 
+  // Aproveita o cron diário para encerrar assinaturas canceladas que chegaram ao fim do período.
+  try { await admin.rpc('encerrar_assinaturas_canceladas') } catch (_) { /* best-effort */ }
+
   const body = await req.json().catch(() => ({}))
   const soGrupo = typeof body?.so_grupo === 'string' ? body.so_grupo : null
 
