@@ -48,7 +48,7 @@ const navMais = [
 ]
 
 export default function Layout() {
-  const { perfil, user, logout } = useAuth()
+  const { perfil, user, logout, loading: carregandoAuth, erroPerfil, carregarPerfil } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [mais, setMais] = useState(false)
@@ -75,6 +75,21 @@ export default function Layout() {
   const temUrgente = alertas.some(a => a.severidade === 'vencido' || a.severidade === 'estourou')
   // Tour guiado: aparece uma vez por conta, no primeiro acesso (ver pages/Tour.jsx).
   if (user && !tourVisto(user.id)) return <Navigate to="/tour" replace />
+
+  // Perfil não carregou (e não está carregando): em vez de um esqueleto eterno, diz o motivo.
+  if (user && !perfil && !carregandoAuth) {
+    return (
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--bg)' }}>
+        <div className="card" style={{ maxWidth: 420, width: '100%', display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'center' }}>
+          <h2 style={{ fontSize: 20 }}>Não consegui carregar a sua conta</h2>
+          <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.5 }}>Seus dados estão guardados. Tente de novo; se continuar assim, mande esta mensagem para o suporte:</p>
+          <code style={{ fontSize: 12, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', wordBreak: 'break-word', textAlign: 'left' }}>{erroPerfil || 'sem detalhes (perfil vazio)'}</code>
+          <button className="btn-primary" onClick={() => carregarPerfil(user)} style={{ minHeight: 44 }}>Tentar de novo</button>
+          <button onClick={handleLogout} style={{ fontSize: 14, color: 'var(--text2)', minHeight: 44 }}>Sair</button>
+        </div>
+      </div>
+    )
+  }
 
   const maisAtivo = navMais.some(sec => sec.itens.some(n => location.pathname === n.to))
 

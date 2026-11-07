@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [perfil, setPerfil] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [erroPerfil, setErroPerfil] = useState(null) // motivo, quando o perfil não carrega (mostrado ao usuário)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -37,6 +38,7 @@ export function AuthProvider({ children }) {
     // falhou (ex.: erro de relacionamento no banco), NÃO criamos nada: antes, uma falha aqui
     // fazia o app criar um grupo novo a cada tentativa e tirava a pessoa do grupo dela.
     if (erroPerfil) console.error('[auth] não foi possível carregar o perfil:', erroPerfil.message)
+    setErroPerfil(erroPerfil ? (erroPerfil.message || String(erroPerfil)) : null)
     if (!perfilRow && !erroPerfil) {
       const md = authUser.user_metadata || {}
       const nome = md.nome || authUser.email?.split('@')[0] || 'Usuário'
@@ -134,7 +136,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      user, perfil, loading, precisaGrupo,
+      user, perfil, loading, precisaGrupo, erroPerfil,
       login, cadastrar, criarGrupo, entrarGrupo, logout, carregarPerfil,
     }}>
       {children}
