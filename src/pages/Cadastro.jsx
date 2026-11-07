@@ -99,11 +99,11 @@ export default function Cadastro() {
     if (cupom) {
       const { error } = await supabase.rpc('resgatar_cupom', { p_codigo: cupom })
       setLoading(false)
-      navigate(error ? '/planos' : '/')
+      navigate(error ? '/planos' : '/boas-vindas')
       return
     }
     setLoading(false)
-    navigate('/')
+    navigate('/boas-vindas')
   }
 
   function traduzErro(error) {

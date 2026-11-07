@@ -384,3 +384,11 @@ select option { background: var(--bg3); }
 .onboarding { min-height: 100vh; min-height: 100dvh; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; }
 .onboarding-card { width: 100%; max-width: 420px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-2xl); box-shadow: var(--shadow-sm); padding: 36px 28px; box-sizing: border-box; display: flex; flex-direction: column; gap: 24px; }
 .onboarding-ilustra { height: 260px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-xl); }
+
+/* ===== Boas-vindas (pós-cadastro) ===== */
+@keyframes hf-check { 0% { stroke-dashoffset: 24; } 100% { stroke-dashoffset: 0; } }
+@keyframes hf-coin { 0% { transform: translateY(-40px); opacity: 0; } 30% { opacity: 1; } 70% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(0); opacity: 0; } }
+.hf-check { stroke-dasharray: 24; animation: hf-check .5s ease-out both; }
+.hf-coin { animation: hf-coin 2.8s ease-in infinite; }
+.boas-vindas { min-height: 100vh; min-height: 100dvh; background: var(--bg); display: flex; justify-content: center; padding: 48px 24px 32px; box-sizing: border-box; }
+.boas-vindas-conteudo { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 24px; }

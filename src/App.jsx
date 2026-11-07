@@ -32,6 +32,7 @@ import CookieConsent from './components/CookieConsent'
 import DevComponentes from './pages/DevComponentes'
 import Splash from './components/Splash'
 import Onboarding from './pages/Onboarding'
+import BoasVindas from './pages/BoasVindas'
 
 // Abertura (splash): mostra 1x por dia, sem tocar na auth.
 const hojeStr = () => new Date().toISOString().slice(0, 10)
@@ -83,6 +84,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/boas-vindas" element={<RotaProtegida><BoasVindas /></RotaProtegida>} />
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       <Route path="/termos" element={<Legal doc="termos" />} />
       <Route path="/privacidade" element={<Legal doc="privacidade" />} />

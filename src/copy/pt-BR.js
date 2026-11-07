@@ -95,6 +95,22 @@ export const copy = {
     tagline: 'Finanças da família',
   },
 
+  boasVindas: {
+    titulo: 'Bem-vindo ao HopeFin',
+    subtitulo: 'Três passos e o mês da sua casa já aparece organizado.',
+    comeceAqui: 'Comece por aqui',
+    contador: (n) => `${n} de 3`,
+    feito: 'Feito',
+    convidar: 'Convidar alguém da família',
+    irInicio: 'Ir para o início',
+    tudoPronto: 'Tudo pronto! Seu mês já está organizado.',
+    passos: [
+      { titulo: 'Cadastrar sua renda', subtitulo: 'Quanto entra por mês na casa', cta: 'Cadastrar renda' },
+      { titulo: 'Adicionar um cartão', subtitulo: 'Para ver a fatura antes de fechar', cta: 'Adicionar cartão' },
+      { titulo: 'Lançar uma conta fixa', subtitulo: 'Aluguel, luz, internet, escola', cta: 'Lançar conta fixa' },
+    ],
+  },
+
   onboarding: {
     pular: 'Pular',
     proximo: 'Próximo',
