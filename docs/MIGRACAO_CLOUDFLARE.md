@@ -86,3 +86,13 @@ problemas: desligar o projeto na Vercel e remover `vercel.json`.
 `vite.config.js` tem `devOptions.enabled: true` no PWA: o service worker também roda no `localhost`, o que pode manter módulos
 antigos em cache no navegador durante o desenvolvimento. Se aparecer comportamento "preso" no `localhost`, limpe os dados do
 site ou desative essa opção.
+
+## Status do corte do domínio (07/11/2026, 23:50) — falta 1 passo seu
+- Aprovado nos testes do `*.workers.dev`. `wrangler.jsonc` já tem a rota `app.hopefin.com.br` (custom domain).
+- A Cloudflare **não liga o domínio enquanto o CNAME antigo `app → …vercel-dns-017.com` existir** (erro 100117) e o token do
+  Wrangler não tem permissão de editar DNS (o painel também bloqueou a exclusão feita pelo assistente). **Passo manual (30 s):**
+  Cloudflare → `hopefin.com.br` → DNS → Records → linha `app` (CNAME, Vercel) → **Delete**.
+- Logo depois: `npm run cf:deploy` (na pasta do projeto) liga o domínio ao Worker. Um vigia automático foi deixado rodando para
+  fazer isso sozinho assim que o CNAME sumir (se ele já tiver encerrado, rode o comando à mão).
+- Conferir: `curl -I https://app.hopefin.com.br/` sem `server: Vercel`. Supabase: Site URL/Redirect URLs **não precisam mudar**
+  (já são `app.hopefin.com.br`); a Vercel segue como plano de volta por 1 semana.

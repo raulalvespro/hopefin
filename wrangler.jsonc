@@ -6,6 +6,8 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hopefin-app",
   "main": "worker.js",
+  // Domínio do app (o DNS de hopefin.com.br está nesta conta da Cloudflare)
+  "routes": [{ "pattern": "app.hopefin.com.br", "custom_domain": true }],
   "compatibility_date": "2026-11-01",
   "assets": {
     "directory": "./dist",
