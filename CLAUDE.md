@@ -168,11 +168,15 @@ em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `L
   `with check (grupo_pode_lancar())`. Vencido/inadimplente **lê e exporta**, mas não
   cria lançamento. UX espelhada no front: `useAssinatura` + `BannerAssinatura`.
 - Mudança de status/preço vem **só** do webhook do Asaas (service_role) ou dessas RPCs.
-- **Asaas (ponto aberto):** anual no cartão deveria ser "12x". No Asaas, `installmentCount`
-  é de cobrança avulsa, não de assinatura (`cycle: YEARLY` cobra o valor cheio). O
-  `asaas-assinar` tenta `installmentCount: 12` na subscription anual de cartão — **validar
-  no sandbox**; se recusar, decidir entre cobrança parcelada recriada a cada ano ou cobrar
-  o anual à vista no cartão.
+- **Asaas — anual no cartão (VALIDADO no sandbox em 07/11/2026): o "12x" NÃO funciona em assinatura.**
+  Na subscription `cycle: YEARLY` o `installmentCount` é ignorado: o Asaas cobra o valor cheio de uma vez
+  (R$ 178,80 num único lançamento). Parcelamento real existe só em **cobrança avulsa**
+  (`POST /payments` com `installmentCount` + `totalValue`): testei 12x (12 × R$ 14,90), 6x e 1x, e a resposta traz
+  `creditCardToken` para recobrar. **Pendente de decisão:** anual no cartão virar cobrança parcelada (1–12x) +
+  renovação anual por token (cron). Até lá, a tela de Planos/Checkout promete 12x que não acontece.
+- **Cancelamento (0027 + `asaas-cancelar`)** e **remoção de membro (0028 + `remover-membro`)** estão no ar e testados
+  no sandbox (e-mails de cancelamento e de remoção incluídos). Webhook sandbox: token e evento
+  `SUBSCRIPTION_DELETED` configurados em 07/11/2026.
 
 ## Integrações planejadas (ainda não no código)
 

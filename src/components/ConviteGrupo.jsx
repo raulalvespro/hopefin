@@ -64,10 +64,12 @@ export default function ConviteGrupo() {
   async function remover() {
     if (!removendo) return
     setSalvando(true)
-    const { error } = await supabase.rpc('remover_membro', { p_usuario_id: removendo.id })
+    // A função remove (RPC remover_membro, que confere as permissões) e avisa a pessoa por e-mail.
+    const { data: res, error } = await supabase.functions.invoke('remover-membro', { body: { usuario_id: removendo.id } })
     setSalvando(false)
-    if (error) {
-      const m = (error.message || '').toLowerCase()
+    if (error || !res?.ok) {
+      let m = ''
+      try { m = String((await error?.context?.json?.())?.erro || '').toLowerCase() } catch { /* ignore */ }
       toast(m.includes('titular') ? t.erroTitular : m.includes('permissao') ? t.erroPermissao : t.erroRemover, 'erro')
       return
     }

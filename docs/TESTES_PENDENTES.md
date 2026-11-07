@@ -327,3 +327,23 @@ há uma demo com dados de exemplo — testei a geração lá: saiu um PNG 360×6
 - **`main` atualizada e enviada** (fast-forward, 40 commits). A Vercel publicou: o bundle de produção já contém
   "Minha assinatura", compartilhar resumo, remover membro, e nenhuma menção a "fundador"/"100 vagas".
 - Falta só a **sua validação logada** (390/1280px, claro/escuro) pelos checklists acima.
+
+## 💳 Pontas soltas do pagamento  `branch: fix/pagamento-pontas-soltas`  (07/11/2026)
+
+**Webhook do Asaas (sandbox):** estava sem o token de autenticação conferido e sem o evento
+`SUBSCRIPTION_DELETED`. Reconfigurado (token + 6 eventos) e a função agora também lê `subscription.id` desses
+eventos. Teste: `PAYMENT_CONFIRMED` → status `active`; cancelar → `SUBSCRIPTION_DELETED` é registrado como
+"ignorado: cancelamento agendado até o fim do período" e o acesso segue. ✔
+
+**Anual no cartão — descoberta grave:** a assinatura anual no cartão cobrou **R$ 178,80 de uma vez** (o `12x` é
+ignorado pelo Asaas em assinatura). A tela promete "12x de R$ 14,90". Parcelamento real funciona em **cobrança
+avulsa**: testei 12x, 6x e 1x (a escolha pode ser qualquer número) e o Asaas devolve o token do cartão para
+renovar. **Falta sua decisão** (ver conversa): trocar o anual no cartão para cobrança parcelada + renovação por token.
+O cancelamento de assinatura no cartão foi testado e funciona (assinatura apagada, cobrança já paga mantida).
+
+**E-mails (novos):** confirmação de cancelamento (para o titular) e aviso de remoção do grupo (para a pessoa
+removida). Funções `asaas-cancelar` (atualizada) e `remover-membro` (nova, a tela agora chama ela) já publicadas e
+testadas: os dois saíram com status "enviado" (testes chegaram na sua caixa com `+alias`).
+- [ ] Conferir o visual dos 2 e-mails na caixa (assuntos "Seu cancelamento no HopeFin foi confirmado" e
+      "Você saiu do grupo …").
+- [ ] **Pendente de push:** a tela de convite só passa a chamar `remover-membro` (e disparar o e-mail) depois do deploy do front.

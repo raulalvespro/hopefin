@@ -43,7 +43,8 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}))
   const event: string = body?.event || ''
   const pay = body?.payment || {}
-  const subId: string | null = pay?.subscription || null
+  // Eventos de cobrança trazem payment.subscription; os SUBSCRIPTION_* trazem body.subscription.id.
+  const subId: string | null = pay?.subscription || body?.subscription?.id || null
 
   // Registra o evento recebido (log visível no /admin — prompt 8). Nunca falha
   // o webhook por causa do log; atualizamos o desfecho ao final.

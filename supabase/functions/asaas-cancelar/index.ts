@@ -18,6 +18,7 @@
 // Segredos: ASAAS_API_KEY, ASAAS_BASE_URL (opcional). Deploy com verificação de JWT.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { layoutEmail, enviarEmail, esc } from '../_shared/email.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -54,6 +55,33 @@ async function apagar(path: string) {
   }
 }
 
+// E-mail de confirmação (best-effort: se falhar, o cancelamento já está feito e não é desfeito).
+async function avisarCancelamento(grupoId: string, titularId: string, email: string | null, nome: string | null, acessoAte: Date | null) {
+  if (!email) return
+  const ref = new Date().toISOString() // permite novo aviso se a pessoa assinar e cancelar de novo
+  const assunto = 'Seu cancelamento no HopeFin foi confirmado'
+  const ins = await admin.from('email_log')
+    .insert({ grupo_id: grupoId, titular_id: titularId, tipo: 'cancelamento', ref, destino: email, assunto, status: 'enviando' })
+    .select('id').maybeSingle()
+  if (ins.error || !ins.data) return
+  const ola = nome ? `Olá, ${esc(nome.split(' ')[0])}!<br><br>` : ''
+  const ate = acessoAte
+    ? `Você continua usando o HopeFin normalmente até <strong>${acessoAte.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</strong> (período que já está pago).`
+    : 'O acesso para novos lançamentos foi encerrado.'
+  const html = layoutEmail({
+    titulo: 'Cancelamento confirmado',
+    preheader: assunto,
+    corpoHtml: `${ola}Recebemos o seu pedido e a assinatura foi cancelada. <strong>Nenhuma nova cobrança será feita.</strong><br><br>${ate}<br><br>` +
+      'Seus dados continuam guardados: você pode ver e exportar tudo quando quiser. ' +
+      'Se foi nos últimos 7 dias depois do pagamento e você quer o reembolso, é só responder este e-mail.<br><br>' +
+      'Mudou de ideia? Você pode assinar de novo a qualquer momento.',
+    cta: { texto: 'Ver planos', url: 'https://app.hopefin.com.br/planos' },
+  })
+  const env = await enviarEmail({ para: email, assunto, html })
+  if (env.ok) await admin.from('email_log').update({ status: 'enviado', resend_id: env.id }).eq('id', ins.data.id)
+  else await admin.from('email_log').update({ status: 'erro', erro: env.erro }).eq('id', ins.data.id)
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return json({ error: 'método não permitido' }, 405)
@@ -63,7 +91,7 @@ Deno.serve(async (req) => {
   const { data: u } = await admin.auth.getUser(jwt)
   if (!u?.user) return json({ error: 'não autenticado' }, 401)
 
-  const { data: perfil } = await admin.from('usuarios').select('grupo_id').eq('id', u.user.id).maybeSingle()
+  const { data: perfil } = await admin.from('usuarios').select('grupo_id, nome, email').eq('id', u.user.id).maybeSingle()
   if (!perfil?.grupo_id) return json({ error: 'usuário sem grupo' }, 400)
 
   const { data: sub } = await admin.from('subscriptions').select('*').eq('grupo_id', perfil.grupo_id).maybeSingle()
@@ -112,8 +140,10 @@ Deno.serve(async (req) => {
   // Sem período pago em curso (ex.: pagamento em atraso): encerra já.
   if (!periodoPagoEmCurso) {
     await admin.from('subscriptions').update({ status: 'canceled' }).eq('id', sub.id)
+    await avisarCancelamento(perfil.grupo_id, u.user.id, perfil.email || u.user.email || null, perfil.nome, null)
     return json({ ok: true, acessoAte: null })
   }
 
+  await avisarCancelamento(perfil.grupo_id, u.user.id, perfil.email || u.user.email || null, perfil.nome, fimPeriodo)
   return json({ ok: true, acessoAte: fimPeriodo!.toISOString() })
 })
