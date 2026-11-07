@@ -4,6 +4,7 @@ import { useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
 import EntrarConvite from './pages/EntrarConvite'
+import Tour from './pages/Tour'
 import RedefinirSenha from './pages/RedefinirSenha'
 import EscolhaGrupo from './pages/EscolhaGrupo'
 import Dashboard from './pages/Dashboard'
@@ -86,6 +87,7 @@ export default function App() {
       <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/entrar" element={<EntrarConvite />} />
       <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/tour" element={<RotaProtegida><Tour /></RotaProtegida>} />
       <Route path="/boas-vindas" element={<RotaProtegida><BoasVindas /></RotaProtegida>} />
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       <Route path="/termos" element={<Legal doc="termos" />} />

@@ -1,4 +1,5 @@
-import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, Link, useLocation, Navigate } from 'react-router-dom'
+import { tourVisto } from '../lib/tour'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar,
@@ -47,7 +48,7 @@ const navMais = [
 ]
 
 export default function Layout() {
-  const { perfil, logout } = useAuth()
+  const { perfil, user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [mais, setMais] = useState(false)
@@ -72,6 +73,9 @@ export default function Layout() {
   }
 
   const temUrgente = alertas.some(a => a.severidade === 'vencido' || a.severidade === 'estourou')
+  // Tour guiado: aparece uma vez por conta, no primeiro acesso (ver pages/Tour.jsx).
+  if (user && !tourVisto(user.id)) return <Navigate to="/tour" replace />
+
   const maisAtivo = navMais.some(sec => sec.itens.some(n => location.pathname === n.to))
 
   return (

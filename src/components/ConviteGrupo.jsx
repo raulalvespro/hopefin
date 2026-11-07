@@ -109,7 +109,7 @@ export default function ConviteGrupo() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
           <span style={{ fontSize: 13, color: 'var(--text2)' }}>{t.codigoLabel}</span>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: '10px 14px' }}>
-            <code style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 22, letterSpacing: '.12em', color: 'var(--text)', wordBreak: 'break-all' }}>
+            <code style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 'clamp(17px, 5.4vw, 22px)', letterSpacing: '.08em', color: 'var(--text)', whiteSpace: 'nowrap' }}>
               {codigoBonito(codigo)}
             </code>
             <button onClick={() => copiar(codigoBonito(codigo), 'codigo', t.copiado)} aria-label={t.copiar} title={t.copiar}

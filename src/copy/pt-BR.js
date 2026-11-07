@@ -373,6 +373,64 @@ export const copy = {
     erroCancelar: 'Não foi possível cancelar agora. Nada foi alterado — tente de novo.',
   },
 
+  tour: {
+    pular: 'Pular',
+    voltar: 'Voltar',
+    proximo: 'Próximo',
+    comecar: 'Começar a usar',
+    fechar: 'Fechar',
+    convidarDepois: 'Convidar depois',
+    conhecerApp: 'Conhecer o app',
+    conhecerAppSub: 'Um passeio rápido por tudo que o HopeFin faz',
+    passos: [
+      {
+        onde: 'Início',
+        titulo: 'Seu mês numa olhada',
+        texto: 'O Início mostra o saldo em caixa, quanto ainda vai entrar e sair, e como o mês deve terminar. Tudo atualiza sozinho a cada lançamento.',
+      },
+      {
+        onde: 'Botão verde, em qualquer tela',
+        titulo: 'Fale e está lançado',
+        texto: 'Toque no microfone e diga o gasto do seu jeito, como "mercado 87 no Nubank". Também dá para digitar. Você confere o que o app entendeu antes de salvar.',
+      },
+      {
+        onde: 'Gastos · Entradas',
+        titulo: 'Cada real no lugar certo',
+        texto: 'Registre gastos e entradas com categoria e quem lançou. Filtre por mês, categoria ou pessoa. Já tem extrato ou planilha? Em Configurações dá para importar um CSV.',
+      },
+      {
+        onde: 'Cartões · Parcelamentos · Assinaturas',
+        titulo: 'Cartões sem susto',
+        texto: 'Cadastre seus cartões e veja a fatura antes de fechar. Compras parceladas e assinaturas entram sozinhas nos meses certos.',
+      },
+      {
+        onde: 'Contas fixas · Contas do mês',
+        titulo: 'Nada vence sem você saber',
+        texto: 'Cadastre as contas fixas uma vez. Em Contas do mês você marca o que já pagou e lança o valor real que veio. Ative os lembretes em Configurações para ser avisado antes de vencer.',
+      },
+      {
+        onde: 'Orçamento · Projeção',
+        titulo: 'Planeje antes de gastar',
+        texto: 'Defina um limite por categoria e acompanhe quanto já foi. A Projeção mostra como o seu saldo deve ficar nos próximos meses, para decidir com calma.',
+      },
+      {
+        onde: 'Cofrinhos',
+        titulo: 'Metas que saem do papel',
+        texto: 'Crie cofrinhos para a viagem, a reserva, o carro. Cada depósito aproxima a meta, e todos da casa acompanham.',
+      },
+      {
+        onde: 'Fechamento · Histórico',
+        titulo: 'O balanço do mês',
+        texto: 'No Fechamento você compara com o mês anterior, vê para onde foi o dinheiro e compartilha o resumo como imagem. O Histórico guarda tudo o que foi lançado.',
+      },
+      {
+        onde: 'Configurações → Convidar para o grupo',
+        titulo: 'Chame quem divide as contas',
+        texto: 'Até 6 pessoas no mesmo grupo, cada uma no seu celular, todo mundo vendo o mesmo saldo. Mande o convite agora ou depois, em Configurações.',
+      },
+    ],
+  },
+
   boasVindas: {
     titulo: 'Bem-vindo ao HopeFin',
     subtitulo: 'Três passos e o mês da sua casa já aparece organizado.',

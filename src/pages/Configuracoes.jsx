@@ -7,7 +7,8 @@ import { supabase } from '../lib/supabase'
 import Avatar from '../components/Avatar'
 import ConviteGrupo from '../components/ConviteGrupo'
 import AssinaturaCard from '../components/AssinaturaCard'
-import { Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera, Bell, Upload } from 'lucide-react'
+import { copy } from '../copy/pt-BR'
+import { Compass, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera, Bell, Upload } from 'lucide-react'
 
 // Redimensiona (corte quadrado central) para um data URL leve.
 function redimensionar(file, max = 160) {
@@ -94,6 +95,18 @@ export default function Configuracoes() {
           })}
         </div>
       </div>
+
+      {/* Rever o tour guiado */}
+      <Link to="/tour?rever=1" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <Compass size={18} color="var(--accent)" />
+          <div>
+            <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>{copy.tour.conhecerApp}</p>
+            <p style={{ fontSize:12, color:'var(--text2)' }}>{copy.tour.conhecerAppSub}</p>
+          </div>
+        </div>
+        <ChevronRight size={18} color="var(--text3)" />
+      </Link>
 
       {/* Notificações */}
       <Link to="/notificacoes" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>

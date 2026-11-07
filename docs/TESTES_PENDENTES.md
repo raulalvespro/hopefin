@@ -364,3 +364,21 @@ Checklist para você, logado (depois do push do front):
 - [ ] Configurações → Minha assinatura: nos 7 primeiros dias aparecem "Cancelar e pedir reembolso" e "Cancelar e usar até …";
       depois dos 7 dias só o cancelamento simples.
 - [ ] E-mails: aviso de renovação (D-7), renovado, falha na renovação, cancelamento com reembolso.
+
+## 🧭 Tour guiado do app  `branch: feat/tour-onboarding`  (sobre a `main`, sem push)
+
+Novo onboarding dentro do app, no desenho das telas de onboarding (ilustração + título + texto + pontinhos + "Pular"):
+**9 passos** — Início, voz, Gastos/Entradas (+ importar CSV), Cartões/Parcelamentos/Assinaturas, Contas fixas/Contas do mês,
+Orçamento/Projeção, Cofrinhos, Fechamento/Histórico e, no final, **Convidar a família** (o cartão real de convite: QR code,
+WhatsApp, link, código). Cada passo mostra "onde fica" no menu e uma amostra visual com dados de **exemplo**.
+
+- **Quando aparece:** uma vez por conta (guarda no aparelho), logo depois do cadastro (Cadastro agora vai para `/tour`) e no
+  1º acesso de contas que já existem. Ao terminar leva aos 3 primeiros passos (`/boas-vindas`); "Pular" leva ao Início.
+- **Rever:** Configurações → "Conhecer o app".
+- Textos em `copy.tour`; ilustrações em `components/TourIlustra.jsx`; helpers em `lib/tour.js`.
+- Testei no preview (mobile 375px, tema escuro) com a conta de teste: redireciona para o tour, 9 passos, "Voltar/Próximo/Pular",
+  fluxo até "Começar a usar" e sem laço de redirecionamento.
+- [ ] Conferir os textos (tom, e se algum recurso está descrito de forma errada) e o visual no claro e no escuro.
+- [ ] Criar uma conta nova e ver o fluxo completo: cadastro → tour → primeiros passos → Início.
+- Observação: o "visto" é por aparelho; quem entrar em outro celular vê o tour de novo (dá pra mover para o banco depois).
+- Pendente de push também: `fix/perfil-ambiguidade` (blindagem do login).
