@@ -1,12 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useToast } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths, getDaysInMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Check, CalendarCheck } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, CalendarCheck, CreditCard, Repeat } from 'lucide-react'
 import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { fmt, hojeISO, parseDataLocal } from '../lib/format'
+import { Tag, Meter, IconeCategoria } from '../components/ui'
+import { copy } from '../copy/pt-BR'
+
+const t = copy.contasMes
 
 const clampDay = (y, m, d) => Math.min(d, getDaysInMonth(new Date(y, m, 1)))
 
@@ -22,8 +27,19 @@ function cicloFatura(card, ano, mesIdx) {
   return { abre, fecha, venc, vencDia }
 }
 
+// Dias entre hoje e o vencimento (negativo = já venceu). Só o calendário, sem hora.
+function diasAte(ano, mesIdx, vencDia) {
+  const hoje = new Date()
+  const h0 = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
+  const v0 = new Date(ano, mesIdx, clampDay(ano, mesIdx, vencDia))
+  return Math.round((v0 - h0) / 86400000)
+}
+
+const ddmm = d => format(d, 'dd/MM')
+
 export default function ContasDoMes() {
   const { perfil } = useAuth()
+  const { toast } = useToast()
   const { emojiDe } = useCategorias()
   const run = useDb()
   const [mes, setMes] = useState(startOfMonth(new Date()))
@@ -34,6 +50,12 @@ export default function ContasDoMes() {
   const competencia = format(mes, 'yyyy-MM')
   const ano = mes.getFullYear()
   const mesIdx = mes.getMonth()
+
+  // Estado "fresco" para o Desfazer do toast (o closure do toast fica velho).
+  const dadosRef = useRef(null)
+  const competenciaRef = useRef(competencia)
+  dadosRef.current = dados
+  competenciaRef.current = competencia
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil, competencia])
 
@@ -70,21 +92,40 @@ export default function ContasDoMes() {
     setLoading(false)
   }
 
+  // Aviso após marcar/desmarcar. Ao marcar como paga, o toast traz "Desfazer"
+  // (chama o toggle com o alvo explícito `false`, então não depende do estado antigo).
+  function avisar(pagou, msgPaga, desfazer) {
+    if (!pagou) return toast(t.okDesfeito, 'ok')
+    const compOrigem = competenciaRef.current
+    toast(msgPaga, 'ok', {
+      acao: {
+        label: t.desfazer,
+        onClick: () => {
+          if (competenciaRef.current !== compOrigem) return toast(t.desfazerOutroMes, 'info')
+          desfazer()
+        },
+      },
+    })
+  }
+
   // ---- toggles de "pago" por tipo ----
-  async function toggleFixa(conta) {
-    const atual = dados.lancMap[conta.id] || {}
-    const jaPago = atual.pago ?? false
+  // `alvo` (opcional) força o estado final; sem ele, inverte o atual.
+  async function toggleFixa(conta, alvo) {
+    const atual = dadosRef.current.lancMap[conta.id] || {}
+    const pagar = alvo ?? !(atual.pago ?? false)
     const payload = {
       grupo_id: perfil.grupo_id, conta_fixa_id: conta.id, competencia,
       valor_previsto: conta.valor, valor_real: atual.valor_real ?? null,
-      pago: !jaPago, data_pagamento: !jaPago ? hojeISO() : null,
+      pago: pagar, data_pagamento: pagar ? hojeISO() : null,
       atualizado_em: new Date().toISOString(),
     }
     const { data, error } = await run(
       supabase.from('fixas_lancamentos').upsert(payload, { onConflict: 'conta_fixa_id,competencia' }).select().single(),
-      { ok: !jaPago ? 'Marcada como paga' : 'Pagamento desfeito' }
     )
-    if (!error && data) setDados(d => ({ ...d, lancMap: { ...d.lancMap, [conta.id]: data } }))
+    if (!error && data) {
+      setDados(d => ({ ...d, lancMap: { ...d.lancMap, [conta.id]: data } }))
+      avisar(pagar, t.okPaga, () => toggleFixa(conta, false))
+    }
   }
 
   async function salvarRealFixa(conta) {
@@ -101,32 +142,36 @@ export default function ContasDoMes() {
     }
     const { data, error } = await run(
       supabase.from('fixas_lancamentos').upsert(payload, { onConflict: 'conta_fixa_id,competencia' }).select().single(),
-      { ok: 'Valor lançado' }
+      { ok: t.okValor }
     )
     if (!error && data) setDados(d => ({ ...d, lancMap: { ...d.lancMap, [conta.id]: data } }))
   }
 
-  async function toggleParcela(p) {
-    const { error } = await run(
-      supabase.from('parcelas').update({ paga: !p.paga }).eq('id', p.id),
-      { ok: !p.paga ? 'Parcela paga' : 'Pagamento desfeito' }
-    )
-    if (!error) setDados(d => ({ ...d, parcelas: d.parcelas.map(x => x.id === p.id ? { ...x, paga: !p.paga } : x) }))
+  async function toggleParcela(p, alvo) {
+    const atual = dadosRef.current.parcelas.find(x => x.id === p.id)
+    const pagar = alvo ?? !(atual?.paga ?? p.paga)
+    const { error } = await run(supabase.from('parcelas').update({ paga: pagar }).eq('id', p.id))
+    if (!error) {
+      setDados(d => ({ ...d, parcelas: d.parcelas.map(x => x.id === p.id ? { ...x, paga: pagar } : x) }))
+      avisar(pagar, t.okParcelaPaga, () => toggleParcela(p, false))
+    }
   }
 
-  async function togglePaga(tipo, refId, valor) {
+  async function togglePaga(tipo, refId, valor, alvo) {
     const chave = `${tipo}|${refId}`
-    const atual = dados.pagasMap[chave]
-    const jaPago = atual?.pago ?? false
+    const atual = dadosRef.current.pagasMap[chave]
+    const pagar = alvo ?? !(atual?.pago ?? false)
     const payload = {
       grupo_id: perfil.grupo_id, tipo, referencia_id: refId, competencia,
-      valor, pago: !jaPago, data_pagamento: !jaPago ? hojeISO() : null,
+      valor, pago: pagar, data_pagamento: pagar ? hojeISO() : null,
     }
     const { data, error } = await run(
       supabase.from('contas_pagas').upsert(payload, { onConflict: 'tipo,referencia_id,competencia' }).select().single(),
-      { ok: !jaPago ? 'Marcada como paga' : 'Pagamento desfeito' }
     )
-    if (!error && data) setDados(d => ({ ...d, pagasMap: { ...d.pagasMap, [chave]: data } }))
+    if (!error && data) {
+      setDados(d => ({ ...d, pagasMap: { ...d.pagasMap, [chave]: data } }))
+      avisar(pagar, t.okPaga, () => togglePaga(tipo, refId, valor, false))
+    }
   }
 
   // ---- monta as linhas (contas a pagar) ----
@@ -140,9 +185,10 @@ export default function ContasDoMes() {
       const l = dados.lancMap[c.id]
       const valor = l?.valor_real != null ? Number(l.valor_real) : Number(c.valor)
       linhas.push({
-        key: 'fixa-' + c.id, tipo: 'fixa', nome: c.nome, emoji: emojiDe(c.categoria),
-        vencDia: c.dia_vencimento || 99, valor, pago: l?.pago ?? false,
-        sub: 'Conta fixa', onToggle: () => toggleFixa(c), fixaConta: c,
+        key: 'fixa-' + c.id, tipo: 'fixa', nome: c.nome,
+        icone: <IconeCategoria slug={c.categoria} emoji={emojiDe(c.categoria)} />,
+        vencDia: c.dia_vencimento || 99, valor, pago: l?.pago ?? false, dataPago: l?.data_pagamento,
+        sub: t.tipoFixa, onToggle: alvo => toggleFixa(c, alvo), fixaConta: c,
         previsto: Number(c.valor), real: l?.valor_real != null ? Number(l.valor_real) : null,
       })
     })
@@ -157,9 +203,10 @@ export default function ContasDoMes() {
       if (valor <= 0) return
       const pg = dados.pagasMap[`fatura|${card.id}`]
       linhas.push({
-        key: 'fatura-' + card.id, tipo: 'fatura', nome: `Fatura ${card.nome}`, emoji: '💳',
-        vencDia, valor, pago: pg?.pago ?? false,
-        sub: 'Cartão de crédito', onToggle: () => togglePaga('fatura', card.id, valor),
+        key: 'fatura-' + card.id, tipo: 'fatura', nome: `Fatura ${card.nome}`,
+        icone: <CreditCard size={22} strokeWidth={1.75} aria-hidden="true" />,
+        vencDia, valor, pago: pg?.pago ?? false, dataPago: pg?.data_pagamento,
+        sub: t.tipoFatura, onToggle: alvo => togglePaga('fatura', card.id, valor, alvo),
       })
     })
 
@@ -167,9 +214,10 @@ export default function ContasDoMes() {
     dados.parcelas.filter(p => !p.parcelamentos?.cartao_id).forEach(p => {
       linhas.push({
         key: 'parc-' + p.id, tipo: 'parcela', nome: p.parcelamentos?.descricao || 'Parcela',
-        emoji: emojiDe(p.parcelamentos?.categoria), vencDia: parseDataLocal(p.data_vencimento).getDate(),
+        icone: <IconeCategoria slug={p.parcelamentos?.categoria} emoji={emojiDe(p.parcelamentos?.categoria)} />,
+        vencDia: parseDataLocal(p.data_vencimento).getDate(),
         valor: Number(p.valor), pago: p.paga,
-        sub: `Parcela ${p.numero}/${p.parcelamentos?.num_parcelas}`, onToggle: () => toggleParcela(p),
+        sub: t.tipoParcela(p.numero, p.parcelamentos?.num_parcelas), onToggle: alvo => toggleParcela(p, alvo),
       })
     })
 
@@ -177,99 +225,141 @@ export default function ContasDoMes() {
     dados.assinaturas.filter(a => !a.cartao_id).forEach(a => {
       const pg = dados.pagasMap[`assinatura|${a.id}`]
       linhas.push({
-        key: 'assin-' + a.id, tipo: 'assinatura', nome: a.nome, emoji: '📺',
-        vencDia: a.dia_cobranca || 99, valor: Number(a.valor), pago: pg?.pago ?? false,
-        sub: 'Assinatura', onToggle: () => togglePaga('assinatura', a.id, Number(a.valor)),
+        key: 'assin-' + a.id, tipo: 'assinatura', nome: a.nome,
+        icone: <Repeat size={22} strokeWidth={1.75} aria-hidden="true" />,
+        vencDia: a.dia_cobranca || 99, valor: Number(a.valor), pago: pg?.pago ?? false, dataPago: pg?.data_pagamento,
+        sub: t.tipoAssinatura, onToggle: alvo => togglePaga('assinatura', a.id, Number(a.valor), alvo),
       })
     })
 
     return linhas.sort((a, b) => a.vencDia - b.vencDia)
   }
 
+  // Status visual de cada linha: tag + subtítulo + se o ícone fica vermelho.
+  function statusDe(l) {
+    const temVenc = l.vencDia < 99
+    const dd = temVenc ? ddmm(new Date(ano, mesIdx, clampDay(ano, mesIdx, l.vencDia))) : null
+    if (l.pago) {
+      const sub = l.dataPago ? t.pagoEm(ddmm(parseDataLocal(l.dataPago))) : (temVenc ? t.venceEm(dd) : null)
+      return { tag: <Tag cor="verde">{t.tagPago}</Tag>, sub, vencida: false }
+    }
+    if (!temVenc) return { tag: null, sub: null, vencida: false }
+    const dias = diasAte(ano, mesIdx, l.vencDia)
+    if (dias < 0) return { tag: <Tag cor="vermelho">{t.tagVencida}</Tag>, sub: t.venceuEm(dd), vencida: true }
+    if (dias === 0) return { tag: <Tag cor="amber">{t.tagHoje}</Tag>, sub: t.venceEm(dd), vencida: false }
+    if (dias <= 7) return { tag: <Tag cor="amber">{t.tagEmDias(dias)}</Tag>, sub: t.venceEm(dd), vencida: false }
+    return { tag: null, sub: t.venceEm(dd), vencida: false }
+  }
+
   const linhas = montarLinhas()
   const totalAPagar = linhas.reduce((s, l) => s + l.valor, 0)
   const pagas = linhas.filter(l => l.pago)
+  const abertas = linhas.filter(l => !l.pago)
   const totalPago = pagas.reduce((s, l) => s + l.valor, 0)
   const falta = totalAPagar - totalPago
+  const pct = totalAPagar > 0 ? (totalPago / totalAPagar) * 100 : 0
   const corDif = d => d > 0 ? 'var(--red)' : d < 0 ? 'var(--accent)' : 'var(--text2)'
+
+  function renderLinha(l, ultima) {
+    const st = statusDe(l)
+    const subtxt = [l.sub, st.sub].filter(Boolean).join(' · ')
+    return (
+      <div key={l.key} style={{ padding: '12px 0', borderBottom: ultima ? 'none' : '1px solid var(--border)', opacity: l.pago ? 0.72 : 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => l.onToggle()} title={l.pago ? t.desmarcar : t.marcarPaga} aria-label={l.pago ? t.desmarcar : t.marcarPaga} aria-pressed={l.pago}
+            style={{ width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${l.pago ? 'var(--accent)' : 'var(--border2)'}`, background: l.pago ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>
+            {l.pago && <Check size={14} color="var(--on-accent)" />}
+          </button>
+          <span style={{ width: 40, height: 40, borderRadius: 'var(--radius)', background: st.vencida ? 'var(--red-dim)' : 'var(--bg3)', color: st.vencida ? 'var(--red-text)' : 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {l.icone}
+          </span>
+          <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontWeight: 500, color: l.pago ? 'var(--text2)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.nome}</span>
+            <span style={{ fontSize: 13, color: st.vencida ? 'var(--red-text)' : 'var(--text2)' }}>{subtxt}</span>
+          </span>
+          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+            <span style={{ fontFamily: 'Syne', fontWeight: 700, color: l.pago ? 'var(--text2)' : 'var(--text)' }}>{fmt(l.valor)}</span>
+            {st.tag}
+          </span>
+        </div>
+
+        {/* Fixa: valor real + diferença */}
+        {l.tipo === 'fixa' && (
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'flex-end', gap: 10 }}>
+            <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
+              <label style={{ fontSize: 11 }}>{t.valorRealLabel}</label>
+              <input type="number" inputMode="decimal" placeholder={t.valorRealPh(l.previsto.toFixed(2))}
+                value={valores[l.fixaConta.id] ?? ''}
+                onChange={e => setValores(v => ({ ...v, [l.fixaConta.id]: e.target.value }))}
+                onBlur={() => salvarRealFixa(l.fixaConta)} />
+            </div>
+            {l.real != null && l.real !== l.previsto && (
+              <span style={{ fontSize: 12, fontWeight: 600, color: corDif(l.real - l.previsto), paddingBottom: 10 }}>
+                {l.real - l.previsto > 0 ? '+' : ''}{fmt(l.real - l.previsto)}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const cabecalho = { margin: '4px 0 8px', fontSize: 13, fontWeight: 500, color: 'var(--text2)' }
+  const lista = { padding: '4px 16px', marginBottom: 16 }
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <CalendarCheck size={20} color="var(--accent)" />
-        <h2 style={{ fontSize: 20 }}>Contas do mês</h2>
+        <h2 style={{ fontSize: 20 }}>{t.titulo}</h2>
       </div>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16 }}>
-        Tudo que vence no mês — contas fixas, faturas, parcelas e assinaturas. Marque o que já foi pago.
-      </p>
+      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16 }}>{t.intro}</p>
 
       {/* Navegação de mês */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <button onClick={() => setMes(m => subMonths(m, 1))}><ChevronLeft size={20} color="var(--text2)" /></button>
+        <button onClick={() => setMes(m => subMonths(m, 1))} aria-label={t.mesAnterior}><ChevronLeft size={20} color="var(--text2)" /></button>
         <h3 style={{ fontSize: 15, textTransform: 'capitalize' }}>{format(mes, "MMMM 'de' yyyy", { locale: ptBR })}</h3>
-        <button onClick={() => setMes(m => addMonths(m, 1))}><ChevronRight size={20} color="var(--text2)" /></button>
+        <button onClick={() => setMes(m => addMonths(m, 1))} aria-label={t.proximoMes}><ChevronRight size={20} color="var(--text2)" /></button>
       </div>
 
-      {loading ? <div className="empty-state">Carregando...</div>
-        : linhas.length === 0 ? <div className="empty-state">Nada a pagar neste mês.</div>
+      {loading ? <div className="empty-state">{t.carregando}</div>
+        : linhas.length === 0 ? <div className="empty-state">{t.vazio}</div>
         : (
           <>
-            {/* Resumo */}
-            <div className="card" style={{ marginBottom: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10 }}>
-                <div>
-                  <p style={{ fontSize: 12, color: 'var(--text2)' }}>Total do mês</p>
-                  <p style={{ fontSize: 18, fontFamily: 'Syne', fontWeight: 700 }}>{fmt(totalAPagar)}</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: 12, color: 'var(--text2)' }}>Já pago {pagas.length}/{linhas.length}</p>
-                  <p style={{ fontSize: 18, fontFamily: 'Syne', fontWeight: 700, color: 'var(--accent-text)' }}>{fmt(totalPago)}</p>
-                </div>
+            {/* Resumo com medidor */}
+            <section className="card" aria-label={t.pagoAteAgora} style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <span style={{ fontSize: 13, color: 'var(--text2)' }}>{t.pagoAteAgora}</span>
+                <span style={{ fontSize: 13, color: 'var(--text2)' }}>{t.contasDe(pagas.length, linhas.length)}</span>
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 26, color: 'var(--accent-text)' }}>{fmt(totalPago)}</span>
+                <span style={{ fontSize: 14, color: 'var(--text2)' }}>{t.deTotal(fmt(totalAPagar))}</span>
+              </div>
+              <Meter valor={pct} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-                <span style={{ fontSize: 13, color: 'var(--text2)' }}>Falta pagar</span>
+                <span style={{ fontSize: 13, color: 'var(--text2)' }}>{t.faltaPagar}</span>
                 <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne', color: falta > 0 ? 'var(--red)' : 'var(--accent)' }}>{fmt(falta)}</span>
               </div>
-            </div>
+            </section>
 
-            {/* Lista */}
-            {linhas.map(l => (
-              <div key={l.key} className="card" style={{ marginBottom: 8, opacity: l.pago ? 0.72 : 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <button onClick={l.onToggle} title={l.pago ? 'Desmarcar' : 'Marcar como paga'}
-                      style={{ width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${l.pago ? 'var(--accent)' : 'var(--border2)'}`, background: l.pago ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {l.pago && <Check size={14} color="var(--on-accent)" />}
-                    </button>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 14, fontWeight: 500, textDecoration: l.pago ? 'line-through' : 'none' }}>{l.emoji} {l.nome}</p>
-                      <p style={{ fontSize: 11.5, color: 'var(--text2)' }}>
-                        {l.sub}{l.vencDia < 99 ? ` · vence dia ${l.vencDia}` : ''}
-                      </p>
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 15, fontWeight: 700, fontFamily: 'Syne', flexShrink: 0 }}>{fmt(l.valor)}</span>
-                </div>
+            {abertas.length > 0 && (
+              <>
+                <h3 style={cabecalho}>{t.aPagar}</h3>
+                <section className="card" style={lista}>
+                  {abertas.map((l, i) => renderLinha(l, i === abertas.length - 1))}
+                </section>
+              </>
+            )}
 
-                {/* Fixa: valor real + diferença */}
-                {l.tipo === 'fixa' && (
-                  <div style={{ marginTop: 10, display: 'flex', alignItems: 'flex-end', gap: 10 }}>
-                    <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
-                      <label style={{ fontSize: 11 }}>Valor real que veio</label>
-                      <input type="number" inputMode="decimal" placeholder={`previsto ${l.previsto.toFixed(2)}`}
-                        value={valores[l.fixaConta.id] ?? ''}
-                        onChange={e => setValores(v => ({ ...v, [l.fixaConta.id]: e.target.value }))}
-                        onBlur={() => salvarRealFixa(l.fixaConta)} />
-                    </div>
-                    {l.real != null && l.real !== l.previsto && (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: corDif(l.real - l.previsto), paddingBottom: 10 }}>
-                        {l.real - l.previsto > 0 ? '+' : ''}{fmt(l.real - l.previsto)}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+            {pagas.length > 0 && (
+              <>
+                <h3 style={cabecalho}>{t.pagas}</h3>
+                <section className="card" style={lista}>
+                  {pagas.map((l, i) => renderLinha(l, i === pagas.length - 1))}
+                </section>
+              </>
+            )}
           </>
         )}
     </div>

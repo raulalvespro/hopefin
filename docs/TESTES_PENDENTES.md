@@ -39,3 +39,36 @@ Redesenho da tela de Início (Dashboard). O que conferir:
 ---
 
 <!-- As próximas seções são preenchidas pela sessão autônoma conforme cada prompt é feito. -->
+
+## ✅ Prompt 16 · Etapa 2 — Contas do mês  `branch: feat/contas-mes-visual`
+
+Redesenho de `src/pages/ContasDoMes.jsx` (textos em `copy.contasMes`). Validado só por build +
+console limpo (a tela é autenticada; não criei conta de teste). O que conferir logado:
+
+- [ ] **Resumo com medidor:** "Pago até agora · X de Y contas", valor pago grande, "de R$ total"
+      e barra de progresso (anima do zero). "Falta pagar" continua embaixo. Os números batem?
+- [ ] **Duas listas:** "A pagar" (por vencimento) e "Pagas" (embaixo, esmaecidas). Se uma das
+      duas ficar vazia, o cabeçalho some.
+- [ ] **Tags:** "Vencida" (vermelho, ícone avermelhado + "venceu dia DD/MM"), "Vence hoje" e
+      "Em N dias" (âmbar, até 7 dias), "Pago" (verde). Contas com vencimento a mais de 7 dias
+      ficam sem tag, só "vence DD/MM". Conferir também em mês passado (tudo aberto = Vencida)
+      e mês futuro (sem tags).
+- [ ] **Toggle de pago** (bolinha à esquerda) marca/desmarca em fixas, faturas, parcelas e
+      assinaturas, e persiste ao recarregar.
+- [ ] **Toast com "Desfazer"** ao marcar como paga (6 s); tocar em Desfazer reverte. Ao
+      desmarcar, o toast é o simples "Pagamento desfeito".
+- [ ] **Contas fixas:** campo "Valor real que veio" + diferença (+/−) continuam funcionando.
+- [ ] Setas de mês mantidas. 390px e 1280px, claro e escuro.
+
+**Decisões / observações:**
+- "Quem pagou": o banco só guarda a **data** → mostra "Pago em DD/MM" sem nome. Parcelas (sem
+  cartão) não guardam data de pagamento (só `paga`), então mostram só "Pago".
+- **Sugestão (não migrei):** coluna `pago_por` (uuid do usuário) em `fixas_lancamentos` e
+  `contas_pagas` pra mostrar "Pago 01/11 por Pedro". Também `debito_automatico` (bool) em
+  `contas_fixas` pra exibir "· débito automático" como na referência.
+- Ícones: categorias conhecidas usam Lucide (via `IconeCategoria`), fatura = cartão,
+  assinatura = repetir; categoria custom cai no emoji.
+- Medidor usa o componente `Meter` (mesma animação `hf-meter` da referência).
+- Limite de 7 dias pra "Em N dias" foi escolha minha (conservadora); fácil de mudar em `statusDe`.
+- Desfazer em outro mês: se você trocar de mês antes de tocar em Desfazer, mostra aviso em vez de
+  desfazer (evita gravar na competência errada).
