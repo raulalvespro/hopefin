@@ -37,6 +37,7 @@ if (!TOKEN || !REF || !CRON || !ANON) {
 const urlPush = `https://${REF}.supabase.co/functions/v1/send-push`
 const urlTrial = `https://${REF}.supabase.co/functions/v1/fim-de-trial`
 const urlVenc = `https://${REF}.supabase.co/functions/v1/lembrete-vencimento`
+const urlResumo = `https://${REF}.supabase.co/functions/v1/resumo-mensal`
 const sql = `
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
@@ -91,6 +92,23 @@ select cron.schedule('hopefin-vencimentos', '30 11 * * *', $cron$
     body := '{}'::jsonb
   );
 $cron$);
+
+-- Resumo mensal (do mês anterior) — dia 1, 09:30 BRT (12:30 UTC)
+do $unsched$ begin
+  perform cron.unschedule('hopefin-resumo-mensal');
+exception when others then null; end $unsched$;
+
+select cron.schedule('hopefin-resumo-mensal', '30 12 1 * *', $cron$
+  select net.http_post(
+    url := '${urlResumo}',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'apikey', '${ANON}',
+      'x-cron-secret', '${CRON}'
+    ),
+    body := '{}'::jsonb
+  );
+$cron$);
 `
 
 const res = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/query`, {
@@ -104,4 +122,5 @@ console.log('✔ Crons agendados:')
 console.log('  • hopefin-digest-diario   (08:00 BRT / 11:00 UTC) — digest de push')
 console.log('  • hopefin-vencimentos     (08:30 BRT / 11:30 UTC) — lembrete de vencimento')
 console.log('  • hopefin-fim-de-trial    (09:00 BRT / 12:00 UTC) — avisos de fim de trial')
+console.log('  • hopefin-resumo-mensal   (dia 1, 09:30 BRT / 12:30 UTC) — resumo do mês anterior')
 console.log(text.slice(0, 500))
