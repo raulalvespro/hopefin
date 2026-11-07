@@ -312,3 +312,38 @@ select option { background: var(--bg3); }
 .ui-btn--secondary:not(:disabled):hover { border-color: var(--accent); }
 
 .ui-skel { background: linear-gradient(90deg, var(--bg3) 0, var(--bg2) 50%, var(--bg3) 100%); background-size: 480px 100%; animation: hf-shimmer 1.4s linear infinite; border-radius: 7px; }
+
+/* ===== Telas de entrada (prompt 15: login, cadastro, splash, onboarding) ===== */
+/* Animações; a regra global de prefers-reduced-motion acima já desliga todas. */
+@keyframes hf-rise { 0% { transform: scaleY(.25); } 100% { transform: scaleY(1); } }
+@keyframes hf-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes hf-draw { 0% { stroke-dashoffset: 160; } 60%, 100% { stroke-dashoffset: 0; } }
+@keyframes hf-fade { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+.hf-bar { transform-origin: bottom; animation: hf-rise 2.6s ease-in-out infinite alternate; }
+.hf-float { animation: hf-float 5s ease-in-out infinite; }
+.hf-stroke { stroke-dasharray: 160; animation: hf-draw 3s ease-out infinite alternate; }
+.hf-in { animation: hf-fade .6s var(--ease) both; }
+
+/* Layout base (mobile-first): painel escuro no topo, formulário logo abaixo. */
+.entrada { min-height: 100vh; min-height: 100dvh; background: var(--bg); display: flex; flex-direction: column; }
+.entrada-painel {
+  background: var(--panel-ink); color: #e2e8f0; position: relative; overflow: hidden;
+  min-height: 300px; padding: 48px 24px 0; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box;
+}
+.entrada-pitch-sub { display: none; }        /* some no celular, aparece no desktop */
+.entrada-saldo { display: none; }             /* card flutuante: só no desktop */
+.entrada-arte { position: relative; margin-top: auto; height: 150px; }
+.entrada-barras { position: absolute; left: 0; bottom: 0; max-width: 100%; }
+.entrada-form { flex: 1; margin-top: -24px; background: var(--bg2); border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding: 28px 24px 32px; box-sizing: border-box; position: relative; z-index: 1; }
+.entrada-card { width: 100%; }
+
+/* Desktop: duas colunas, painel à esquerda em altura cheia. */
+@media (min-width: 900px) {
+  .entrada { display: grid; grid-template-columns: 1fr 1fr; }
+  .entrada-painel { min-height: 100vh; min-height: 100dvh; padding: 56px 64px; gap: 0; justify-content: space-between; }
+  .entrada-pitch-sub { display: block; }
+  .entrada-saldo { display: flex; }
+  .entrada-arte { height: 230px; margin-top: 0; }
+  .entrada-form { flex: none; margin-top: 0; background: transparent; border-radius: 0; padding: 48px; display: flex; align-items: center; justify-content: center; }
+  .entrada-card { max-width: 400px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px; box-shadow: var(--shadow-sm); }
+}
