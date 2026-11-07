@@ -300,3 +300,16 @@ há uma demo com dados de exemplo — testei a geração lá: saiu um PNG 360×6
 - Observação: no meu navegador de teste o `requestAnimationFrame` fica pausado (painel oculto), então só
   consegui validar a geração com um ajuste temporário; em janela visível funciona normalmente.
 - Mascote continua pendente (aguardando as imagens 3D).
+
+## 🔌 Ativação no Supabase (feita em 07/11/2026, com seu ok)
+
+- **Backup antes:** `backups/dump_pre_0027_0028_20261107_165719..json` (30 tabelas, 870 linhas; pasta no .gitignore).
+- **Migrações aplicadas** em produção do HopeFin: `0027_cancelamento_assinatura` e `0028_remover_membro`.
+  Conferido: as 2 funções existem; `grupos.criado_por` preenchido no único grupo com membros ("Família Teste",
+  2 membros) — os outros 39 grupos são vazios de teste e ficaram sem dono (sem efeito).
+- **Funções publicadas:** `asaas-cancelar` (exige login), `asaas-webhook` e `fim-de-trial` (sem JWT, como já eram).
+  Teste sem credencial: as 3 respondem 401 como esperado.
+- **Ainda NÃO testado de ponta a ponta:** o cancelamento no Asaas sandbox (precisa de uma assinatura sandbox
+  ativa) e a remoção de membro logado — ver checklists das seções acima. **Nada disso foi para o ar no front**
+  (as branches não foram mescladas na main, então o app em produção segue sem a tela nova).
+- Nova ordem segura de merge: `feat/resumo-compartilhar` já contém todas as branches (estão empilhadas).
