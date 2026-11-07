@@ -30,3 +30,6 @@ supabase/.temp/
 
 # Dumps/backups do banco (contêm dados — NUNCA commitar)
 backups/
+
+# Cloudflare Wrangler (cache local)
+.wrangler/

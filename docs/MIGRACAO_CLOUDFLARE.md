@@ -39,6 +39,8 @@ cadastre as 5 em *Settings → Build → Variables and secrets* do Worker. Se vo
 `npm run cf:deploy`, ele usa o seu `.env` local e **não precisa cadastrar nada na Cloudflare**.
 **Não** copie nenhuma chave de `supabase/.env.local` (Asaas, Resend, Anthropic, service role…): essas ficam só no Supabase.
 
+> **Publicado em 07/11/2026:** https://hopefin-app.raullerickson.workers.dev (Worker `hopefin-app`, versão 3790c03f). Verificado por curl: telas e deep links 200, arquivo inexistente 404, cache correto.
+
 ## 4) Publicar no endereço de teste `*.workers.dev` (precisa da sua conta)
 
 Opção A — pelo seu terminal (mais simples):
