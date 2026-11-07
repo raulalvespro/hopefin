@@ -46,4 +46,11 @@ const c = await fetch(`${URL}/rest/v1/rpc/criar_grupo`, { method: 'POST', header
 const gid = await c.json()
 if (!c.ok || gid !== corpo[0].grupo_id) falhar('criar_grupo criou/alterou o grupo de quem já tinha um: ' + JSON.stringify(gid))
 console.log('✔ criar_grupo é idempotente')
+// 3) alarme: grupos vazios recém-criados (sinal do bug que cria grupo em laço)
+if (env.SUPABASE_ACCESS_TOKEN && env.SUPABASE_PROJECT_REF) {
+  const q = await fetch(`https://api.supabase.com/v1/projects/${env.SUPABASE_PROJECT_REF}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: "select count(*)::int as n from grupos g where g.criado_em > now() - interval '24 hours' and not exists (select 1 from usuarios u where u.grupo_id = g.id)" }) })
+  const n = (await q.json())?.[0]?.n
+  if (n > 3) console.warn(`⚠ ${n} grupos VAZIOS criados nas últimas 24h — investigar (possível laço de criar_grupo).`)
+  else console.log(`✔ grupos vazios nas últimas 24h: ${n}`)
+}
 console.log('✔ SMOKE OK')

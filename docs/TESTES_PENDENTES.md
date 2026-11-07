@@ -414,3 +414,12 @@ Mesmo depois da 0031, o app (ainda sem a blindagem, que aguarda push) continuou 
 falhava e trocou o grupo da conta `raullerickson@gmail.com` outra vez (18:10). A `criar_grupo()` agora **devolve o grupo atual
 quando a pessoa já tem um** — não cria outro. Limpei os grupos vazios criados hoje (restaram 41 no total). A causa exata da
 falha transitória de leitura ainda não foi identificada; a blindagem no front (`fix/perfil-ambiguidade`) é a proteção definitiva.
+
+## 🔎 Investigação da falha de leitura do perfil (07/11/2026)
+
+- **Causa confirmada do incidente grande:** a FK extra (0028) → `PGRST201` → leitura do perfil falhava → fallback criava grupo (0031 + 0032 + blindagem).
+- **Segundo mecanismo, anterior ao incidente:** grupos "Família Teste" vazios criados **no mesmo segundo** na noite de 06/11 (7 grupos
+  sem dono) = o app carregando o perfil 2x ao mesmo tempo no cadastro e cada chamada de `criar_grupo` criando um grupo. Fechado:
+  0032 (idempotente) + **0033** (trava `FOR UPDATE` na linha do usuário, para chamadas simultâneas). Apaguei esses 7 vazios.
+- **Não identificado:** o que disparou a falha às 18:10 (depois da 0031). Pode ter sido a mesma corrida/um erro transitório. Agora, se a leitura
+  falhar, o app NÃO cria nada, mostra o motivo e avisa o Sentry; e o `npm run smoke` alerta se aparecerem >3 grupos vazios em 24h.
