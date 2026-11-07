@@ -319,10 +319,16 @@ select option { background: var(--bg3); }
 @keyframes hf-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @keyframes hf-draw { 0% { stroke-dashoffset: 160; } 60%, 100% { stroke-dashoffset: 0; } }
 @keyframes hf-fade { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+@keyframes hf-pop { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes hf-line { 0% { stroke-dashoffset: 120; } 100% { stroke-dashoffset: 0; } }
+@keyframes hf-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
 .hf-bar { transform-origin: bottom; animation: hf-rise 2.6s ease-in-out infinite alternate; }
 .hf-float { animation: hf-float 5s ease-in-out infinite; }
 .hf-stroke { stroke-dasharray: 160; animation: hf-draw 3s ease-out infinite alternate; }
 .hf-in { animation: hf-fade .6s var(--ease) both; }
+.hf-pop { animation: hf-pop .7s ease-out both; }
+.hf-line { stroke-dasharray: 120; animation: hf-line 1.2s ease-out both; }
+.hf-pulse { transform-origin: center; animation: hf-pulse 3.2s ease-in-out infinite; }
 
 /* Layout base (mobile-first): painel escuro no topo, formulário logo abaixo. */
 .entrada { min-height: 100vh; min-height: 100dvh; background: var(--bg); display: flex; flex-direction: column; }
@@ -340,7 +346,7 @@ select option { background: var(--bg3); }
 /* Desktop: duas colunas, painel à esquerda em altura cheia. */
 @media (min-width: 900px) {
   .entrada { display: grid; grid-template-columns: 1fr 1fr; }
-  .entrada-painel { min-height: 100vh; min-height: 100dvh; padding: 56px 64px; gap: 0; justify-content: space-between; }
+  .entrada-painel { height: 100vh; height: 100dvh; position: sticky; top: 0; align-self: start; padding: 56px 64px; gap: 0; justify-content: space-between; }
   .entrada-pitch-sub { display: block; }
   .entrada-saldo { display: flex; }
   .entrada-arte { height: 230px; margin-top: 0; }
