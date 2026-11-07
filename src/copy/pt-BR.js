@@ -163,6 +163,7 @@ export const copy = {
     fechar: 'Fechar',
     ouvindo: 'Ouvindo…',
     toqueParaFalar: 'Toque no microfone e fale',
+    falePerto: 'Pode falar, estou ouvindo…',
     parar: 'Parar de ouvir',
     falar: 'Falar',
     dica: 'Fale ou digite. Entende gasto, entrada, parcelas e datas ("ontem", "dia 5").',

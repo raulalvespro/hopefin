@@ -185,3 +185,17 @@ build + console limpo (exige login).
 - **Sugestão (não criei):** a referência é um cartão **compartilhável** (360×640, vira imagem pra postar).
   Falta um botão "Compartilhar resumo" que gere a imagem (html→canvas) — é feature nova, preciso do ok.
 - A frase "Novembro na Casa Oliveira" virou "{mês} · {nome do grupo}" com dados reais.
+
+## ➕ Voz ao vivo  `branch: feat/voz-ao-vivo`  (sobre `feat/resumo-mes-visual`)
+
+`useVoz` agora usa resultados parciais: enquanto a pessoa fala, a frase aparece na tela do
+"Ouvindo…" e só vai pra IA quando a fala termina (uma única interpretação, como antes).
+
+- [ ] No **Chrome do Android** (e desktop): tocar no microfone, falar uma frase longa — o texto vai
+      aparecendo ao vivo; ao terminar, abre o card "Entendi assim" com a frase completa.
+- [ ] Silêncio: mostra "Pode falar, estou ouvindo…".
+- [ ] Parar manualmente no meio (tocar no microfone) não deve interpretar frase cortada
+      (comportamento do navegador: pode ou não entregar resultado final — conferir).
+- [ ] Safari/iOS: sem suporte a voz, segue só o campo de texto (como antes).
+- Observação: não consigo testar microfone aqui; validado por build.
+- Removido da lista: **"débito automático"** (você explicou que o app é só controle) — não será criado.

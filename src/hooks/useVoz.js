@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 
 export function useVoz(onTranscricao) {
   const [gravando, setGravando] = useState(false)
+  const [parcial, setParcial] = useState('') // texto reconhecido até agora (a fala ainda não terminou)
   const [suportado] = useState(() => 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window)
   const reconhecimentoRef = useRef(null)
 
@@ -11,14 +12,21 @@ export function useVoz(onTranscricao) {
     const rec = new SR()
     rec.lang = 'pt-BR'
     rec.continuous = false
-    rec.interimResults = false
+    rec.interimResults = true // transcrição ao vivo; só o resultado final é interpretado
 
     rec.onstart = () => setGravando(true)
-    rec.onend = () => setGravando(false)
-    rec.onerror = () => setGravando(false)
+    rec.onend = () => { setGravando(false); setParcial('') }
+    rec.onerror = () => { setGravando(false); setParcial('') }
     rec.onresult = (e) => {
-      const texto = e.results[0][0].transcript
-      onTranscricao(texto)
+      // Junta os trechos reconhecidos; só interpreta quando a fala termina.
+      let texto = ''
+      let final = false
+      for (let i = 0; i < e.results.length; i++) {
+        texto += e.results[i][0].transcript
+        if (e.results[i].isFinal) final = true
+      }
+      if (final) { setParcial(''); onTranscricao(texto) }
+      else setParcial(texto)
     }
 
     rec.start()
@@ -30,7 +38,7 @@ export function useVoz(onTranscricao) {
     setGravando(false)
   }, [])
 
-  return { gravando, suportado, iniciar, parar }
+  return { gravando, parcial, suportado, iniciar, parar }
 }
 
 // Interpreta texto falado e extrai dados do gasto

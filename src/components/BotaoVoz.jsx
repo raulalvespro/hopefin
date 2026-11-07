@@ -98,7 +98,7 @@ export default function BotaoVoz({ onSalvo }) {
     }
   }, [categorias])
 
-  const { gravando, suportado, iniciar, parar } = useVoz((t) => interpretar(t, 'voz'))
+  const { gravando, parcial, suportado, iniciar, parar } = useVoz((t) => interpretar(t, 'voz'))
 
   // true se o usuário mexeu em algo em relação ao que a IA sugeriu.
   function houveCorrecao(f) {
@@ -236,6 +236,13 @@ export default function BotaoVoz({ onSalvo }) {
                       <rect key={i} className="hf-wave" x={i * 16} y="4" width="8" height="32" rx="4" fill="var(--accent)" style={{ animationDelay: `${atraso}s` }} />
                     ))}
                   </svg>
+                )}
+
+                {/* Transcrição ao vivo enquanto a pessoa fala */}
+                {gravando && (
+                  <p aria-live="polite" style={{ margin: 0, fontSize: 18, lineHeight: '26px', textAlign: 'center', minHeight: 52, color: parcial ? 'var(--text)' : 'var(--text3)' }}>
+                    {parcial ? <>“{parcial}”</> : t.falePerto}
+                  </p>
                 )}
 
                 <form style={{ width: '100%', display: 'flex', gap: 8 }} onSubmit={e => { e.preventDefault(); interpretar(digitado, 'texto') }}>
