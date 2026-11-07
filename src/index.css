@@ -301,6 +301,11 @@ select option { background: var(--bg3); }
 @keyframes hf-slide { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
 .hf-wave { transform-origin: center; transform-box: fill-box; animation: hf-wave .9s ease-in-out infinite; }
 .hf-slide { animation: hf-slide .5s var(--ease) both; }
+/* Resumo do mês: blocos que sobem e arco da meta que se desenha */
+@keyframes hf-count { 0% { opacity: 0; transform: translateY(14px); } 100% { opacity: 1; transform: translateY(0); } }
+@keyframes hf-arc { 0% { stroke-dashoffset: 251; } }
+.hf-count { animation: hf-count .6s var(--ease) both; }
+.hf-arc { stroke-dasharray: 251; animation: hf-arc 1.4s var(--ease) both .3s; }
 /* Convite: avatares "pulam" ao entrar */
 @keyframes hf-pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); } }
 .hf-pop { animation: hf-pop .6s var(--ease) both; }

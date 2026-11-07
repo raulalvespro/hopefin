@@ -266,6 +266,28 @@ export const copy = {
     comoEntrar: 'A pessoa cria a conta, escolhe "Entrar em um grupo" e cola esse código.',
   },
 
+  resumoMes: {
+    fechamentoDoMes: 'Fechamento do mês',
+    carregando: 'Fechando as contas...',
+    mesAnterior: 'Mês anterior',
+    proximoMes: 'Próximo mês',
+    mesNaCasa: (mes, grupo) => `${mes} · ${grupo}`,
+    grupoFallback: 'Sua casa',
+    sobrou: 'Sobrou no mês',
+    faltou: 'Faltou no mês',
+    aMaisQue: (v, mes) => `${v} a mais que ${mes}`,
+    aMenosQue: (v, mes) => `${v} a menos que ${mes}`,
+    igualA: (mes) => `Igual a ${mes}`,
+    metaDe: (nome) => `Meta: ${nome}`,
+    metaDeTotal: (a, b) => `${a} de ${b}`,
+    metaAria: (pct) => `${pct}% da meta`,
+    contasFixasPagas: 'Contas fixas pagas',
+    contasFixasDe: (a, b) => `${a} de ${b}`,
+    lancadoPorVoz: 'Lançado por voz',
+    rodapeMarca: 'Organizado com o HopeFin',
+    rodapeSite: 'hopefin.com.br',
+  },
+
   boasVindas: {
     titulo: 'Bem-vindo ao HopeFin',
     subtitulo: 'Três passos e o mês da sua casa já aparece organizado.',

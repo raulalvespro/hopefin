@@ -155,3 +155,33 @@ grupo"). Mantive no mesmo lugar e redesenhei como componente `src/components/Con
 - **Remover membro** ("você pode remover alguém a qualquer momento" da referência) — não existe no app,
   e mexe em dados/regras; por isso não coloquei esse texto.
 - "plano Família" no subtítulo: omitido por ora (poderia vir de `subscriptions`).
+
+## ✅ Prompt 19 — Resumo do mês  `branch: feat/resumo-mes-visual`
+
+No app, o "resumo do mês" já existe como a tela **Fechamento** (menu → Fechamento). Apliquei o visual
+da referência `resumo-mes.html` ali (cartão escuro "noite"), **sem remover** nenhum bloco antigo
+(Entrou × Saiu, Para onde foi, Maiores categorias, Contas fixas previsto × realizado, Quanto você
+guardou). Textos em `copy.resumoMes`; animações `hf-count`/`hf-arc` em `index.css`. Validado só por
+build + console limpo (exige login).
+
+- [ ] **Cartão escuro no topo:** "Sobrou no mês" (verde) ou "Faltou no mês" (vermelho claro), valor grande,
+      linha "R$ X a mais/menos que {mês anterior}" (+ o "% vs mês anterior" de antes logo abaixo). O
+      valor bate com o que a tela mostrava antes?
+- [ ] **Meta:** anel roxo com % + "Meta: {cofre}" e "R$ saldo de R$ meta" — usa o **cofrinho com meta mais
+      adiantado** (os já completos vão pro fim). Some se nenhum cofre tem meta. Saldo = soma das
+      transferências (igual à tela de Cofrinhos).
+- [ ] **Dois indicadores:** "Contas fixas pagas X de Y" (fixas ativas × lançamentos marcados como pagos
+      no mês) e "Lançado por voz N%" (gastos do mês com `origem = 'voz'`). Cada um some se não tem dado.
+- [ ] Barrinhas decorativas e rodapé "Organizado com o HopeFin · hopefin.com.br".
+- [ ] Setas de mês, e todos os blocos abaixo do cartão continuam iguais. 390px/1280px, claro/escuro (o
+      cartão é escuro nos dois temas).
+
+**Decisões / sugestões:**
+- **"Contas no prazo" da referência** → troquei por "Contas fixas pagas": o banco não guarda se a conta foi
+  paga **antes** do vencimento (só a data de pagamento), então "no prazo" seria chute.
+- **Mascote: placeholder.** Não usei o desenho vetorial (README: versão final é 3D, ainda não chegou).
+  Nenhum espaço reservado visível; quando as imagens entrarem em `docs/design/mascote/` (prompt 22),
+  o lugar natural é o canto superior direito do cartão (hoje ocupado pelas barrinhas decorativas).
+- **Sugestão (não criei):** a referência é um cartão **compartilhável** (360×640, vira imagem pra postar).
+  Falta um botão "Compartilhar resumo" que gere a imagem (html→canvas) — é feature nova, preciso do ok.
+- A frase "Novembro na Casa Oliveira" virou "{mês} · {nome do grupo}" com dados reais.

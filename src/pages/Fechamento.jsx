@@ -6,6 +6,9 @@ import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, PiggyBank, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import { useCategorias } from '../hooks/useCategorias'
 import { fmt } from '../lib/format'
+import { copy } from '../copy/pt-BR'
+
+const t = copy.resumoMes
 
 const ehMesCorrente = d => format(d, 'yyyy-MM') === format(new Date(), 'yyyy-MM')
 
@@ -18,9 +21,9 @@ async function resumoDoMes(gid, ym) {
 
   const [ent, gas, fix, lanc, parc, ass, tr] = await Promise.all([
     supabase.from('entradas').select('valor').eq('grupo_id', gid).gte('data', ini).lte('data', fim),
-    supabase.from('gastos').select('valor, categoria').eq('grupo_id', gid).gte('data', ini).lte('data', fim),
+    supabase.from('gastos').select('valor, categoria, origem').eq('grupo_id', gid).gte('data', ini).lte('data', fim),
     supabase.from('contas_fixas').select('id, valor, categoria').eq('grupo_id', gid).eq('ativo', true),
-    supabase.from('fixas_lancamentos').select('conta_fixa_id, valor_real').eq('grupo_id', gid).eq('competencia', ym),
+    supabase.from('fixas_lancamentos').select('conta_fixa_id, valor_real, pago').eq('grupo_id', gid).eq('competencia', ym),
     supabase.from('parcelas').select('valor, parcelamentos(categoria)').eq('grupo_id', gid).gte('data_vencimento', ini).lte('data_vencimento', fim),
     supabase.from('assinaturas').select('valor').eq('grupo_id', gid).eq('ativo', true),
     supabase.from('transferencias').select('valor').eq('grupo_id', gid).gte('data', ini).lte('data', fim),
@@ -28,6 +31,12 @@ async function resumoDoMes(gid, ym) {
 
   const realPorConta = {}
   ;(lanc.data || []).forEach(l => { if (l.valor_real != null) realPorConta[l.conta_fixa_id] = Number(l.valor_real) })
+
+  // Indicadores do cartão de resumo: contas fixas pagas e % dos gastos lançados por voz.
+  const fixasTotal = (fix.data || []).length
+  const fixasPagas = (lanc.data || []).filter(l => l.pago).length
+  const nGastos = (gas.data || []).length
+  const vozPct = nGastos > 0 ? Math.round(((gas.data || []).filter(g => g.origem === 'voz').length / nGastos) * 100) : null
 
   const receitas = (ent.data || []).reduce((s, e) => s + Number(e.valor), 0)
   const gastosVar = (gas.data || []).reduce((s, g) => s + Number(g.valor), 0)
@@ -51,7 +60,7 @@ async function resumoDoMes(gid, ym) {
   if (assinaturas > 0) add('assinaturas', assinaturas)
   const categorias = Object.entries(porCat).sort((a, b) => b[1] - a[1])
 
-  return { receitas, despesas, resultado, gastosVar, fixas, fixasPrevisto, parcelas, assinaturas, guardado, poupanca, categorias }
+  return { fixasTotal, fixasPagas, nGastos, vozPct, receitas, despesas, resultado, gastosVar, fixas, fixasPrevisto, parcelas, assinaturas, guardado, poupanca, categorias }
 }
 
 function Delta({ atual, anterior, invertido = false }) {
@@ -76,6 +85,7 @@ export default function Fechamento() {
   const [mes, setMes] = useState(startOfMonth(new Date()))
   const [atual, setAtual] = useState(null)
   const [anterior, setAnterior] = useState(null)
+  const [meta, setMeta] = useState(null) // cofrinho com meta mais adiantado (cartão de resumo)
   const [loading, setLoading] = useState(true)
 
   const ym = format(mes, 'yyyy-MM')
@@ -85,11 +95,19 @@ export default function Fechamento() {
   async function carregar() {
     setLoading(true)
     const gid = perfil.grupo_id
-    const [a, b] = await Promise.all([
+    const [a, b, cof] = await Promise.all([
       resumoDoMes(gid, ym),
       resumoDoMes(gid, format(subMonths(mes, 1), 'yyyy-MM')),
+      supabase.from('cofrinhos').select('id, nome, meta, transferencias(valor)').eq('grupo_id', gid),
     ])
     setAtual(a); setAnterior(b)
+    // Saldo = soma das transferências (mesma regra da tela de Cofrinhos).
+    const comMeta = (cof.data || []).filter(c => Number(c.meta) > 0).map(c => {
+      const saldo = (c.transferencias || []).reduce((s, x) => s + Number(x.valor), 0)
+      return { nome: c.nome, meta: Number(c.meta), saldo, pct: Math.max(0, Math.min(100, Math.round((saldo / Number(c.meta)) * 100))) }
+    })
+    comMeta.sort((x, y) => (x.pct >= 100) - (y.pct >= 100) || y.pct - x.pct)
+    setMeta(comMeta[0] || null)
     setLoading(false)
   }
 
@@ -110,21 +128,80 @@ export default function Fechamento() {
         <button onClick={() => setMes(m => subMonths(m, 1))} style={{ padding: 8, color: 'var(--text2)' }}><ChevronLeft size={20} /></button>
         <div style={{ textAlign: 'center' }}>
           <h2 style={{ fontSize: 18, textTransform: 'capitalize' }}>{format(mes, 'MMMM yyyy', { locale: ptBR })}</h2>
-          <p style={{ fontSize: 11, color: 'var(--text3)' }}>Fechamento do mês</p>
+          <p style={{ fontSize: 11, color: 'var(--text3)' }}>{t.fechamentoDoMes}</p>
         </div>
         <button onClick={() => setMes(m => addMonths(m, 1))} disabled={ehMesCorrente(mes)} style={{ padding: 8, color: ehMesCorrente(mes) ? 'var(--text3)' : 'var(--text2)', opacity: ehMesCorrente(mes) ? 0.4 : 1 }}><ChevronRight size={20} /></button>
       </div>
 
-      {loading || !atual ? <div className="empty-state">Fechando as contas...</div> : (
+      {loading || !atual ? <div className="empty-state">{t.carregando}</div> : (
         <>
-          {/* Resultado do mês */}
-          <div className="card" style={{ marginBottom: 16, textAlign: 'center', background: positivo ? 'var(--accent-dim)' : 'var(--red-dim)', borderColor: positivo ? 'var(--accent)' : 'var(--red)' }}>
-            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 4 }}>{positivo ? 'Sobrou no mês' : 'Faltou no mês'}</p>
-            <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 32, color: positivo ? 'var(--accent2)' : 'var(--red)' }}>
-              {fmt(Math.abs(atual.resultado))}
-            </p>
-            <div style={{ marginTop: 4 }}><Delta atual={atual.resultado} anterior={anterior?.resultado} /></div>
-          </div>
+          {/* Cartão de resumo (estilo noite): resultado, meta e indicadores do mês */}
+          {(() => {
+            const mesNome = format(mes, 'MMMM', { locale: ptBR })
+            const mesAntNome = format(subMonths(mes, 1), 'MMMM', { locale: ptBR })
+            const difAnt = anterior ? atual.resultado - anterior.resultado : null
+            const circ = 251 // 2·π·40
+            const painelInterno = { background: 'rgba(255,255,255,.07)', borderRadius: 16, padding: 16 }
+            return (
+              <div style={{ position: 'relative', overflow: 'hidden', marginBottom: 16, padding: 24, borderRadius: 'var(--radius-xl)', background: 'var(--panel-ink)', color: '#ffffff', display: 'flex', flexDirection: 'column', gap: 18 }}>
+                {/* Barrinhas decorativas (mesma marca do painel do Início) */}
+                <svg width="160" height="160" viewBox="0 0 480 240" aria-hidden="true" style={{ position: 'absolute', right: -30, top: -16, opacity: 0.16 }}>
+                  <g fill="#10b981"><rect x="248" y="72" width="32" height="192" rx="16" /><rect x="304" y="48" width="32" height="216" rx="16" /><rect x="360" y="24" width="32" height="240" rx="16" /><rect x="416" y="0" width="32" height="264" rx="16" /></g>
+                </svg>
+                <span style={{ position: 'relative', fontSize: 13, color: '#94a3b8', textTransform: 'capitalize' }}>
+                  {t.mesNaCasa(mesNome, perfil?.grupos?.nome || t.grupoFallback)}
+                </span>
+                <div className="hf-count" style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 15, color: '#94a3b8' }}>{positivo ? t.sobrou : t.faltou}</span>
+                  <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 44, lineHeight: '48px', color: positivo ? '#34d399' : '#fca5a5' }}>
+                    {fmt(Math.abs(atual.resultado))}
+                  </span>
+                  {difAnt != null && anterior && (anterior.receitas > 0 || anterior.despesas > 0) && (
+                    <span style={{ fontSize: 14, color: '#e2e8f0' }}>
+                      {Math.abs(difAnt) < 0.01 ? t.igualA(mesAntNome) : difAnt > 0 ? t.aMaisQue(fmt(difAnt), mesAntNome) : t.aMenosQue(fmt(Math.abs(difAnt)), mesAntNome)}
+                    </span>
+                  )}
+                  <span style={{ marginTop: 2 }}><Delta atual={atual.resultado} anterior={anterior?.resultado} /></span>
+                </div>
+
+                {meta && (
+                  <div className="hf-count" style={{ ...painelInterno, position: 'relative', display: 'flex', gap: 16, alignItems: 'center', animationDelay: '.2s' }}>
+                    <svg width="92" height="92" viewBox="0 0 92 92" role="img" aria-label={t.metaAria(meta.pct)} style={{ flexShrink: 0 }}>
+                      <circle cx="46" cy="46" r="40" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="10" />
+                      <circle className="hf-arc" cx="46" cy="46" r="40" fill="none" stroke="#a78bfa" strokeWidth="10" strokeLinecap="round" transform="rotate(-90 46 46)" style={{ strokeDashoffset: circ - (circ * meta.pct) / 100 }} />
+                      <text x="46" y="52" textAnchor="middle" fontFamily="Syne, sans-serif" fontWeight="700" fontSize="18" fill="#ffffff">{meta.pct}%</text>
+                    </svg>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                      <span style={{ fontSize: 13, color: '#94a3b8' }}>{t.metaDe(meta.nome)}</span>
+                      <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18 }}>{t.metaDeTotal(fmt(meta.saldo), fmt(meta.meta))}</span>
+                    </div>
+                  </div>
+                )}
+
+                {(atual.fixasTotal > 0 || atual.vozPct != null) && (
+                  <div className="hf-count" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, animationDelay: '.35s' }}>
+                    {atual.fixasTotal > 0 && (
+                      <div style={{ ...painelInterno, padding: 14, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ fontSize: 12, color: '#94a3b8' }}>{t.contasFixasPagas}</span>
+                        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 22 }}>{t.contasFixasDe(atual.fixasPagas, atual.fixasTotal)}</span>
+                      </div>
+                    )}
+                    {atual.vozPct != null && (
+                      <div style={{ ...painelInterno, padding: 14, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ fontSize: 12, color: '#94a3b8' }}>{t.lancadoPorVoz}</span>
+                        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 22 }}>{atual.vozPct}%</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, color: '#94a3b8' }}>{t.rodapeMarca}</span>
+                  <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14 }}>{t.rodapeSite}</span>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Receitas × Despesas */}
           <div className="card" style={{ marginBottom: 16 }}>
