@@ -1,0 +1,29 @@
+# Cache do app na Cloudflare (Workers static assets). Substitui o que a Vercel fazia sozinha.
+# Regra de ouro do PWA: o que carrega e atualiza o app NÃO pode ficar em cache longo.
+
+# Segurança básica em tudo
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), geolocation=(), payment=(self)
+
+# Entrada do app, service worker e manifest: sempre revalidar (senão o PWA não atualiza)
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
+/registerSW.js
+  Cache-Control: no-cache
+/push-sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+  Content-Type: application/manifest+json
+
+# Arquivos com hash no nome (nunca mudam): cache de 1 ano
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/workbox-*.js
+  Cache-Control: public, max-age=31536000, immutable
