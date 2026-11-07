@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { normalizarCodigo, limparConvite } from '../lib/convite'
 import { identificar, resetarUsuario } from '../lib/analytics'
 
 const AuthContext = createContext({})
@@ -89,7 +90,7 @@ export function AuthProvider({ children }) {
         data: {
           nome,
           nome_grupo: nomeGrupo || null,
-          codigo_grupo: codigoGrupo || null,
+          codigo_grupo: codigoGrupo ? normalizarCodigo(codigoGrupo) : null,
           telefone: extra.telefone || null,
           marketing_optin: !!extra.marketingOptin,
           aceite_versao: extra.aceiteVersao || null,
@@ -112,8 +113,9 @@ export function AuthProvider({ children }) {
   // Entra num grupo existente a partir do código curto compartilhado.
   async function entrarGrupo(codigo) {
     if (!user) return { error: { message: 'Sem sessão ativa' } }
-    const { data: gid, error } = await supabase.rpc('entrar_no_grupo', { p_codigo: codigo.trim() })
+    const { data: gid, error } = await supabase.rpc('entrar_no_grupo', { p_codigo: normalizarCodigo(codigo) })
     if (error) return { error }
+    limparConvite()
     await carregarPerfil(user)
     return { data: { id: gid } }
   }

@@ -1,12 +1,14 @@
+import { lerConvite, codigoBonito } from '../lib/convite'
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import Logo from '../components/Logo'
 
 export default function EscolhaGrupo() {
   const { perfil, criarGrupo, entrarGrupo, logout } = useAuth()
-  const [modo, setModo] = useState(null) // 'criar' ou 'entrar'
+  const conviteLink = lerConvite() // vindo de /entrar?c=…
+  const [modo, setModo] = useState(conviteLink ? 'entrar' : null) // 'criar' ou 'entrar'
   const [nomeGrupo, setNomeGrupo] = useState('')
-  const [codigo, setCodigo] = useState('')
+  const [codigo, setCodigo] = useState(conviteLink ? codigoBonito(conviteLink) : '')
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
 

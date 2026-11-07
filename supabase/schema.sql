@@ -14,6 +14,7 @@ create extension if not exists "pgcrypto"; -- gen_random_uuid()
 -- Grupos (família / casal) — unidade de compartilhamento dos dados
 create table if not exists public.grupos (
   id         uuid primary key default gen_random_uuid(),
+  criado_por uuid,                       -- dono do grupo (quem remove membros) — 0028
   nome       text not null,
   codigo     text unique not null default substr(replace(gen_random_uuid()::text,'-',''),1,8),
   criado_em  timestamptz not null default now()

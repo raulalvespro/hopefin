@@ -253,3 +253,32 @@ até o fim do período já pago") e garante que **não haja nova cobrança**.
 - **E-mail de confirmação do cancelamento** não foi criado (precisa de template no `_shared/email.ts`).
 - Anual no cartão "12x": se o Asaas tratar como parcelamento, cancelar a assinatura pode deixar parcelas já
   geradas — o código apaga as em aberto; conferir no sandbox.
+
+## ➕ Convite completo  `branch: feat/convite-extras`  (sobre `feat/cancelar-assinatura`)
+
+Criei as 5 sugestões do prompt 18. Nova dependência: **`qrcode`** (carregada só na tela de convite).
+Ao tocar no link de convite validei no preview que `/entrar?c=ABCD-1234` leva ao Cadastro já em
+"Tenho um convite" com o código preenchido (sem criar conta).
+
+- **Código curto:** o código do banco já tem 8 caracteres; agora aparece como `A1B2-C3D4` e é aceito
+  com/sem hífen e em maiúscula (Cadastro, "Entrar em um grupo" e RPC). **Sem migração.**
+- **QR code + link:** link `…/entrar?c=CODIGO` (rota pública nova `/entrar`). Quem abre sem conta vai pro
+  Cadastro já como convidado; quem já tem conta mas sem grupo cai em "Entrar em um grupo" preenchido;
+  quem **já tem grupo nunca troca de grupo sozinho** (vai pro app).
+- **WhatsApp** (abre `wa.me` com a mensagem pronta) e **Copiar link** / **Copiar código**.
+- **Remover membro:** lista "Quem está no grupo"; o **dono** vê o X de cada pessoa → confirmação → a pessoa
+  sai do grupo (o que lançou continua). Não remove a si mesmo nem o titular da assinatura.
+
+**Para ativar a remoção (precisa do seu ok — mexe no banco real):** backup + 
+`node scripts/db.mjs supabase/migrations/0028_remover_membro.sql` (cria `grupos.criado_por`, preenche com o membro
+mais antigo de cada grupo, e a RPC `remover_membro`). Sem a migração, o convite funciona normal e o X
+simplesmente não aparece (não há dono ainda).
+
+Testar logado:
+- [ ] Configurações → QR, código `XXXX-XXXX`, WhatsApp abre com texto/link; copiar link/código funcionam.
+- [ ] Escanear o QR no celular (ou abrir o link em aba anônima) → Cadastro com convite → cria conta → cai
+      no mesmo grupo. (Use conta de teste sua.)
+- [ ] Conta logada sem grupo abrindo o link → "Entrar em um grupo" com código preenchido.
+- [ ] Após a migração: dono remove um membro; o removido, ao entrar, cai na escolha de grupo.
+- [ ] O link usa o domínio de onde você abriu (em produção: app.hopefin.com.br).
+- Pergunta: quando alguém é removido, devo avisar por e-mail? (não fiz).

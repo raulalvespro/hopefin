@@ -1,3 +1,4 @@
+import { lerConvite, limparConvite, codigoBonito } from '../lib/convite'
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
@@ -56,8 +57,9 @@ function ArteCadastro({ preco }) {
 export default function Cadastro() {
   const { cadastrar } = useAuth()
   const navigate = useNavigate()
-  const [tipo, setTipo] = useState('novo') // 'novo' (cria família) ou 'existente' (entra por código)
-  const [form, setForm] = useState({ nome: '', email: '', senha: '', senha2: '', telefone: '', nomeGrupo: '', codigoGrupo: '', cupom: '', optin: true, aceite: false })
+  const conviteLink = lerConvite() // vindo de /entrar?c=…
+  const [tipo, setTipo] = useState(conviteLink ? 'existente' : 'novo') // 'novo' (cria família) ou 'existente' (entra por código)
+  const [form, setForm] = useState({ nome: '', email: '', senha: '', senha2: '', telefone: '', nomeGrupo: '', codigoGrupo: conviteLink ? codigoBonito(conviteLink) : '', cupom: '', optin: true, aceite: false })
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
   const [preco, setPreco] = useState(() => precosVigentes(null))
@@ -92,6 +94,7 @@ export default function Cadastro() {
       const { error } = await cadastrar(form.nome, form.email, form.senha, form.codigoGrupo.trim(), null, extra)
       if (error) { setErro(traduzErro(error)); setLoading(false); return }
     }
+    limparConvite()
     track('cadastro_concluido', { tipo, marketing_optin: form.optin })
 
     // Cupom (opcional): a conta e o grupo já existem, então dá para resgatar
