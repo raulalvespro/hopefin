@@ -313,3 +313,17 @@ há uma demo com dados de exemplo — testei a geração lá: saiu um PNG 360×6
   ativa) e a remoção de membro logado — ver checklists das seções acima. **Nada disso foi para o ar no front**
   (as branches não foram mescladas na main, então o app em produção segue sem a tela nova).
 - Nova ordem segura de merge: `feat/resumo-compartilhar` já contém todas as branches (estão empilhadas).
+
+## 🚀 Publicado em 07/11/2026 (com seu ok)
+
+- **Teste ponta a ponta no sandbox do Asaas — passou** (usuários/grupo/assinatura de teste, todos apagados depois):
+  não-titular recebe 403; titular cancela → assinatura do Asaas `deleted/INACTIVE`, 0 cobranças PENDING/OVERDUE,
+  banco `active` + `cancel_at_period_end` (acesso mantido); com o período vencido `grupo_pode_lancar()` vira `false`
+  e `encerrar_assinaturas_canceladas()` leva a `canceled`. Remover membro: não-dono → `sem_permissao`, a si mesmo →
+  bloqueado, dono remove B → B fica sem grupo.
+- **Não coberto:** o log do webhook ficou vazio no teste (o sandbox não chamou o webhook), então a regra
+  "ignorar remoção causada pelo cancelamento" foi revisada no código mas não exercitada. E o cancelamento com
+  cartão/12x segue pendente de teste.
+- **`main` atualizada e enviada** (fast-forward, 40 commits). A Vercel publicou: o bundle de produção já contém
+  "Minha assinatura", compartilhar resumo, remover membro, e nenhuma menção a "fundador"/"100 vagas".
+- Falta só a **sua validação logada** (390/1280px, claro/escuro) pelos checklists acima.
