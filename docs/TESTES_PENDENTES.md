@@ -72,3 +72,31 @@ console limpo (a tela é autenticada; não criei conta de teste). O que conferir
 - Limite de 7 dias pra "Em N dias" foi escolha minha (conservadora); fácil de mudar em `statusDe`.
 - Desfazer em outro mês: se você trocar de mês antes de tocar em Desfazer, mostra aviso em vez de
   desfazer (evita gravar na competência errada).
+
+## ✅ Prompt 16 · Etapa 3 — Tela de voz  `branch: feat/voz-visual`
+
+Redesenho de `src/components/BotaoVoz.jsx` (textos em `copy.voz`; animações `hf-wave`/`hf-slide`
+em `index.css`). **Toda a lógica** (interpretação pela Edge Function, limite de IA, log de acerto,
+salvar gasto/entrada/parcelado) ficou intacta. Validado só por build + console limpo (tela exige login).
+
+- [ ] **Bottom sheet** abre ao tocar no microfone verde; barrinha de arraste no topo; fecha no X
+      e tocando fora. No desktop vira modal centralizado.
+- [ ] **"Ouvindo…":** microfone grande (80px) com dois anéis pulsando e barrinhas de onda enquanto
+      grava; toque no microfone para parar. Em navegador sem voz, o botão fica desabilitado e o
+      campo de texto continua funcionando.
+- [ ] **Texto digitado** ("mercado 87 no Nubank") + enviar continua interpretando.
+- [ ] **Card "Entendi assim":** tag Gasto/Entrada, valor grande e três colunas (Categoria · Pagamento ·
+      Data; para entrada: Descrição · Tipo · Data). "Pagamento" mostra cartão + "· 3x" se parcelado.
+- [ ] **Corrigir** abre o formulário completo (tipo, descrição, valor, data, categoria, pagamento,
+      parcelas / tipo de entrada) — todos os campos de antes. **Refazer** volta pro começo.
+- [ ] **Salvar gasto / Salvar entrada** grava normalmente (gasto à vista, parcelado no cartão, entrada)
+      e o Início atualiza.
+- [ ] Se a IA não entender o valor, o card já abre direto no formulário de correção.
+- [ ] Aviso "Restam N lançamentos por IA" (≥80% do limite) aparece no card.
+
+**Observações:**
+- Voz do navegador (`useVoz`) só devolve o texto **no fim** da fala (`interimResults=false`), então
+  a transcrição não "digita ao vivo" como na referência — aparece quando termina. Ligar resultados
+  parciais exigiria mexer no `useVoz` (fora do escopo visual); deixo como sugestão.
+- Não mexi nos estados vazio/erro/sucesso de `estados.html`/`feedback.html` além do que já existe
+  (erros em texto vermelho, "Salvo!" no botão).
