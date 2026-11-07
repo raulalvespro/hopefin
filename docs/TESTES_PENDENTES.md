@@ -100,3 +100,33 @@ salvar gasto/entrada/parcelado) ficou intacta. Validado só por build + console 
   parciais exigiria mexer no `useVoz` (fora do escopo visual); deixo como sugestão.
 - Não mexi nos estados vazio/erro/sucesso de `estados.html`/`feedback.html` além do que já existe
   (erros em texto vermelho, "Salvo!" no botão).
+
+## ✅ Prompt 17 — Planos  `branch: feat/planos-visual`
+
+Redesenho de `src/pages/Planos.jsx` (textos em `copy.planos`; brilho `hf-shine` em `index.css`).
+Ignorei `banner-fundador.html` (oferta velha). Preços **só** via `planos_publicos()` / `src/lib/precos.js`
+— nenhum valor escrito no componente. Validado só por build + console limpo (rota exige login).
+
+- [ ] **Selo no topo:** "Seu teste termina em N dias" (âmbar) durante o trial; "Seu período de teste
+      terminou" (vermelho) se vencido; nada se já for assinante. Conferir nos 3 estados.
+- [ ] **Cards de plano (radio):** Família anual (selecionado por padrão, brilho suave, selo escuro
+      "Preço de lançamento até 31/12/2026" + preço riscado, "menos de R$ X por mês", economia %) e Família
+      mensal (R$ 24,90). Os valores batem com `planos_config`? Depois de 31/12/2026 o selo e o preço
+      riscado devem sumir sozinhos.
+- [ ] **Benefícios:** as 6 linhas de antes continuam (com ícones).
+- [ ] **Botões mudam com o plano:** anual → "Assinar com Pix" + "Pagar com cartão — 12x de R$ …" +
+      nota do total no cartão; mensal → "Assinar mensal" + "Pagar com cartão". Todos levam ao
+      `/checkout` com `ciclo`/`metodo` corretos.
+- [ ] **Cupom:** resgatar (ex.: `IGREJA2026`) e mensagens de erro (já resgatou / inválido) como antes.
+- [ ] **Card "7 dias grátis, sem cartão"** e rodapé (CDC) mantidos.
+- [ ] 390px/1280px, claro/escuro (o brilho do card selecionado fica discreto no escuro?).
+
+**Decisões / sugestões:**
+- **Mantive o título "HopeFin Família"** (app atual manda) em vez de "Continue com a casa organizada".
+- **Sugestão:** a frase da referência "Em 12 dias a família lançou 84 gastos e pagou 8 contas no prazo"
+  precisa de consultas novas (contagem de gastos e contas pagas desde o início do trial). Não criei —
+  me diga se quer.
+- **Sugestão:** "Lançamento por voz sem limite" e "Preço travado enquanto assinar" da referência — o 2º é
+  verdade pela regra comercial (preço travado nas renovações) e podia entrar como 7º benefício; o 1º
+  **não** é verdade (há limite de IA, 200/mês) — não incluí.
+- Texto do selo agora é "Preço de lançamento" (no lugar de "Preço de fundador" da referência).
