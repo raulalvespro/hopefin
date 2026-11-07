@@ -407,3 +407,10 @@ Quatro camadas — as duas primeiras já estão em produção:
    "Não consegui carregar a sua conta" com o motivo e "Tentar de novo"; manda o erro para o Sentry.
 4. **Teste automático:** `npm run smoke` (`scripts/smoke-login.mjs`) — rodar depois de toda migração. Falha se o login/perfil quebrar
    ou se `criar_grupo` voltar a criar grupo duplicado.
+
+## 🔒 Trava no banco contra grupos duplicados (07/11/2026, 18:13) — migração 0032 aplicada
+
+Mesmo depois da 0031, o app (ainda sem a blindagem, que aguarda push) continuou criando grupos quando uma leitura do perfil
+falhava e trocou o grupo da conta `raullerickson@gmail.com` outra vez (18:10). A `criar_grupo()` agora **devolve o grupo atual
+quando a pessoa já tem um** — não cria outro. Limpei os grupos vazios criados hoje (restaram 41 no total). A causa exata da
+falha transitória de leitura ainda não foi identificada; a blindagem no front (`fix/perfil-ambiguidade`) é a proteção definitiva.
