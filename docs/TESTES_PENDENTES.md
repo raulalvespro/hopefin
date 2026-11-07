@@ -130,3 +130,28 @@ Ignorei `banner-fundador.html` (oferta velha). Preços **só** via `planos_publi
   verdade pela regra comercial (preço travado nas renovações) e podia entrar como 7º benefício; o 1º
   **não** é verdade (há limite de IA, 200/mês) — não incluí.
 - Texto do selo agora é "Preço de lançamento" (no lugar de "Preço de fundador" da referência).
+
+## ✅ Prompt 18 — Convite  `branch: feat/convite-visual`
+
+Não existe tela de convite no app: o convite era um **cartão em Configurações** ("Convidar para o
+grupo"). Mantive no mesmo lugar e redesenhei como componente `src/components/ConviteGrupo.jsx`
+(textos em `copy.convite`; animação `hf-pop` em `index.css`). O fluxo de entrada **não mudou**
+(convidado escolhe "Entrar em um grupo" e cola o código). Validado só por build (exige login).
+
+- [ ] Em **Configurações → topo**: avatares dos membros do grupo (com foto, se houver) + círculo
+      tracejado "+" (some se o grupo já tem 6), nome do grupo, "N membros · até 6 pessoas".
+- [ ] **Código do grupo** em destaque (Syne). Se for um código longo (UUID), a fonte diminui e quebra
+      linha em vez de estourar o cartão — conferir como aparece o seu.
+- [ ] **Copiar código** copia de fato (testar colar em outro lugar), mostra "Código copiado" no botão e
+      no toast.
+- [ ] Texto explicativo agora é neutro ("quem divide as contas com você") — tirei "sua esposa", conforme
+      a regra de produto do CLAUDE.md.
+- [ ] Atalho "Convidar alguém da família" da tela de Boas-vindas continua levando a Configurações.
+
+**Sugestões (NÃO criei — regra 3, preciso do seu ok):**
+- **QR code** do convite e **código curto** tipo `CASA-7K2P` (hoje o código é o do banco, sem formato amigável).
+- **"Enviar pelo WhatsApp"** (abre `wa.me` com texto pronto) e **"Copiar link do convite"** (precisa de rota
+  de entrada por link, ex. `/entrar?codigo=…`, que hoje não existe).
+- **Remover membro** ("você pode remover alguém a qualquer momento" da referência) — não existe no app,
+  e mexe em dados/regras; por isso não coloquei esse texto.
+- "plano Família" no subtítulo: omitido por ora (poderia vir de `subscriptions`).

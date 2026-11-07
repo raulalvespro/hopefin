@@ -301,6 +301,9 @@ select option { background: var(--bg3); }
 @keyframes hf-slide { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
 .hf-wave { transform-origin: center; transform-box: fill-box; animation: hf-wave .9s ease-in-out infinite; }
 .hf-slide { animation: hf-slide .5s var(--ease) both; }
+/* Convite: avatares "pulam" ao entrar */
+@keyframes hf-pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); } }
+.hf-pop { animation: hf-pop .6s var(--ease) both; }
 /* Brilho suave no plano destacado (Planos) */
 @keyframes hf-shine { 0% { background-position: -200px 0; } 100% { background-position: 400px 0; } }
 .hf-shine { background-image: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%); background-size: 200px 100%; background-repeat: no-repeat; animation: hf-shine 3.2s ease-in-out infinite; }

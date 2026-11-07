@@ -254,6 +254,18 @@ export const copy = {
     rodape: 'Preços em reais (BRL). Cancele quando quiser em Configurações — o acesso segue até o fim do período já pago. Teste sem cartão; depois do pagamento, você tem 7 dias de arrependimento (art. 49 do CDC).',
   },
 
+  convite: {
+    titulo: 'Convidar para o grupo',
+    grupoFallback: 'Sua casa',
+    membros: (n, max) => `${n} ${n === 1 ? 'membro' : 'membros'} · até ${max} pessoas`,
+    codigoLabel: 'Código do grupo',
+    explicacao: 'Quem entrar vê e lança nos mesmos gastos, contas e metas. Compartilhe o código com quem divide as contas com você.',
+    copiar: 'Copiar código',
+    copiado: 'Código copiado',
+    copiarErro: 'Não foi possível copiar. Selecione o código e copie manualmente.',
+    comoEntrar: 'A pessoa cria a conta, escolhe "Entrar em um grupo" e cola esse código.',
+  },
+
   boasVindas: {
     titulo: 'Bem-vindo ao HopeFin',
     subtitulo: 'Três passos e o mês da sua casa já aparece organizado.',
