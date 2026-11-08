@@ -62,6 +62,13 @@ export function AuthProvider({ children }) {
         await supabase.rpc('criar_grupo', { p_nome: md.nome_grupo })
       }
       perfilRow = (await buscarPerfil(authUser.id)).row
+
+      // E-mails de acolhimento (boas-vindas ao novo usuário; aviso ao dono quando
+      // alguém entra pelo convite). Best-effort: o servidor garante 1x via email_log.
+      if (perfilRow?.grupo_id) {
+        avisarEmail('cadastro')
+        if (md.codigo_grupo) avisarEmail('entrou_no_grupo')
+      }
     }
 
     // Garante a assinatura em trial do grupo (idempotente: não recria se já existe).
@@ -82,6 +89,13 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase
       .from('usuarios').select('*, grupos!usuarios_grupo_id_fkey(*)').eq('id', userId).maybeSingle()
     return { row: data, erro: error }
+  }
+
+  // Dispara um e-mail de acolhimento via Edge Function (boas-vindas/aviso ao dono).
+  // Best-effort e sem await de propósito: nunca deve travar o login nem quebrar se
+  // o envio falhar. A idempotência (não reenviar) é garantida no servidor (email_log).
+  function avisarEmail(evento) {
+    supabase.functions.invoke('boas-vindas', { body: { evento } }).catch(() => {})
   }
 
   async function login(email, senha) {
@@ -116,6 +130,7 @@ export function AuthProvider({ children }) {
     if (!user) return { error: { message: 'Sem sessão ativa' } }
     const { data: gid, error } = await supabase.rpc('criar_grupo', { p_nome: nome })
     if (error) return { error }
+    avisarEmail('cadastro') // boas-vindas a quem só definiu o grupo agora (fluxo EscolhaGrupo)
     await carregarPerfil(user)
     return { data: { id: gid } }
   }
@@ -126,6 +141,8 @@ export function AuthProvider({ children }) {
     const { data: gid, error } = await supabase.rpc('entrar_no_grupo', { p_codigo: normalizarCodigo(codigo) })
     if (error) return { error }
     limparConvite()
+    avisarEmail('cadastro')         // boas-vindas a quem entrou agora
+    avisarEmail('entrou_no_grupo')  // e avisa o dono do grupo
     await carregarPerfil(user)
     return { data: { id: gid } }
   }
