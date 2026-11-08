@@ -435,3 +435,17 @@ falha transitória de leitura ainda não foi identificada; a blindagem no front 
   Textos em `copy.pix`. Modo de demonstração só em DEV: `/checkout?demo=pix` (não cobra nada).
 - [ ] Conferir no celular real: QR legível, copiar o código e colar no app do banco.
 - [ ] Conferir o aviso quando o código expira (esperar vencer ou simular).
+
+## 📱 Ajustes de celular pedidos por você (08/11/2026)
+- **Avisos no topo, clicáveis:** "Instalar o HopeFin" (Android/desktop: um toque abre a instalação; iPhone: um toque mostra o passo a
+  passo) e **"Ative as notificações"** (um toque pede a permissão e já inscreve o aparelho). Antes o de instalar flutuava embaixo,
+  atrás do microfone. O de notificações só aparece se o navegador suporta, a pessoa ainda não ativou nem bloqueou, e (no iPhone) o app
+  já está instalado; se dispensar, volta depois de 14 dias.
+- **Microfone no canto esquerdo** (era no centro); o lado direito fica livre para o futuro botão de ajuda. Em Gastos, o "+" manual
+  ficou ao lado do microfone (os dois à esquerda). Em Entradas o "+" continua à direita — me diga se quer mudar.
+- Demonstração só em DEV: `/?demo=avisos` mostra os dois avisos.
+- [ ] Testar no celular real: tocar em "Ativar" (permissão aparece), tocar em "Instalar" (Android), e ver o iPhone se tiver.
+
+## 🐦 Joca — imagens processadas (08/11/2026)
+Originais em `docs/design/mascote/originais/`; versões sem fundo em `public/joca/` (WebP 640 e 320 px, 12 a 38 KB cada) geradas por
+`py scripts/joca-processar.py` (recorte com `rembg` + correção do peito branco). Ainda **não integradas** nas telas.

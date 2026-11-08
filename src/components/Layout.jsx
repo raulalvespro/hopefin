@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import InstalarApp from './InstalarApp'
+import AtivarNotificacoes from './AtivarNotificacoes'
 import Avatar from './Avatar'
 import Logo from './Logo'
 import BannerAssinatura from './BannerAssinatura'
@@ -185,12 +186,12 @@ export default function Layout() {
 
       {/* Conteúdo */}
       <main style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 100px' }}>
+        {/* Avisos clicáveis no topo: instalar o app e ativar notificações */}
+        <InstalarApp />
+        <AtivarNotificacoes />
         <BannerAssinatura />
         <Outlet />
       </main>
-
-      {/* Banner instalar PWA */}
-      <InstalarApp />
 
       {/* Nav bottom */}
       <nav style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, background: 'var(--bg2)', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-around', padding: '8px 0 env(safe-area-inset-bottom)', zIndex: 10 }}>

@@ -206,7 +206,7 @@ export default function Gastos() {
       )}
 
       {/* Botão adicionar manual */}
-      <button onClick={abrirNovo} style={{ position: 'fixed', bottom: 80, left: 20, width: 48, height: 48, borderRadius: '50%', background: 'var(--bg3)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+      <button onClick={abrirNovo} style={{ position: 'fixed', bottom: 88, left: 88, width: 44, height: 44, borderRadius: '50%', background: 'var(--bg3)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
         <Plus size={22} color="var(--text)" />
       </button>
 

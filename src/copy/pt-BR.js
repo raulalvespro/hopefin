@@ -457,6 +457,23 @@ export const copy = {
     seguro: 'Pagamento processado com segurança pelo Asaas.',
   },
 
+  avisos: {
+    dispensar: 'Dispensar',
+    instalarTitulo: 'Instalar o HopeFin',
+    instalarTexto: 'Toque aqui para ter o app na tela inicial.',
+    instalarTextoIos: 'Toque aqui e veja como adicionar à tela inicial.',
+    instalarBotao: 'Instalar',
+    iosPasso1: 'Toque no botão Compartilhar',
+    iosPasso2: 'Escolha "Adicionar à Tela de Início"',
+    iosPasso3: 'Confirme em "Adicionar". Pronto!',
+    notifTitulo: 'Ative as notificações',
+    notifTexto: 'Toque aqui para ser avisado das contas que vencem.',
+    notifBotao: 'Ativar',
+    notifAtivando: 'Ativando…',
+    notifOk: 'Notificações ativadas!',
+    notifErro: 'Não foi possível ativar agora. Tente de novo.',
+  },
+
   boasVindas: {
     titulo: 'Bem-vindo ao HopeFin',
     subtitulo: 'Três passos e o mês da sua casa já aparece organizado.',

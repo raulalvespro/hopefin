@@ -1,23 +1,30 @@
 import { useEffect, useState } from 'react'
-import { Download, X, Share } from 'lucide-react'
+import { Download, X, Share, ChevronRight } from 'lucide-react'
+import { copy } from '../copy/pt-BR'
 
+const t = copy.avisos
 const KEY = 'hopefin_pwa_dispensado'
 
-function estaInstalado() {
+export function estaInstalado() {
   return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true
 }
 function foiDispensado() {
   try { return localStorage.getItem(KEY) === '1' } catch { return false }
 }
-function ehIOS() {
+export function ehIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream
 }
 
+// Aviso "Instalar o HopeFin" no TOPO do conteúdo (não flutua sobre o botão do microfone) e clicável:
+// no Android/desktop o toque abre a instalação; no iPhone o toque mostra o passo a passo.
 export default function InstalarApp() {
   const [prompt, setPrompt] = useState(null)   // evento beforeinstallprompt (Android/desktop)
   const [iosBanner, setIosBanner] = useState(false)
+  const [passos, setPassos] = useState(false)
 
   useEffect(() => {
+    // SÓ EM DESENVOLVIMENTO: ?demo=avisos mostra a versão do iPhone (passo a passo)
+    if (import.meta.env.DEV && new URLSearchParams(location.search).get('demo') === 'avisos') { setIosBanner(true); return }
     if (estaInstalado() || foiDispensado()) return
 
     const handler = e => { e.preventDefault(); setPrompt(e) }
@@ -42,48 +49,42 @@ export default function InstalarApp() {
     setPrompt(null)
   }
 
-  function dispensar() {
+  function dispensar(e) {
+    e.stopPropagation()
     setPrompt(null); setIosBanner(false)
     try { localStorage.setItem(KEY, '1') } catch { /* ignore */ }
   }
 
   if (!prompt && !iosBanner) return null
 
+  const acao = () => (prompt ? instalar() : setPassos(p => !p))
+
   return (
-    <div style={{
-      position: 'fixed', bottom: 72, left: '50%', transform: 'translateX(-50%)',
-      width: 'calc(100% - 24px)', maxWidth: 456, zIndex: 40,
-      background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
-      boxShadow: '0 10px 30px rgba(15,23,42,0.18)', padding: '12px 14px',
-      display: 'flex', alignItems: 'center', gap: 12,
-    }}>
-      <div style={{
-        width: 40, height: 40, borderRadius: 10, background: 'var(--accent-dim)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    <div role="button" tabIndex={0} onClick={acao} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); acao() } }}
+      style={{
+        background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer',
+        boxShadow: 'var(--shadow-sm)', padding: '12px 14px', marginBottom: 12,
       }}>
-        <Download size={20} color="var(--accent)" />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 600 }}>Instalar o HopeFin</p>
-        {prompt ? (
-          <p style={{ fontSize: 12, color: 'var(--text2)' }}>Acesso rápido na tela inicial, como um app.</p>
-        ) : (
-          <p style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-            Toque em <Share size={13} style={{ verticalAlign: 'middle' }} /> e em "Adicionar à Tela de Início".
-          </p>
-        )}
-      </div>
-      {prompt && (
-        <button onClick={instalar} style={{
-          background: 'var(--accent)', color: 'var(--on-accent)', fontFamily: 'Syne', fontWeight: 700,
-          fontSize: 13, padding: '8px 14px', borderRadius: 'var(--radius-sm)', flexShrink: 0,
-        }}>
-          Instalar
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Download size={20} color="var(--accent)" />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 14, fontWeight: 600 }}>{t.instalarTitulo}</p>
+          <p style={{ fontSize: 12.5, color: 'var(--text2)' }}>{prompt ? t.instalarTexto : t.instalarTextoIos}</p>
+        </div>
+        {prompt && <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--accent-text)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>{t.instalarBotao}<ChevronRight size={16} /></span>}
+        <button onClick={dispensar} style={{ color: 'var(--text3)', flexShrink: 0, display: 'flex', minWidth: 32, minHeight: 32, alignItems: 'center', justifyContent: 'center' }} aria-label={t.dispensar}>
+          <X size={18} />
         </button>
+      </div>
+      {!prompt && passos && (
+        <ol style={{ margin: '10px 0 0 52px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.45 }}>
+          <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>1. {t.iosPasso1} <Share size={14} /></li>
+          <li>2. {t.iosPasso2}</li>
+          <li>3. {t.iosPasso3}</li>
+        </ol>
       )}
-      <button onClick={dispensar} style={{ color: 'var(--text3)', flexShrink: 0, display: 'flex' }} aria-label="Dispensar">
-        <X size={18} />
-      </button>
     </div>
   )
 }

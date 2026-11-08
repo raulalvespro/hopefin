@@ -192,7 +192,7 @@ export default function BotaoVoz({ onSalvo }) {
   return (
     <>
       {!aberto && (
-        <div style={{ position: 'fixed', bottom: 78, left: '50%', transform: 'translateX(-50%)', zIndex: 50 }}>
+        <div style={{ position: 'fixed', bottom: 78, left: 16, zIndex: 50 }}>
           <MicButton onClick={() => setAberto(true)} aria-label={t.abrirBotao} />
         </div>
       )}
