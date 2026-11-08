@@ -26,7 +26,7 @@ async function resumoDoMes(gid, ym) {
 
   const [ent, gas, fix, lanc, parc, ass, tr] = await Promise.all([
     supabase.from('entradas').select('valor').eq('grupo_id', gid).gte('data', ini).lte('data', fim),
-    supabase.from('gastos').select('valor, categoria, origem').eq('grupo_id', gid).gte('data', ini).lte('data', fim),
+    supabase.from('gastos').select('valor, categoria, origem').eq('grupo_id', gid).is('pessoa_id', null).gte('data', ini).lte('data', fim),
     supabase.from('contas_fixas').select('id, valor, categoria').eq('grupo_id', gid).eq('ativo', true),
     supabase.from('fixas_lancamentos').select('conta_fixa_id, valor_real, pago').eq('grupo_id', gid).eq('competencia', ym),
     supabase.from('parcelas').select('valor, parcelamentos(categoria)').eq('grupo_id', gid).gte('data_vencimento', ini).lte('data_vencimento', fim),

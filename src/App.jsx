@@ -26,6 +26,7 @@ import Checkout from './pages/Checkout'
 import Fechamento from './pages/Fechamento'
 import Importar from './pages/Importar'
 import Historico from './pages/Historico'
+import AReceber from './pages/AReceber'
 import Notificacoes from './pages/Notificacoes'
 import Admin from './pages/Admin'
 import Legal from './pages/Legal'
@@ -103,6 +104,7 @@ export default function App() {
         <Route path="contas-do-mes" element={<ContasDoMes />} />
         <Route path="assinaturas" element={<Assinaturas />} />
         <Route path="parcelamentos" element={<Parcelamentos />} />
+        <Route path="a-receber" element={<AReceber />} />
         <Route path="projecao" element={<Projecao />} />
         <Route path="cofrinhos" element={<Cofrinhos />} />
         <Route path="orcamento" element={<Orcamento />} />

@@ -14,7 +14,7 @@ import { EmptyState } from '../components/ui'
 import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
 
-const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO() })
+const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO(), de_terceiro: false, pessoa_nome: '', reembolso_status: null })
 
 export default function Gastos() {
   const { perfil } = useAuth()
@@ -26,13 +26,14 @@ export default function Gastos() {
   const [itens, setItens] = useState([])
   const [verTodos, setVerTodos] = useState(false)
   const [cartoes, setCartoes] = useState([])
+  const [pessoas, setPessoas] = useState([])
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(novoForm())
   const [salvando, setSalvando] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes() } }, [perfil, mes])
+  useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes(); carregarPessoas() } }, [perfil, mes])
 
   async function carregar() {
     setLoading(true)
@@ -42,7 +43,7 @@ export default function Gastos() {
     const fim = format(endOfMonth(mes), 'yyyy-MM-dd')
 
     const [{ data: gastos }, { data: parcelas }] = await Promise.all([
-      supabase.from('gastos').select('*, cartoes(nome), usuarios(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
+      supabase.from('gastos').select('*, cartoes(nome), usuarios(nome), pessoas(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
       supabase.from('parcelas').select('*, parcelamentos(descricao, categoria, num_parcelas, cartoes(nome), usuarios(nome))').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
     ])
 
@@ -51,6 +52,7 @@ export default function Gastos() {
       descricao: g.descricao, valor: Number(g.valor), categoria: g.categoria, data: g.data, criado: g.criado_em || '',
       tipo_pagamento: g.tipo_pagamento, cartao_id: g.cartao_id,
       origem: g.cartoes?.nome || g.tipo_pagamento, pessoa: g.usuarios?.nome?.split(' ')[0],
+      pessoa_id: g.pessoa_id, terceiro: g.pessoa_id ? (g.pessoas?.nome || 'alguém') : null, reembolso_status: g.reembolso_status,
     }))
     const parcelasItens = (parcelas || []).map(p => ({
       id: 'p-' + p.id, tipo: 'parcela',
@@ -70,6 +72,11 @@ export default function Gastos() {
     setCartoes(data || [])
   }
 
+  async function carregarPessoas() {
+    const { data } = await supabase.from('pessoas').select('id, nome').eq('grupo_id', perfil.grupo_id).order('nome')
+    setPessoas(data || [])
+  }
+
   function abrirNovo() {
     setEditando(null); setForm(novoForm()); setModal(true)
   }
@@ -79,13 +86,30 @@ export default function Gastos() {
     setForm({
       descricao: it.descricao, valor: String(it.valor), categoria: it.categoria,
       tipo_pagamento: it.tipo_pagamento || 'cartao', cartao_id: it.cartao_id || '',
-      parcelado: false, num_parcelas: '', data: it.data,
+      parcelado: false, num_parcelas: '', parcelas_pagas: '', data: it.data,
+      de_terceiro: !!it.terceiro, pessoa_nome: it.terceiro && it.terceiro !== 'alguém' ? it.terceiro : '',
+      reembolso_status: it.reembolso_status || null,
     })
     setModal(true)
   }
 
   function fecharModal() {
     setModal(false); setEditando(null); setForm(novoForm())
+  }
+
+  // Resolve a pessoa do "gasto de terceiro": usa uma já cadastrada (match por nome) ou cria.
+  // Retorna o id da pessoa, ou null se não for gasto de terceiro / nome vazio.
+  async function resolverPessoaId() {
+    const nome = (form.pessoa_nome || '').trim()
+    if (!form.de_terceiro || !nome) return null
+    const existe = pessoas.find(p => p.nome.toLowerCase() === nome.toLowerCase())
+    if (existe) return existe.id
+    const { data } = await run(
+      supabase.from('pessoas').insert({ grupo_id: perfil.grupo_id, nome }).select('id').single(),
+      { erro: 'Não foi possível salvar a pessoa' }
+    )
+    if (data?.id) carregarPessoas()
+    return data?.id || null
   }
 
   async function salvar() {
@@ -96,11 +120,20 @@ export default function Gastos() {
 
     // Edição: só gastos à vista
     if (editando) {
+      const pessoaId = await resolverPessoaId()
+      const patch = {
+        descricao: form.descricao, valor, categoria: form.categoria,
+        tipo_pagamento: form.tipo_pagamento, cartao_id: form.cartao_id || null, data: form.data,
+        pessoa_id: pessoaId,
+      }
+      if (pessoaId) {
+        patch.reembolso_status = form.reembolso_status || 'pendente' // preserva "quitado" se já estava
+      } else {
+        patch.reembolso_status = null
+        patch.reembolso_quitado_em = null
+      }
       const { error } = await run(
-        supabase.from('gastos').update({
-          descricao: form.descricao, valor, categoria: form.categoria,
-          tipo_pagamento: form.tipo_pagamento, cartao_id: form.cartao_id || null, data: form.data,
-        }).eq('id', editando),
+        supabase.from('gastos').update(patch).eq('id', editando),
         { ok: 'Gasto atualizado' }
       )
       setSalvando(false)
@@ -135,11 +168,13 @@ export default function Gastos() {
       setSalvando(false)
       if (error) return
     } else {
+      const pessoaId = await resolverPessoaId()
       const { error } = await run(
         supabase.from('gastos').insert({
           descricao: form.descricao, valor, categoria: form.categoria,
           tipo_pagamento: form.tipo_pagamento, cartao_id: form.cartao_id || null,
           data: form.data, grupo_id: perfil.grupo_id, usuario_id: perfil.id,
+          pessoa_id: pessoaId, reembolso_status: pessoaId ? 'pendente' : null,
         }),
         { ok: 'Gasto adicionado' }
       )
@@ -155,7 +190,8 @@ export default function Gastos() {
     if (!error) carregar()
   }
 
-  const total = itens.reduce((s, it) => s + it.valor, 0)
+  // Gastos de terceiro (a receber) são neutros: não entram no total do mês.
+  const total = itens.reduce((s, it) => s + (it.terceiro ? 0 : it.valor), 0)
   const nParcelas = parseInt(form.num_parcelas)
   const ehCartao = form.tipo_pagamento === 'cartao'
 
@@ -194,6 +230,11 @@ export default function Gastos() {
                     {it.numero}/{it.totalParcelas}x
                   </span>
                 )}
+                {it.terceiro && (
+                  <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--amber-text)', padding: '1px 7px', borderRadius: 10 }}>
+                    {it.reembolso_status === 'quitado' ? 'recebido' : 'a receber'} · {it.terceiro}
+                  </span>
+                )}
               </p>
               <p style={{ fontSize: 11, color: 'var(--text3)' }}>
                 {fmtData(it.data, 'dd/MM')} · {it.origem} · {it.pessoa}
@@ -201,7 +242,7 @@ export default function Gastos() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ color: 'var(--red-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(it.valor)}</span>
+            <span style={{ color: it.terceiro ? 'var(--text3)' : 'var(--red-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(it.valor)}</span>
             {it.tipo === 'gasto' ? (
               <>
                 <button onClick={() => editarGasto(it)}><Pencil size={14} color="var(--text3)" /></button>
@@ -261,6 +302,25 @@ export default function Gastos() {
                   <option value="">Selecione</option>
                   {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
+              </div>
+            )}
+
+            {/* Gasto de outra pessoa (a receber) — só faz sentido à vista */}
+            {!form.parcelado && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
+                  <input type="checkbox" checked={form.de_terceiro} onChange={e => setForm(p => ({ ...p, de_terceiro: e.target.checked }))} />
+                  Foi de outra pessoa (vão me pagar)
+                </label>
+                {form.de_terceiro && (
+                  <div className="form-group" style={{ marginTop: 10 }}>
+                    <input list="pessoas-lista" value={form.pessoa_nome} onChange={e => setForm(p => ({ ...p, pessoa_nome: e.target.value }))} placeholder="Quem vai pagar (ex: Pai)" />
+                    <datalist id="pessoas-lista">{pessoas.map(p => <option key={p.id} value={p.nome} />)}</datalist>
+                    <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
+                      Esse valor não entra nos seus gastos — fica em “A receber” até você marcar como recebido.
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 

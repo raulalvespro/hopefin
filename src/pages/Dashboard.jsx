@@ -66,7 +66,7 @@ export default function Dashboard() {
     const fimJanela = format(endOfMonth(mes), 'yyyy-MM-dd')
 
     const [{ data: gastos }, { data: entradas }, { data: parcelas }, { data: fixas }, { data: assinaturas }] = await Promise.all([
-      supabase.from('gastos').select('valor, data').eq('grupo_id', gid).gte('data', inicioJanela).lte('data', fimJanela),
+      supabase.from('gastos').select('valor, data').eq('grupo_id', gid).is('pessoa_id', null).gte('data', inicioJanela).lte('data', fimJanela),
       supabase.from('entradas').select('valor, data').eq('grupo_id', gid).gte('data', inicioJanela).lte('data', fimJanela),
       supabase.from('parcelas').select('valor, data_vencimento').eq('grupo_id', gid).gte('data_vencimento', inicioJanela).lte('data_vencimento', fimJanela),
       supabase.from('contas_fixas').select('valor').eq('grupo_id', gid).eq('ativo', true),
@@ -95,7 +95,7 @@ export default function Dashboard() {
     const competencia = format(data, 'yyyy-MM')
 
     const [{ data: gastos }, { data: entradas }, { data: fixas }, { data: parcelas }, { data: assinaturas }, { data: lancFixas }, { data: contasPagas }, { data: orcamentos }, { data: cartoes }] = await Promise.all([
-      supabase.from('gastos').select('id, descricao, valor, categoria, data, cartao_id, usuarios(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
+      supabase.from('gastos').select('id, descricao, valor, categoria, data, cartao_id, usuarios(nome)').eq('grupo_id', gid).is('pessoa_id', null).gte('data', inicio).lte('data', fim),
       supabase.from('entradas').select('valor, recebido').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
       supabase.from('contas_fixas').select('id, valor, categoria').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('parcelas').select('valor, paga, parcelamentos(categoria, cartao_id)').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),

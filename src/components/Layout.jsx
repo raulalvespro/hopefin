@@ -3,7 +3,7 @@ import { tourVisto } from '../lib/tour'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar,
-  LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat, ClipboardCheck, Bell, Clock, History,
+  LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat, ClipboardCheck, Bell, Clock, History, Coins,
 } from 'lucide-react'
 import { useState } from 'react'
 import InstalarApp from './InstalarApp'
@@ -37,6 +37,7 @@ const navMais = [
     { to: '/contas-do-mes', label: 'Contas do mês', icon: CalendarCheck },
     { to: '/parcelamentos', label: 'Parcelamentos', icon: Layers },
     { to: '/assinaturas', label: 'Assinaturas', icon: Repeat },
+    { to: '/a-receber', label: 'A receber', icon: Coins },
   ] },
   { secao: 'Metas', itens: [
     { to: '/cofrinhos', label: 'Cofrinhos', icon: PiggyBank },

@@ -28,7 +28,7 @@ export default function Orcamento() {
     const fim = format(endOfMonth(mes), 'yyyy-MM-dd')
     const [{ data: orc }, { data: gastos }, { data: fixas }, { data: parcelas }] = await Promise.all([
       supabase.from('orcamentos').select('*').eq('grupo_id', gid),
-      supabase.from('gastos').select('categoria, valor').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
+      supabase.from('gastos').select('categoria, valor').eq('grupo_id', gid).is('pessoa_id', null).gte('data', inicio).lte('data', fim),
       supabase.from('contas_fixas').select('categoria, valor').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('parcelas').select('valor, parcelamentos(categoria)').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
     ])
