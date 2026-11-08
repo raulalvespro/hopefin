@@ -252,7 +252,6 @@ export default function BotaoVoz({ onSalvo }) {
                     placeholder={t.phTexto}
                     disabled={interpretando}
                     style={{ flex: 1 }}
-                    autoFocus
                   />
                   <button type="submit" className="btn-primary" disabled={interpretando || !digitado.trim()} style={{ padding: '0 14px', display: 'flex', alignItems: 'center' }} aria-label={t.interpretarAria}>
                     {interpretando ? <Loader size={18} className="spin" /> : <Send size={18} />}
