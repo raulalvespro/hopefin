@@ -6,10 +6,12 @@ import { addMonths, subMonths, getDaysInMonth, format } from 'date-fns'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { useCategorias } from '../hooks/useCategorias'
-import { fmt, fmtData, parseDataLocal } from '../lib/format'
+import { fmt, fmtData, parseDataLocal, hojeISO } from '../lib/format'
 
 const bandeiras = { Visa: '💙', Mastercard: '🔴', Elo: '🟡', Amex: '🟢', Hipercard: '🔵' }
-const novoForm = () => ({ nome: '', bandeira: 'Visa', dia_fechamento: '', dia_vencimento: '', limite: '', alerta_dias: 3 })
+// Paleta fixa de cores do cartão (identificação visual). Null = usa o accent.
+const CORES = ['#8B5CF6', '#3B82F6', '#14B8A6', '#10B981', '#F97316', '#EF4444', '#EC4899', '#64748B']
+const novoForm = () => ({ nome: '', bandeira: 'Visa', cor: '', dia_fechamento: '', dia_vencimento: '', limite: '', alerta_dias: 3, fatura_inicial: '' })
 
 // Calcula fatura atual e próxima de um cartão a partir de gastos, parcelas e assinaturas
 function calcularFaturas(card, gastos, parcelas, assinaturas, hoje) {
@@ -101,9 +103,10 @@ export default function Cartoes() {
   function editar(c) {
     setEditando(c.id)
     setForm({
-      nome: c.nome, bandeira: c.bandeira || 'Visa',
+      nome: c.nome, bandeira: c.bandeira || 'Visa', cor: c.cor || '',
       dia_fechamento: String(c.dia_fechamento ?? ''), dia_vencimento: String(c.dia_vencimento ?? ''),
       limite: c.limite != null ? String(c.limite) : '', alerta_dias: c.alerta_dias ?? 3,
+      fatura_inicial: '',
     })
     setModal(true)
   }
@@ -115,17 +118,33 @@ export default function Cartoes() {
   async function salvar() {
     if (!form.nome || !form.dia_fechamento || !form.dia_vencimento) { toast('Preencha nome, fechamento e vencimento.', 'erro'); return }
     const payload = {
-      nome: form.nome, bandeira: form.bandeira,
+      nome: form.nome, bandeira: form.bandeira, cor: form.cor || null,
       dia_fechamento: parseInt(form.dia_fechamento), dia_vencimento: parseInt(form.dia_vencimento),
       limite: form.limite ? parseFloat(form.limite) : null, alerta_dias: parseInt(form.alerta_dias),
     }
     setSalvando(true)
-    const op = editando
-      ? run(supabase.from('cartoes').update(payload).eq('id', editando), { ok: 'Cartão atualizado' })
-      : run(supabase.from('cartoes').insert({ ...payload, grupo_id: perfil.grupo_id }), { ok: 'Cartão criado' })
-    const { error } = await op
+    if (editando) {
+      const { error } = await run(supabase.from('cartoes').update(payload).eq('id', editando), { ok: 'Cartão atualizado' })
+      if (error) { setSalvando(false); return }
+    } else {
+      const { data, error } = await run(
+        supabase.from('cartoes').insert({ ...payload, grupo_id: perfil.grupo_id }).select('id').single(),
+        { ok: 'Cartão criado' }
+      )
+      if (error) { setSalvando(false); return }
+      // Setup inicial: registra a fatura atual (fora parcelas) como um ajuste, pra já bater o valor.
+      const fat = parseFloat(String(form.fatura_inicial).replace(',', '.'))
+      if (data?.id && fat > 0) {
+        await run(
+          supabase.from('gastos').insert({
+            grupo_id: perfil.grupo_id, usuario_id: perfil.id, cartao_id: data.id,
+            descricao: 'Fatura atual (ajuste inicial)', valor: fat, categoria: 'outros', data: hojeISO(),
+          }),
+          { ok: 'Fatura inicial registrada' }
+        )
+      }
+    }
     setSalvando(false)
-    if (error) return
     fecharModal(); carregar()
   }
 
@@ -152,10 +171,10 @@ export default function Cartoes() {
           const f = calcularFaturas(c, gastos, parcelas, assinaturas, hoje)
           const usoPct = c.limite ? Math.min(100, Math.round((f.atual / Number(c.limite)) * 100)) : null
           return (
-            <div key={c.id} className="card" style={{ marginBottom: 10 }}>
+            <div key={c.id} className="card" style={{ marginBottom: 10, borderLeft: c.cor ? `4px solid ${c.cor}` : undefined }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 24 }}>{bandeiras[c.bandeira] || '💳'}</span>
+                  <span style={{ fontSize: 20, width: 38, height: 38, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.cor ? c.cor + '22' : 'var(--bg3)', flexShrink: 0 }}>{bandeiras[c.bandeira] || '💳'}</span>
                   <div>
                     <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 16 }}>{c.nome}</p>
                     <p style={{ fontSize: 12, color: 'var(--text2)' }}>{c.bandeira} · fecha dia {c.dia_fechamento} · vence dia {c.dia_vencimento}</p>
@@ -247,6 +266,20 @@ export default function Cartoes() {
                 {Object.keys(bandeiras).map(b => <option key={b} value={b}>{bandeiras[b]} {b}</option>)}
               </select>
             </div>
+            <div className="form-group">
+              <label>Cor do cartão</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {CORES.map(cor => (
+                  <button key={cor} type="button" title="Cor do cartão"
+                    onClick={() => setForm(p => ({ ...p, cor: p.cor === cor ? '' : cor }))}
+                    style={{
+                      width: 30, height: 30, borderRadius: '50%', background: cor, flexShrink: 0,
+                      border: form.cor === cor ? '3px solid var(--text)' : '2px solid var(--border)',
+                      boxShadow: form.cor === cor ? '0 0 0 2px var(--bg2)' : 'none',
+                    }} />
+                ))}
+              </div>
+            </div>
             <div className="form-row">
               <div className="form-group"><label>Dia de fechamento</label><input type="number" min="1" max="31" value={form.dia_fechamento} onChange={e => setForm(p => ({ ...p, dia_fechamento: e.target.value }))} placeholder="Ex: 20" /></div>
               <div className="form-group"><label>Dia de vencimento</label><input type="number" min="1" max="31" value={form.dia_vencimento} onChange={e => setForm(p => ({ ...p, dia_vencimento: e.target.value }))} placeholder="Ex: 27" /></div>
@@ -255,6 +288,15 @@ export default function Cartoes() {
               <div className="form-group"><label>Limite (opcional)</label><input type="number" value={form.limite} onChange={e => setForm(p => ({ ...p, limite: e.target.value }))} placeholder="0,00" /></div>
               <div className="form-group"><label>Alertar X dias antes</label><input type="number" min="1" max="15" value={form.alerta_dias} onChange={e => setForm(p => ({ ...p, alerta_dias: e.target.value }))} /></div>
             </div>
+            {!editando && (
+              <div className="form-group">
+                <label>Fatura atual aproximada (opcional)</label>
+                <input type="number" value={form.fatura_inicial} onChange={e => setForm(p => ({ ...p, fatura_inicial: e.target.value }))} placeholder="0,00" />
+                <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
+                  Já usa esse cartão? Informe a fatura atual (fora parcelas) e a gente lança um ajuste pra começar com o valor certo.
+                </span>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharModal}>Cancelar</button>
               <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} onClick={salvar} disabled={salvando}>
