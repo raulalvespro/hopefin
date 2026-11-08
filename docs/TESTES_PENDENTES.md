@@ -457,7 +457,7 @@ Onde o Joca aparece (tudo some junto se você desligar **"Joca nas telas do app"
 - **Contas do mês:** sem contas → Joca base; **tudo pago** → Joca comemorando junto do resumo.
 - **Sem internet:** faixa amarela no topo com Joca preocupado (aparece/some sozinha quando a conexão cai/volta).
 - **Resumo do mês:** cartão "A casinha do mês" com Joca construindo e 3 tijolinhos (menos de 10 lançamentos = alicerce, 10–29 = paredes, 30+ = quase pronta); em **mês já fechado no azul** vira Joca comemorando ("Mês no azul!").
-- Imagens: WebP sem fundo, 320 px (12–22 KB) e 640 px (22–40 KB) por `srcset`, carregamento só ao aparecer, descrição em português para leitores de tela. Moedas/dinheiro nunca aparecem (regra do Joca).
+- Imagens: WebP sem fundo, 320 px (13–17 KB) e 640 px (28–37 KB) por `srcset`, carregamento só ao aparecer, descrição em português para leitores de tela. Moedas/dinheiro nunca aparecem (regra do Joca).
 - **Figurinhas** (4, WebP 512×512, 24–28 KB, texto desenhado por código): `docs/design/mascote/figurinhas/` — "Anotado!", "Conta paga!", "Mês no azul!", "Opa, vence amanhã". Geradas por `py scripts/joca-figurinhas.py`. O envio pelo WhatsApp fica para a fase do WhatsApp; a chave "Figurinhas" no /admin já existe.
 - Migração **0034** (colunas em `admin_config` + RPCs `config_mascote` / `admin_set_mascote`). Smoke OK.
 - [ ] Testar no celular: ver o Joca em Gastos vazio (mês futuro), Contas do mês, Boas-vindas, modo avião (faixa), /admin ligar/desligar.
