@@ -273,3 +273,11 @@ colocar** e o Raul mesmo cola. Secrets conhecidos (nomes, sem valores):
 - Raul planeja no Claude.ai e implementa aqui. Comunicação **sempre em PT-BR**.
 
 > Roadmap completo e backlog por fases: `docs/ROADMAP_HOPEFIN.md`.
+
+## E-mail de acesso (Supabase Auth) e atualização do PWA (08/11/2026)
+- O Auth manda e-mail por **SMTP próprio via Resend** (`avisos@hopefin.com.br`), com modelos em português — configurado por
+  `node scripts/config-auth-email.mjs` (reaplicar se mexer nos modelos). Antes disso o remetente padrão do Supabase só entregava
+  para membros da equipe e a esposa do dono não recebia nada. `mailer_autoconfirm` segue LIGADO (cadastro não exige confirmação).
+- `src/lib/atualizarPwa.js`: o app instalado checa versão nova ao voltar para a frente (e a cada 30 min) e recarrega sozinho
+  quando ela assume (adia se a pessoa estiver digitando). Quem tinha o app instalado ANTES disso precisa fechar e abrir 1–2 vezes.
+- Plano de lançamento e fila: `docs/PLANO_PROXIMOS_PASSOS.md`. **WhatsApp entra NO lançamento.**

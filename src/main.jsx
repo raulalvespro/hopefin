@@ -8,11 +8,13 @@ import App from './App'
 import './index.css'
 import { initSentry, Sentry } from './lib/sentry'
 import { initPostHog } from './lib/analytics'
+import { iniciarAutoAtualizacao } from './lib/atualizarPwa'
 
 // Observabilidade: Sentry (erros) sempre que houver DSN; PostHog (analytics) só
 // se o usuário já tiver aceitado os cookies numa visita anterior.
 initSentry()
 initPostHog()
+iniciarAutoAtualizacao()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
