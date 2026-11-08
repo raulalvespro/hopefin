@@ -96,3 +96,11 @@ site ou desative essa opção.
   fazer isso sozinho assim que o CNAME sumir (se ele já tiver encerrado, rode o comando à mão).
 - Conferir: `curl -I https://app.hopefin.com.br/` sem `server: Vercel`. Supabase: Site URL/Redirect URLs **não precisam mudar**
   (já são `app.hopefin.com.br`); a Vercel segue como plano de volta por 1 semana.
+
+## ✅ Concluído em 08/11/2026 (01:45)
+`app.hopefin.com.br` agora é servido pelo Worker `hopefin-app` (Server: cloudflare). O CNAME da Vercel foi apagado pelo Raul e o
+custom domain ligado via `npm run cf:deploy` (versão 79af5bd2). Conferido em produção: `/`, deep links, `/entrar?c=…`, `/termos`
+→ 200; arquivo inexistente → 404; `sw.js`/`manifest` sem cache; `npm run smoke` OK. Supabase: nada a mudar (Site URL já era este domínio).
+**Plano de volta (até 15/11):** remover o Custom Domain do Worker e recriar o CNAME `app` → `058d1be13394a092.vercel-dns-017.com`
+(proxy desligado). Depois da semana sem problemas: desligar o projeto da Vercel, remover `vercel.json` e o `hopefin.vercel.app`
+dos Redirect URLs do Supabase.

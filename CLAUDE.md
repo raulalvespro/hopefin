@@ -16,8 +16,10 @@ depois), **planejado × praticado** nas contas recorrentes, grupo compartilhado 
 - **PWA:** `vite-plugin-pwa` (instalável, push). Componente `InstalarApp`, `src/lib/push.js`.
 - **Backend:** Supabase **próprio** do HopeFin — ref `oapcjmkklzaodgpuwjsh` (conta
   **separada** do SGQ). Auth + Postgres + Edge Functions.
-- **Hospedagem:** hoje na **Vercel** (`vercel.json` com rewrite de SPA). Migração para
-  **Cloudflare** planejada (prompt 21).
+- **Hospedagem:** **Cloudflare Workers (static assets)** desde 08/11/2026 — Worker `hopefin-app`
+  (`wrangler.jsonc` + `worker.js` + `public/_headers`), domínio `app.hopefin.com.br`. Publicar: `npm run cf:deploy`
+  (precisa de `wrangler login`). Guia/rollback em `docs/MIGRACAO_CLOUDFLARE.md`. A **Vercel** (`vercel.json`) segue como
+  plano de volta até 15/11/2026; depois desligar o projeto e remover `vercel.json`.
 
 Rodar local: `npm run dev` (porta 5173, ver `.claude/launch.json`).
 
