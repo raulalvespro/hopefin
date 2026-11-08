@@ -8,7 +8,8 @@ import { ChevronLeft, ChevronRight, Check, CalendarCheck, CreditCard, Repeat } f
 import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { fmt, hojeISO, parseDataLocal } from '../lib/format'
-import { Tag, Meter, IconeCategoria } from '../components/ui'
+import { Tag, Meter, IconeCategoria, EmptyState } from '../components/ui'
+import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
 
 const t = copy.contasMes
@@ -323,7 +324,7 @@ export default function ContasDoMes() {
       </div>
 
       {loading ? <div className="empty-state">{t.carregando}</div>
-        : linhas.length === 0 ? <div className="empty-state">{t.vazio}</div>
+        : linhas.length === 0 ? <EmptyState ilustracao={<Joca pose="base" tamanho={150} />} titulo={copy.mascote.vazios.contasTitulo} texto={copy.mascote.vazios.contasTexto} />
         : (
           <>
             {/* Resumo com medidor */}
@@ -342,6 +343,10 @@ export default function ContasDoMes() {
                 <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne', color: falta > 0 ? 'var(--red)' : 'var(--accent)' }}>{fmt(falta)}</span>
               </div>
             </section>
+
+            {abertas.length === 0 && (
+              <EmptyState ilustracao={<Joca pose="comemorando" tamanho={140} />} titulo={copy.mascote.tudoPago.titulo} texto={copy.mascote.tudoPago.texto} style={{ padding: 24 }} />
+            )}
 
             {abertas.length > 0 && (
               <>

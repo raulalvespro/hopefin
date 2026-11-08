@@ -10,6 +10,9 @@ import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { fmt, fmtData, hojeISO } from '../lib/format'
+import { EmptyState } from '../components/ui'
+import Joca from '../components/Joca'
+import { copy } from '../copy/pt-BR'
 
 const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', data: hojeISO() })
 
@@ -166,7 +169,7 @@ export default function Gastos() {
 
       {/* Lista */}
       {loading ? <div className="empty-state">Carregando...</div> : itens.length === 0 ? (
-        <div className="empty-state">Nenhum gasto neste mês</div>
+        <EmptyState ilustracao={<Joca pose="anotando" tamanho={150} />} titulo={copy.mascote.vazios.gastosTitulo} texto={copy.mascote.vazios.gastosTexto} />
       ) : (verTodos ? itens : itens.slice(0, 10)).map(it => (
         <div key={it.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

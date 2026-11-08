@@ -7,6 +7,8 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
+import { copy } from '../copy/pt-BR'
+import { useMascote, atualizarConfigMascote } from '../lib/mascote'
 
 const reais = (c) => ((c || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const dataCurta = (s) => s ? new Date(s).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'
@@ -29,6 +31,7 @@ export default function Admin() {
   const [cupons, setCupons] = useState([])
   const [webhooks, setWebhooks] = useState([])
   const [busca, setBusca] = useState('')
+  const cfgMascote = useMascote()
   const [acao, setAcao] = useState(null) // { tipo, grupo } para o modal
 
   // noindex: o painel nunca deve ser indexado.
@@ -58,6 +61,14 @@ export default function Admin() {
 
   if (authLoading) return <Centro>Carregando…</Centro>
   if (!perfil?.is_admin) { nav('/'); return null }
+
+  async function mudarMascote(k) {
+    const novo = { mascote: cfgMascote.mascote, figurinhas: cfgMascote.figurinhas, [k]: !cfgMascote[k] }
+    const { error } = await supabase.rpc('admin_set_mascote', { p_mascote: novo.mascote, p_figurinhas: novo.figurinhas })
+    if (error) return toast('Falhou.', 'erro')
+    atualizarConfigMascote(novo)
+    toast(novo[k] ? 'Ligado' : 'Desligado', 'ok')
+  }
 
   async function togglePausaWhatsapp() {
     const { error } = await supabase.rpc('admin_set_whatsapp', {
@@ -143,6 +154,23 @@ export default function Admin() {
               </div>
             </section>
           )}
+
+          {/* Mascote e figurinhas */}
+          <section className="card" style={{ marginBottom: 20 }}>
+            <h2 style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}><Sparkles size={16} color="var(--amber)" /> {copy.mascote.admin.titulo}</h2>
+            {[['mascote', copy.mascote.admin.mascote], ['figurinhas', copy.mascote.admin.figurinhas]].map(([k, rotulo]) => (
+              <div key={k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: 8 }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>{rotulo}</p>
+                  <p style={{ fontSize: 12, color: 'var(--text2)' }}>{cfgMascote[k] ? copy.mascote.admin.ligado : copy.mascote.admin.desligado}</p>
+                </div>
+                <button role="switch" aria-checked={cfgMascote[k]} aria-label={rotulo} onClick={() => mudarMascote(k)}
+                  style={{ width: 46, height: 26, borderRadius: 13, background: cfgMascote[k] ? 'var(--accent)' : 'var(--text3)', position: 'relative', flexShrink: 0, transition: 'background .2s' }}>
+                  <span style={{ position: 'absolute', top: 3, left: cfgMascote[k] ? 23 : 3, width: 20, height: 20, borderRadius: 10, background: '#fff', transition: 'left .2s' }} />
+                </button>
+              </div>
+            ))}
+          </section>
 
           {/* Grupos */}
           <section className="card" style={{ marginBottom: 20 }}>

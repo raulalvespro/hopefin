@@ -7,6 +7,9 @@ import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, RefreshCw, Check } fro
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { fmt, fmtData, hojeISO } from '../lib/format'
+import { EmptyState } from '../components/ui'
+import Joca from '../components/Joca'
+import { copy } from '../copy/pt-BR'
 
 const novoForm = () => ({ descricao: '', valor: '', tipo: 'avulso', recorrente: false, data: hojeISO() })
 
@@ -163,7 +166,7 @@ export default function Entradas() {
       )}
 
       {loading ? <div className="empty-state">Carregando...</div> : entradas.length === 0 ? (
-        <div className="empty-state">Nenhuma entrada neste mês</div>
+        <EmptyState ilustracao={<Joca pose="base" tamanho={150} />} titulo={copy.mascote.vazios.entradasTitulo} texto={copy.mascote.vazios.entradasTexto} />
       ) : entradas.map(e => (
         <div key={e.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: e.recebido ? 1 : 0.85 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>

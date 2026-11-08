@@ -8,6 +8,7 @@ import {
 import { useState } from 'react'
 import InstalarApp from './InstalarApp'
 import AtivarNotificacoes from './AtivarNotificacoes'
+import AvisoOffline from './AvisoOffline'
 import Avatar from './Avatar'
 import Logo from './Logo'
 import BannerAssinatura from './BannerAssinatura'
@@ -189,6 +190,7 @@ export default function Layout() {
         {/* Avisos clicáveis no topo: instalar o app e ativar notificações */}
         <InstalarApp />
         <AtivarNotificacoes />
+        <AvisoOffline />
         <BannerAssinatura />
         <Outlet />
       </main>

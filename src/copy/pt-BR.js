@@ -474,6 +474,43 @@ export const copy = {
     notifErro: 'Não foi possível ativar agora. Tente de novo.',
   },
 
+  mascote: {
+    alt: {
+      base: 'Joca, o joão-de-barro verde do HopeFin, com um broto na cabeça',
+      anotando: 'Joca anotando um gasto no celular, com um sinal de certo ao lado',
+      comemorando: 'Joca de asas para cima, comemorando, com confete ao redor',
+      preocupado: 'Joca segurando uma conta de papel, um pouco preocupado mas calmo',
+      construindo: 'Joca colocando um tijolinho na casa de barro',
+    },
+    vazios: {
+      gastosTitulo: 'Nenhum gasto neste mês',
+      gastosTexto: 'Lance o primeiro por voz ou no botão de mais. O Joca anota com você.',
+      entradasTitulo: 'Nenhuma entrada neste mês',
+      entradasTexto: 'Cadastre o salário ou qualquer dinheiro que entra, e o mês começa a fazer sentido.',
+      contasTitulo: 'Nada a pagar neste mês',
+      contasTexto: 'Quando você cadastrar contas fixas, cartões ou parcelas, elas aparecem aqui.',
+    },
+    tudoPago: { titulo: 'Tudo pago por aqui!', texto: 'Todas as contas deste mês estão em dia. Respire fundo.' },
+    offline: { titulo: 'Sem internet por enquanto', texto: 'Assim que a conexão voltar, o HopeFin segue de onde parou.' },
+    casinha: {
+      titulo: 'A casinha do mês',
+      tituloFesta: 'Mês no azul! A casinha ficou de pé',
+      textoFesta: 'Tijolinho por tijolinho, a casa ficou de pé. Parabéns!',
+      etapas: [
+        'Alicerce feito. Cada lançamento é um tijolinho.',
+        'As paredes estão subindo. Continue anotando.',
+        'Casinha quase pronta. Que capricho!',
+      ],
+      contador: (n) => `${n} ${n === 1 ? 'lançamento' : 'lançamentos'} no mês`,
+    },
+    admin: {
+      titulo: 'Mascote e figurinhas',
+      mascote: 'Joca nas telas do app',
+      figurinhas: 'Figurinhas (compartilhar)',
+      ligado: 'Ligado', desligado: 'Desligado',
+    },
+  },
+
   boasVindas: {
     titulo: 'Bem-vindo ao HopeFin',
     subtitulo: 'Três passos e o mês da sua casa já aparece organizado.',

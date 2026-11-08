@@ -9,6 +9,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Button, Meter } from '../components/ui'
 import { copy } from '../copy/pt-BR'
+import Joca from '../components/Joca'
+import { useMascote } from '../lib/mascote'
 
 const t = copy.boasVindas
 // Ordem dos passos e como cada um é considerado "feito" no banco.
@@ -58,6 +60,7 @@ function Item({ feito, titulo, subtitulo, onClick }) {
 export default function BoasVindas() {
   const { perfil } = useAuth()
   const navigate = useNavigate()
+  const { mascote } = useMascote()
   const [feitos, setFeitos] = useState(null) // { renda, cartao, conta } | null (carregando)
 
   useEffect(() => {
@@ -84,7 +87,7 @@ export default function BoasVindas() {
   return (
     <div className="boas-vindas">
       <div className="boas-vindas-conteudo">
-        <div style={{ display: 'flex', justifyContent: 'center' }}><IlustraCofre /></div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>{mascote ? <Joca pose={totalFeitos === 3 ? 'comemorando' : 'base'} tamanho={190} eager /> : <IlustraCofre />}</div>
 
         <div className="hf-in" style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'center' }}>
           <h1 style={{ margin: 0, fontFamily: "'Syne', system-ui, sans-serif", fontWeight: 700, fontSize: 26, lineHeight: '30px' }}>{t.titulo}</h1>

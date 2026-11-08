@@ -8,6 +8,7 @@ import { useCategorias } from '../hooks/useCategorias'
 import { fmt } from '../lib/format'
 import { copy } from '../copy/pt-BR'
 import ResumoCartao from '../components/ResumoCartao'
+import CasinhaDoMes from '../components/CasinhaDoMes'
 import { Button } from '../components/ui'
 import { useToast } from '../contexts/ToastContext'
 import { compartilharImagem } from '../lib/compartilharImagem'
@@ -171,6 +172,7 @@ export default function Fechamento() {
         <>
           {/* Cartão de resumo (estilo noite): resultado, meta e indicadores do mês */}
           <ResumoCartao {...propsCartao} delta={<Delta atual={atual.resultado} anterior={anterior?.resultado} />} />
+          <CasinhaDoMes lancamentos={atual.nGastos} mesFechado={mes < startOfMonth(new Date())} noAzul={positivo} />
           <Button variant="secondary" onClick={compartilhar} loading={gerando} style={{ width: '100%', marginBottom: 16 }}>
             <Share2 size={18} /> {gerando ? t.gerando : t.compartilhar}
           </Button>
