@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "smoke": "node scripts/smoke-login.mjs",
+    "backup": "node scripts/dump.mjs",
+    "restore": "node scripts/restore.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

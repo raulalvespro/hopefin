@@ -13,9 +13,9 @@
 
 ### A. Amanhã de manhã (rápido, sem depender de ninguém)
 1. **Conferir o e-mail de acesso** (feito em 08/11: SMTP do Supabase Auth → Resend + modelos em português). Pedir à Larissa
-   para tentar "Esqueci minha senha" e ver se chega. Decidir se o cadastro deve **exigir confirmação de e-mail**
-   (`mailer_autoconfirm` está LIGADO: hoje ninguém recebe e-mail de confirmação — a Larissa não recebeu nada por isso).
-2. **E-mail de boas-vindas** ao criar a conta (e aviso ao dono do grupo quando alguém entra pelo convite) — hoje não existe.
+   para tentar "Esqueci minha senha" e ver se chega. **Decidido 08/11: manter `mailer_autoconfirm` LIGADO durante o beta**
+   (menos atrito; se o Resend engasgar ninguém fica preso na porta) — revisitar antes do lançamento público.
+2. ~~**E-mail de boas-vindas** ao criar a conta (e aviso ao dono do grupo quando alguém entra pelo convite).~~ **FEITO 08/11** — função `boas-vindas` no ar, e2e OK.
 3. **Voz no iPhone**: confirmar se há fallback de transcrição no servidor (Web Speech não funciona bem no app instalado do iPhone).
 4. **Testar no celular real** tudo de `docs/TESTES_PENDENTES.md` (instalar, notificações, mic sem teclado, Joca, avião, /admin).
 5. Ajustes de uso que o Raul for anotando ao usar o app.
@@ -23,7 +23,10 @@
 ### B. Dinheiro de verdade (bloqueia a 1ª cobrança)
 1. **Asaas produção**: criar a chave de API de produção, cadastrar o webhook de produção (URL + token), nome comercial "HopeFin".
 2. **Teste real com valor pequeno**: Pix, cartão mensal, cartão anual 12x e reembolso nos 7 dias (Pix reembolso nunca foi testado).
-3. **Backup do banco**: Supabase está no Free (sem backup, pausa por inatividade) → plano Pro ou dump agendado (`scripts/dump.mjs`).
+3. **Backup do banco**: Supabase está no Free (sem backup, pausa por inatividade). **FEITO 08/11** a rede de segurança —
+   `npm run backup` (dump JSON dos dados; estrutura já no git) + `npm run restore` (com DRY-RUN/`--check`/`--yes`/`--truncate`),
+   guia em `docs/BACKUP.md`, restore validado com rollback. **Decidido 08/11: Pro só quando começar a vender (~5 clientes)**;
+   até lá, rede de segurança é o dump local (comando de agendamento pronto no `docs/BACKUP.md`).
 4. **Termos e Privacidade**: revisão de advogado. Contador: quando abrir CNPJ.
 
 ### C. WhatsApp (entra no lançamento)
