@@ -118,7 +118,7 @@ export default function Layout() {
               <>
                 <div onClick={() => setAlertasAbertos(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
                 <div style={{
-                  position: 'absolute', top: 'calc(100% + 12px)', right: -8, width: 'min(320px, 86vw)', zIndex: 50,
+                  position: 'fixed', top: 62, right: 'max(12px, calc(50vw - 228px))', width: 'min(320px, calc(100vw - 24px))', zIndex: 50,
                   background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
                   boxShadow: '0 12px 32px rgba(0,0,0,0.25)', maxHeight: '70vh', overflowY: 'auto',
                 }}>
