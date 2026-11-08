@@ -1,0 +1,52 @@
+{
+  "base": {
+    "640": {
+      "arquivo": "joca-base-640.webp",
+      "kb": 27.9
+    },
+    "320": {
+      "arquivo": "joca-base-320.webp",
+      "kb": 12.6
+    }
+  },
+  "anotando": {
+    "640": {
+      "arquivo": "joca-anotando-640.webp",
+      "kb": 33.1
+    },
+    "320": {
+      "arquivo": "joca-anotando-320.webp",
+      "kb": 15.1
+    }
+  },
+  "comemorando": {
+    "640": {
+      "arquivo": "joca-comemorando-640.webp",
+      "kb": 36.6
+    },
+    "320": {
+      "arquivo": "joca-comemorando-320.webp",
+      "kb": 16.7
+    }
+  },
+  "preocupado": {
+    "640": {
+      "arquivo": "joca-preocupado-640.webp",
+      "kb": 31.6
+    },
+    "320": {
+      "arquivo": "joca-preocupado-320.webp",
+      "kb": 14.1
+    }
+  },
+  "construindo": {
+    "640": {
+      "arquivo": "joca-construindo-640.webp",
+      "kb": 33.8
+    },
+    "320": {
+      "arquivo": "joca-construindo-320.webp",
+      "kb": 15.3
+    }
+  }
+}
