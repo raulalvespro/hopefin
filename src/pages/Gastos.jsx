@@ -14,7 +14,7 @@ import { EmptyState } from '../components/ui'
 import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
 
-const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', data: hojeISO() })
+const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO() })
 
 export default function Gastos() {
   const { perfil } = useAuth()
@@ -111,12 +111,24 @@ export default function Gastos() {
     if (form.parcelado) {
       const n = parseInt(form.num_parcelas)
       if (!n || n < 2) { setSalvando(false); toast('Para parcelar, informe 2 ou mais parcelas.', 'erro'); return }
+      let pagas = parseInt(form.parcelas_pagas) || 0
+      if (pagas < 0) pagas = 0
+      if (pagas > n - 1) pagas = n - 1 // deixa ao menos 1 parcela em aberto
       const vParcela = parseFloat((valor / n).toFixed(2))
+      // Quando já há parcelas pagas, a data informada é a da PRÓXIMA parcela (nº pagas+1).
+      // Retrocede `pagas` meses pra achar a data da 1ª parcela, que o trigger usa como base.
+      let dataPrimeira = form.data
+      if (pagas > 0) {
+        const [yy, mm, dd] = form.data.split('-').map(Number)
+        const prim = subMonths(new Date(yy, mm - 1, dd), pagas)
+        dataPrimeira = `${prim.getFullYear()}-${String(prim.getMonth() + 1).padStart(2, '0')}-${String(prim.getDate()).padStart(2, '0')}`
+      }
       const { error } = await run(
         supabase.from('parcelamentos').insert({
           descricao: form.descricao, valor_total: valor, num_parcelas: n, valor_parcela: vParcela,
           cartao_id: form.cartao_id || null, categoria: form.categoria,
-          data_primeira_parcela: form.data, grupo_id: perfil.grupo_id, usuario_id: perfil.id,
+          data_primeira_parcela: dataPrimeira, parcelas_pagas: pagas,
+          grupo_id: perfil.grupo_id, usuario_id: perfil.id,
         }),
         { ok: `Parcelamento criado (${n}x)` }
       )
@@ -223,7 +235,7 @@ export default function Gastos() {
             <div className="form-group"><label>Descrição</label><input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Mercado Extra" /></div>
             <div className="form-row">
               <div className="form-group"><label>{form.parcelado ? 'Valor total' : 'Valor'}</label><input type="number" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
-              <div className="form-group"><label>{form.parcelado ? '1ª parcela em' : 'Data'}</label><input type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} /></div>
+              <div className="form-group"><label>{form.parcelado ? ((parseInt(form.parcelas_pagas) || 0) > 0 ? 'Próxima parcela em' : '1ª parcela em') : 'Data'}</label><input type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} /></div>
             </div>
             <div className="form-row">
               <div className="form-group">
@@ -265,14 +277,26 @@ export default function Gastos() {
                 </div>
                 {form.parcelado && (
                   <div style={{ marginTop: 12 }}>
-                    <div className="form-group">
-                      <label>Nº de parcelas</label>
-                      <input type="number" min="2" value={form.num_parcelas} onChange={e => setForm(p => ({ ...p, num_parcelas: e.target.value }))} placeholder="Ex: 12" />
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Nº de parcelas</label>
+                        <input type="number" min="2" value={form.num_parcelas} onChange={e => setForm(p => ({ ...p, num_parcelas: e.target.value }))} placeholder="Ex: 12" />
+                      </div>
+                      <div className="form-group">
+                        <label>Já paguei</label>
+                        <input type="number" min="0" max={nParcelas >= 2 ? nParcelas - 1 : undefined} value={form.parcelas_pagas} onChange={e => setForm(p => ({ ...p, parcelas_pagas: e.target.value }))} placeholder="0" />
+                      </div>
                     </div>
                     {form.valor && nParcelas >= 2 && (
                       <p style={{ fontSize: 13, color: 'var(--accent2)', marginTop: -4 }}>
                         {nParcelas}x de {fmt(parseFloat(form.valor) / nParcelas)}
+                        {(parseInt(form.parcelas_pagas) || 0) > 0 && <span style={{ color: 'var(--text3)' }}> · faltam {nParcelas - (parseInt(form.parcelas_pagas) || 0)}</span>}
                         {!ehCartao && <span style={{ color: 'var(--text3)' }}> · via {form.tipo_pagamento}</span>}
+                      </p>
+                    )}
+                    {(parseInt(form.parcelas_pagas) || 0) > 0 && (
+                      <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 4, lineHeight: 1.4 }}>
+                        Já pagou {parseInt(form.parcelas_pagas) || 0} de {nParcelas || '—'}? Informe acima a data da <strong>próxima</strong> parcela — as já pagas entram marcadas.
                       </p>
                     )}
                   </div>
