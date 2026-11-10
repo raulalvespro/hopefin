@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { normalizarCodigo, limparConvite } from '../lib/convite'
 import { identificar, resetarUsuario } from '../lib/analytics'
@@ -11,18 +11,35 @@ export function AuthProvider({ children }) {
   const [perfil, setPerfil] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erroPerfil, setErroPerfil] = useState(null) // motivo, quando o perfil não carrega (mostrado ao usuário)
+  const usuarioCarregadoRef = useRef(null) // id do usuário cujo perfil já carregamos (evita recarga a cada refoco da aba)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) { identificar(session.user.id); carregarPerfil(session.user) }
-      else setLoading(false)
+      if (session?.user) {
+        usuarioCarregadoRef.current = session.user.id
+        identificar(session.user.id)
+        carregarPerfil(session.user)
+      } else setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) { identificar(session.user.id); carregarPerfil(session.user) }
-      else { setPerfil(null); setLoading(false); resetarUsuario() }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((evento, session) => {
+      const novoUser = session?.user ?? null
+      setUser(novoUser)
+      if (!novoUser) {
+        usuarioCarregadoRef.current = null
+        setPerfil(null); setLoading(false); resetarUsuario()
+        return
+      }
+      // O supabase-js dispara SIGNED_IN/TOKEN_REFRESHED toda vez que a aba volta ao foco.
+      // Recarregar o perfil aqui religava o `loading` e REMONTAVA o app, apagando formulários
+      // e modais abertos (ex.: criar cartão, ir pra outra aba e voltar). Então só (re)carregamos
+      // quando é de fato outro usuário — não a cada refoco da mesma sessão.
+      if (evento === 'TOKEN_REFRESHED') return
+      if (usuarioCarregadoRef.current === novoUser.id) return
+      usuarioCarregadoRef.current = novoUser.id
+      identificar(novoUser.id)
+      carregarPerfil(novoUser)
     })
 
     return () => subscription.unsubscribe()

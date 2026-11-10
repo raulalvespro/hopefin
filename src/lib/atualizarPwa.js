@@ -9,11 +9,17 @@ export function iniciarAutoAtualizacao() {
   const tinhaControlador = !!navigator.serviceWorker.controller // 1ª instalação não recarrega
   let pendente = false
 
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!tinhaControlador) return
+  // Não recarrega se a pessoa está no meio de algo: digitando num campo OU com um
+  // modal/formulário aberto (ex.: criar cartão/gasto). Nesses casos espera ela sair.
+  const ocupado = () => {
     const el = document.activeElement
     const digitando = !!el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)
-    if (digitando) { pendente = true; return }
+    return digitando || !!document.querySelector('.modal')
+  }
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!tinhaControlador) return
+    if (ocupado()) { pendente = true; return }
     window.location.reload()
   })
 
