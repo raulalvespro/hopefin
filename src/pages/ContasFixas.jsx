@@ -107,8 +107,8 @@ export default function ContasFixas() {
             <h2 style={{ fontSize: 18, marginBottom: 20 }}>{editando ? 'Editar conta fixa' : 'Nova conta fixa'}</h2>
             <div className="form-group"><label>Nome</label><input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Aluguel, Netflix..." /></div>
             <div className="form-row">
-              <div className="form-group"><label>Valor</label><input type="number" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
-              <div className="form-group"><label>Dia de vencimento</label><input type="number" min="1" max="31" value={form.dia_vencimento} onChange={e => setForm(p => ({ ...p, dia_vencimento: e.target.value }))} placeholder="Ex: 10" /></div>
+              <div className="form-group"><label>Valor</label><input type="number" inputMode="decimal" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
+              <div className="form-group"><label>Dia de vencimento</label><input type="number" inputMode="decimal" min="1" max="31" value={form.dia_vencimento} onChange={e => setForm(p => ({ ...p, dia_vencimento: e.target.value }))} placeholder="Ex: 10" /></div>
             </div>
             <div className="form-row">
               <div className="form-group">
@@ -117,7 +117,7 @@ export default function ContasFixas() {
                   {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
                 </select>
               </div>
-              <div className="form-group"><label>Alertar X dias antes</label><input type="number" min="1" max="30" value={form.alerta_dias} onChange={e => setForm(p => ({ ...p, alerta_dias: e.target.value }))} /></div>
+              <div className="form-group"><label>Alertar X dias antes</label><input type="number" inputMode="decimal" min="1" max="30" value={form.alerta_dias} onChange={e => setForm(p => ({ ...p, alerta_dias: e.target.value }))} /></div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharModal}>Cancelar</button>

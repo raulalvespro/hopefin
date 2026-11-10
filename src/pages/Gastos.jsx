@@ -275,7 +275,7 @@ export default function Gastos() {
             <h2 style={{ fontSize: 18, marginBottom: 20 }}>{editando ? 'Editar gasto' : 'Novo gasto'}</h2>
             <div className="form-group"><label>Descrição</label><input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Mercado Extra" /></div>
             <div className="form-row">
-              <div className="form-group"><label>{form.parcelado ? 'Valor total' : 'Valor'}</label><input type="number" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
+              <div className="form-group"><label>{form.parcelado ? 'Valor total' : 'Valor'}</label><input type="number" inputMode="decimal" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
               <div className="form-group"><label>{form.parcelado ? ((parseInt(form.parcelas_pagas) || 0) > 0 ? 'Próxima parcela em' : '1ª parcela em') : 'Data'}</label><input type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} /></div>
             </div>
             <div className="form-row">
@@ -340,11 +340,11 @@ export default function Gastos() {
                     <div className="form-row">
                       <div className="form-group">
                         <label>Nº de parcelas</label>
-                        <input type="number" min="2" value={form.num_parcelas} onChange={e => setForm(p => ({ ...p, num_parcelas: e.target.value }))} placeholder="Ex: 12" />
+                        <input type="number" inputMode="decimal" min="2" value={form.num_parcelas} onChange={e => setForm(p => ({ ...p, num_parcelas: e.target.value }))} placeholder="Ex: 12" />
                       </div>
                       <div className="form-group">
                         <label>Já paguei</label>
-                        <input type="number" min="0" max={nParcelas >= 2 ? nParcelas - 1 : undefined} value={form.parcelas_pagas} onChange={e => setForm(p => ({ ...p, parcelas_pagas: e.target.value }))} placeholder="0" />
+                        <input type="number" inputMode="decimal" min="0" max={nParcelas >= 2 ? nParcelas - 1 : undefined} value={form.parcelas_pagas} onChange={e => setForm(p => ({ ...p, parcelas_pagas: e.target.value }))} placeholder="0" />
                       </div>
                     </div>
                     {form.valor && nParcelas >= 2 && (

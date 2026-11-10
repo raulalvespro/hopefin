@@ -191,7 +191,7 @@ export default function Orcamento() {
             <p style={{ fontSize:13, color:'var(--text2)', marginBottom:20 }}>Teto mensal para esta categoria</p>
             <div className="form-group">
               <label>Limite mensal (R$)</label>
-              <input type="number" autoFocus value={modal.valor} onChange={e => setModal(m => ({ ...m, valor:e.target.value }))} placeholder="0,00" />
+              <input type="number" inputMode="decimal" autoFocus value={modal.valor} onChange={e => setModal(m => ({ ...m, valor:e.target.value }))} placeholder="0,00" />
             </div>
             <div style={{ display:'flex', gap:10 }}>
               <button className="btn-ghost" style={{ flex:1 }} onClick={() => setModal(null)}>Cancelar</button>

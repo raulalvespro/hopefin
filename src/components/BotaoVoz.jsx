@@ -327,7 +327,7 @@ export default function BotaoVoz({ onSalvo }) {
                     <div className="form-row">
                       <div className="form-group">
                         <label>{t.labelValor}</label>
-                        <input type="number" step="0.01" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} />
+                        <input type="number" inputMode="decimal" step="0.01" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} />
                       </div>
                       <div className="form-group">
                         <label>{t.labelData}</label>
@@ -358,7 +358,7 @@ export default function BotaoVoz({ onSalvo }) {
                         {form.cartao_id && (
                           <div className="form-group">
                             <label>{t.labelParcelas} {Number(form.parcelas) > 1 ? `(${Number(form.parcelas)}x de ${fmt(parseFloat(form.valor || 0) / Number(form.parcelas))})` : t.aVista}</label>
-                            <input type="number" min="1" value={form.parcelas} onChange={e => setForm(p => ({ ...p, parcelas: e.target.value }))} />
+                            <input type="number" inputMode="decimal" min="1" value={form.parcelas} onChange={e => setForm(p => ({ ...p, parcelas: e.target.value }))} />
                           </div>
                         )}
                       </>

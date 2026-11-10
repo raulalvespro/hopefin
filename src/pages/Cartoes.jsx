@@ -281,17 +281,17 @@ export default function Cartoes() {
               </div>
             </div>
             <div className="form-row">
-              <div className="form-group"><label>Dia de fechamento</label><input type="number" min="1" max="31" value={form.dia_fechamento} onChange={e => setForm(p => ({ ...p, dia_fechamento: e.target.value }))} placeholder="Ex: 20" /></div>
-              <div className="form-group"><label>Dia de vencimento</label><input type="number" min="1" max="31" value={form.dia_vencimento} onChange={e => setForm(p => ({ ...p, dia_vencimento: e.target.value }))} placeholder="Ex: 27" /></div>
+              <div className="form-group"><label>Dia de fechamento</label><input type="number" inputMode="decimal" min="1" max="31" value={form.dia_fechamento} onChange={e => setForm(p => ({ ...p, dia_fechamento: e.target.value }))} placeholder="Ex: 20" /></div>
+              <div className="form-group"><label>Dia de vencimento</label><input type="number" inputMode="decimal" min="1" max="31" value={form.dia_vencimento} onChange={e => setForm(p => ({ ...p, dia_vencimento: e.target.value }))} placeholder="Ex: 27" /></div>
             </div>
             <div className="form-row">
-              <div className="form-group"><label>Limite (opcional)</label><input type="number" value={form.limite} onChange={e => setForm(p => ({ ...p, limite: e.target.value }))} placeholder="0,00" /></div>
-              <div className="form-group"><label>Alertar X dias antes</label><input type="number" min="1" max="15" value={form.alerta_dias} onChange={e => setForm(p => ({ ...p, alerta_dias: e.target.value }))} /></div>
+              <div className="form-group"><label>Limite (opcional)</label><input type="number" inputMode="decimal" value={form.limite} onChange={e => setForm(p => ({ ...p, limite: e.target.value }))} placeholder="0,00" /></div>
+              <div className="form-group"><label>Alertar X dias antes</label><input type="number" inputMode="decimal" min="1" max="15" value={form.alerta_dias} onChange={e => setForm(p => ({ ...p, alerta_dias: e.target.value }))} /></div>
             </div>
             {!editando && (
               <div className="form-group">
                 <label>Fatura atual aproximada (opcional)</label>
-                <input type="number" value={form.fatura_inicial} onChange={e => setForm(p => ({ ...p, fatura_inicial: e.target.value }))} placeholder="0,00" />
+                <input type="number" inputMode="decimal" value={form.fatura_inicial} onChange={e => setForm(p => ({ ...p, fatura_inicial: e.target.value }))} placeholder="0,00" />
                 <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
                   Já usa esse cartão? Informe a fatura atual (fora parcelas) e a gente lança um ajuste pra começar com o valor certo.
                 </span>

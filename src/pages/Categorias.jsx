@@ -5,7 +5,17 @@ import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 
-const EMOJIS_SUGERIDOS = ['🛒','⛽','🍔','💊','🎉','👕','📱','🛋️','📺','🏠','📚','🚗','✈️','🐶','🎁','💇','🧾','💡','📦','❤️','🏥','🍺','☕','🎮']
+const EMOJIS_SUGERIDOS = [
+  '🛒','🍔','🍕','🍎','🥦','🍞','🥤','☕','🍺','🍷','🎂',
+  '🏠','💡','🧾','🛋️','🛏️','🛠️','🔌','🪴',
+  '🧹','🧼','🧴','🧽','🚿','🧺','🪥',
+  '⛽','🚗','🚌','🛵','🚲','✈️',
+  '💊','🏥','🦷','💅','💄','💇','🏋️',
+  '🧸','👶','🍼','🐶','🐱','🐾',
+  '🎉','🎮','🎬','🎵','🎧','📺','📱','📚','🎓','🎨','💻',
+  '💼','💰','💳','🏦','📄','📦',
+  '👕','👟','👗','👜','🎁','❤️',
+]
 
 export default function Categorias() {
   const { perfil } = useAuth()

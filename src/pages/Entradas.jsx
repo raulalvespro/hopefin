@@ -201,7 +201,7 @@ export default function Entradas() {
             <h2 style={{ fontSize: 18, marginBottom: 20 }}>{editando ? 'Editar entrada' : 'Nova entrada'}</h2>
             <div className="form-group"><label>Descrição</label><input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Salário, Freelance..." /></div>
             <div className="form-row">
-              <div className="form-group"><label>Valor</label><input type="number" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
+              <div className="form-group"><label>Valor</label><input type="number" inputMode="decimal" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
               <div className="form-group"><label>Data</label><input type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} /></div>
             </div>
             <div className="form-row">

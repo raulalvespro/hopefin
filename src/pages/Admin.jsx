@@ -287,7 +287,7 @@ function ModalAcao({ acao, onFechar, onFeito }) {
         {ehTrial && (
           <div className="form-group">
             <label>Dias a adicionar</label>
-            <input type="number" min="1" max="365" value={dias} onChange={e => setDias(e.target.value)} />
+            <input type="number" inputMode="decimal" min="1" max="365" value={dias} onChange={e => setDias(e.target.value)} />
           </div>
         )}
         <div className="form-group">
@@ -342,11 +342,11 @@ function Cupons({ cupons, onMudou }) {
         <div style={{ background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 14, marginBottom: 14 }}>
           <div className="form-row">
             <div className="form-group"><label>Código</label><input value={form.codigo} onChange={e => setForm(p => ({ ...p, codigo: e.target.value.toUpperCase() }))} placeholder="IGREJA2026" /></div>
-            <div className="form-group"><label>Máx. usos</label><input type="number" min="1" value={form.max_usos} onChange={e => setForm(p => ({ ...p, max_usos: e.target.value }))} /></div>
+            <div className="form-group"><label>Máx. usos</label><input type="number" inputMode="decimal" min="1" value={form.max_usos} onChange={e => setForm(p => ({ ...p, max_usos: e.target.value }))} /></div>
           </div>
           <div className="form-row">
             <div className="form-group"><label>Resgate até</label><input type="date" value={form.resgate_ate} onChange={e => setForm(p => ({ ...p, resgate_ate: e.target.value }))} /></div>
-            <div className="form-group"><label>WhatsApp/mês</label><input type="number" min="0" value={form.whatsapp_limite_mes} onChange={e => setForm(p => ({ ...p, whatsapp_limite_mes: e.target.value }))} /></div>
+            <div className="form-group"><label>WhatsApp/mês</label><input type="number" inputMode="decimal" min="0" value={form.whatsapp_limite_mes} onChange={e => setForm(p => ({ ...p, whatsapp_limite_mes: e.target.value }))} /></div>
           </div>
           <button className="btn-primary" onClick={salvar} disabled={salvando} style={{ width: '100%' }}>{salvando ? 'Salvando…' : 'Salvar cupom'}</button>
         </div>

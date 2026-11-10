@@ -198,6 +198,28 @@ input:focus, select:focus, textarea:focus {
 
 select option { background: var(--bg3); }
 
+/* Checkbox/radio: a regra global de input acima deixava o checkbox esticado/torto.
+   Aqui ele volta ao tamanho nativo e ganha a cor da marca. */
+input[type="checkbox"], input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  padding: 0;
+  background: transparent;
+  border: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Campo de data: no iOS/WebKit o controle nativo desalinha o valor e o ícone.
+   Deixa com a mesma cara dos outros campos — valor à esquerda, calendário à direita. */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+input[type="date"]::-webkit-calendar-picker-indicator { margin-left: auto; opacity: 0.6; }
+
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }

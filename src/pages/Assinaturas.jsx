@@ -112,8 +112,8 @@ export default function Assinaturas() {
             <h2 style={{ fontSize: 18, marginBottom: 20 }}>{editando ? 'Editar assinatura' : 'Nova assinatura'}</h2>
             <div className="form-group"><label>Nome</label><input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Netflix, Spotify..." /></div>
             <div className="form-row">
-              <div className="form-group"><label>Valor mensal</label><input type="number" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
-              <div className="form-group"><label>Dia da cobrança</label><input type="number" min="1" max="31" value={form.dia_cobranca} onChange={e => setForm(p => ({ ...p, dia_cobranca: e.target.value }))} placeholder="Opcional" /></div>
+              <div className="form-group"><label>Valor mensal</label><input type="number" inputMode="decimal" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
+              <div className="form-group"><label>Dia da cobrança</label><input type="number" inputMode="decimal" min="1" max="31" value={form.dia_cobranca} onChange={e => setForm(p => ({ ...p, dia_cobranca: e.target.value }))} placeholder="Opcional" /></div>
             </div>
             <div className="form-group">
               <label>Cobrada no cartão (opcional)</label>

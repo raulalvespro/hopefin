@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import PainelMarca from '../components/PainelMarca'
 import { Button } from '../components/ui'
+import { Eye, EyeOff } from 'lucide-react'
 import { copy } from '../copy/pt-BR'
 
 const t = copy.login
@@ -16,6 +17,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [modo, setModo] = useState('login') // 'login' | 'recuperar'
   const [enviado, setEnviado] = useState(false)
+  const [verSenha, setVerSenha] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -62,7 +64,13 @@ export default function Login() {
                   <button type="button" onClick={() => { setModo('recuperar'); setErro('') }}
                     style={{ fontSize: 13, color: 'var(--accent-text)' }}>{t.esqueci}</button>
                 </div>
-                <input type="password" placeholder="Sua senha" value={form.senha} onChange={e => setForm(p => ({ ...p, senha: e.target.value }))} autoComplete="current-password" required />
+                <div style={{ position: 'relative' }}>
+                  <input type={verSenha ? 'text' : 'password'} placeholder="Sua senha" value={form.senha} onChange={e => setForm(p => ({ ...p, senha: e.target.value }))} autoComplete="current-password" required style={{ paddingRight: 44 }} />
+                  <button type="button" onClick={() => setVerSenha(v => !v)} aria-label={verSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', color: 'var(--text3)' }}>
+                    {verSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, margin: 0 }}>{erro}</p>}

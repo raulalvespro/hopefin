@@ -240,7 +240,7 @@ export default function Cofrinhos() {
             <div className="form-group"><label>Nome</label><input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Viagem Europa, FGTS..." /></div>
             <div className="form-group"><label>Descrição (opcional)</label><input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Para que serve este cofre?" /></div>
             <div className="form-row">
-              <div className="form-group"><label>Meta (opcional)</label><input type="number" value={form.meta} onChange={e => setForm(p => ({ ...p, meta: e.target.value }))} placeholder="0,00" /></div>
+              <div className="form-group"><label>Meta (opcional)</label><input type="number" inputMode="decimal" value={form.meta} onChange={e => setForm(p => ({ ...p, meta: e.target.value }))} placeholder="0,00" /></div>
               <div className="form-group"><label>Prazo da meta</label><input type="date" value={form.meta_data} onChange={e => setForm(p => ({ ...p, meta_data: e.target.value }))} disabled={!form.meta} /></div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -291,7 +291,7 @@ export default function Cofrinhos() {
 
             <div className="form-group">
               <label>Valor {(m === 'sacar' || m === 'transferir') && <span style={{ color: 'var(--text3)', fontWeight: 400 }}>· disp. {fmt(modalTransf.saldo_atual)}</span>}</label>
-              <input type="number" value={formTransf.valor} onChange={e => setFormTransf(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" autoFocus />
+              <input type="number" inputMode="decimal" value={formTransf.valor} onChange={e => setFormTransf(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" autoFocus />
             </div>
             <div className="form-group"><label>Descrição (opcional)</label><input value={formTransf.descricao} onChange={e => setFormTransf(p => ({ ...p, descricao: e.target.value }))} placeholder={m === 'sacar' ? 'Ex: Emergência do carro' : m === 'transferir' ? 'Motivo da transferência' : 'Ex: Guardar do salário'} /></div>
             <div className="form-group"><label>Data</label><input type="date" value={formTransf.data} onChange={e => setFormTransf(p => ({ ...p, data: e.target.value }))} /></div>
