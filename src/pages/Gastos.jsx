@@ -3,9 +3,10 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, Trash2, Layers, Pencil, CalendarCheck } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Layers, CalendarCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import BotaoVoz from '../components/BotaoVoz'
+import SwipeRow from '../components/SwipeRow'
 import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
@@ -14,7 +15,7 @@ import { EmptyState } from '../components/ui'
 import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
 
-const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO(), de_terceiro: false, pessoa_nome: '', reembolso_status: null })
+const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO(), de_terceiro: false, pessoa_nome: '', reembolso_status: null, observacao: '', assinatura: false })
 
 export default function Gastos() {
   const { perfil } = useAuth()
@@ -50,6 +51,7 @@ export default function Gastos() {
     const gastosItens = (gastos || []).map(g => ({
       id: 'g-' + g.id, rawId: g.id, tipo: 'gasto',
       descricao: g.descricao, valor: Number(g.valor), categoria: g.categoria, data: g.data, criado: g.criado_em || '',
+      observacao: g.observacao || '',
       tipo_pagamento: g.tipo_pagamento, cartao_id: g.cartao_id,
       origem: g.cartoes?.nome || g.tipo_pagamento, pessoa: g.usuarios?.nome?.split(' ')[0],
       pessoa_id: g.pessoa_id, terceiro: g.pessoa_id ? (g.pessoas?.nome || 'alguém') : null, reembolso_status: g.reembolso_status,
@@ -89,6 +91,7 @@ export default function Gastos() {
       parcelado: false, num_parcelas: '', parcelas_pagas: '', data: it.data,
       de_terceiro: !!it.terceiro, pessoa_nome: it.terceiro && it.terceiro !== 'alguém' ? it.terceiro : '',
       reembolso_status: it.reembolso_status || null,
+      observacao: it.observacao || '', assinatura: false,
     })
     setModal(true)
   }
@@ -118,13 +121,28 @@ export default function Gastos() {
     if (!(valor > 0)) { toast('Informe um valor válido.', 'erro'); return }
     setSalvando(true)
 
+    // Nova assinatura mensal (repete todo mês) — cria em `assinaturas`, não em `gastos`.
+    if (!editando && form.assinatura && !form.parcelado) {
+      const dia = form.data ? Number(form.data.split('-')[2]) : null
+      const { error } = await run(
+        supabase.from('assinaturas').insert({
+          grupo_id: perfil.grupo_id, nome: form.descricao, valor,
+          dia_cobranca: dia || null, cartao_id: form.cartao_id || null, categoria: form.categoria,
+        }),
+        { ok: 'Assinatura criada' }
+      )
+      setSalvando(false)
+      if (error) return
+      fecharModal(); carregar(); return
+    }
+
     // Edição: só gastos à vista
     if (editando) {
       const pessoaId = await resolverPessoaId()
       const patch = {
         descricao: form.descricao, valor, categoria: form.categoria,
         tipo_pagamento: form.tipo_pagamento, cartao_id: form.cartao_id || null, data: form.data,
-        pessoa_id: pessoaId,
+        pessoa_id: pessoaId, observacao: form.observacao || null,
       }
       if (pessoaId) {
         patch.reembolso_status = form.reembolso_status || 'pendente' // preserva "quitado" se já estava
@@ -175,6 +193,7 @@ export default function Gastos() {
           tipo_pagamento: form.tipo_pagamento, cartao_id: form.cartao_id || null,
           data: form.data, grupo_id: perfil.grupo_id, usuario_id: perfil.id,
           pessoa_id: pessoaId, reembolso_status: pessoaId ? 'pendente' : null,
+          observacao: form.observacao || null,
         }),
         { ok: 'Gasto adicionado' }
       )
@@ -219,7 +238,10 @@ export default function Gastos() {
       {loading ? <div className="empty-state">Carregando...</div> : itens.length === 0 ? (
         <EmptyState ilustracao={<Joca pose="anotando" tamanho={150} />} titulo={copy.mascote.vazios.gastosTitulo} texto={copy.mascote.vazios.gastosTexto} />
       ) : (verTodos ? itens : itens.slice(0, 10)).map(it => (
-        <div key={it.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <SwipeRow key={it.id} style={{ marginBottom: 8 }}
+          onEdit={it.tipo === 'gasto' ? () => editarGasto(it) : undefined}
+          onDelete={it.tipo === 'gasto' ? () => excluir(it.rawId) : undefined}>
+        <div className="card" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 22 }}>{emojiDe(it.categoria)}</span>
             <div>
@@ -239,18 +261,19 @@ export default function Gastos() {
               <p style={{ fontSize: 11, color: 'var(--text3)' }}>
                 {fmtData(it.data, 'dd/MM')} · {it.origem} · {it.pessoa}
               </p>
+              {it.observacao && (
+                <p style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
+                  {it.observacao}
+                </p>
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ color: it.terceiro ? 'var(--text3)' : 'var(--red-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(it.valor)}</span>
-            {it.tipo === 'gasto' ? (
-              <>
-                <button onClick={() => editarGasto(it)}><Pencil size={14} color="var(--text3)" /></button>
-                <button onClick={() => excluir(it.rawId)}><Trash2 size={15} color="var(--text3)" /></button>
-              </>
-            ) : <Layers size={15} color="var(--text3)" />}
+            {it.tipo === 'gasto' ? <ChevronLeft size={14} color="var(--border2)" /> : <Layers size={15} color="var(--text3)" />}
           </div>
         </div>
+        </SwipeRow>
       ))}
 
       {/* Ver todos / ver menos */}
@@ -305,8 +328,23 @@ export default function Gastos() {
               </div>
             )}
 
-            {/* Gasto de outra pessoa (a receber) — só faz sentido à vista */}
-            {!form.parcelado && (
+            {/* Assinatura: repete todo mês (cria em Assinaturas, não um gasto único) */}
+            {!editando && !form.parcelado && (
+              <div style={{ marginBottom: form.assinatura ? 10 : 16 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
+                  <input type="checkbox" checked={form.assinatura} onChange={e => setForm(p => ({ ...p, assinatura: e.target.checked, de_terceiro: false }))} />
+                  É uma assinatura (repete todo mês)
+                </label>
+                {form.assinatura && (
+                  <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
+                    Vai pra tela de Assinaturas e, se tiver cartão, entra sozinha na fatura todo mês — não precisa lançar de novo.
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Gasto de outra pessoa (a receber) — só faz sentido à vista e não-assinatura */}
+            {!form.parcelado && !form.assinatura && (
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
                   <input type="checkbox" checked={form.de_terceiro} onChange={e => setForm(p => ({ ...p, de_terceiro: e.target.checked }))} />
@@ -325,7 +363,7 @@ export default function Gastos() {
             )}
 
             {/* Toggle à vista / parcelado — só ao criar (edição é só de gasto à vista) */}
-            {!editando && (
+            {!editando && !form.assinatura && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {[['À vista', false], ['Parcelado', true]].map(([label, val]) => (
@@ -361,6 +399,15 @@ export default function Gastos() {
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {!form.assinatura && (
+              <div className="form-group">
+                <label>Observação (opcional)</label>
+                <textarea value={form.observacao} onChange={e => setForm(p => ({ ...p, observacao: e.target.value }))}
+                  rows={2} placeholder="Ex: dividido com a Lari, garantia até 2027..."
+                  style={{ resize: 'vertical', minHeight: 44 }} />
               </div>
             )}
 
