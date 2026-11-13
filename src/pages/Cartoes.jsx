@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Plus, Trash2, Pencil, X } from 'lucide-react'
+import { Plus, Trash2, Pencil, X, Check, ArrowRight, Undo2 } from 'lucide-react'
 import { addMonths, subMonths, getDaysInMonth, format } from 'date-fns'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
@@ -45,7 +45,7 @@ function calcularFaturas(card, gastos, parcelas, assinaturas, hoje) {
       .map(g => ({ tipo: 'gasto', descricao: g.descricao, categoria: g.categoria, valor: Number(g.valor), data: g.data }))
     const ps = parcelas
       .filter(p => p.cartao_id === card.id && sameMonth(parseDataLocal(p.data_vencimento), venc))
-      .map(p => ({ tipo: 'parcela', descricao: p.descricao, valor: Number(p.valor), data: p.data_vencimento, numero: p.numero, total: p.total }))
+      .map(p => ({ tipo: 'parcela', id: p.id, descricao: p.descricao, valor: Number(p.valor), data: p.data_vencimento, numero: p.numero, total: p.total }))
     return [...gs, ...ps].sort((a, b) => b.data.localeCompare(a.data))
   }
   // Assinaturas vinculadas ao cartão: cobrança mensal recorrente, entra em todo ciclo.
@@ -62,16 +62,40 @@ function calcularFaturas(card, gastos, parcelas, assinaturas, hoje) {
   }
 }
 
+// Últimos 6 meses de faturas de um cartão, para as barrinhas de histórico.
+// Status: 'paga' (verde), 'vencida' não paga (vermelho), 'aberta'/'futura' (neutro).
+function historicoFaturas(card, hoje, faturasPagas) {
+  const diaV = card.dia_vencimento || 10
+  const out = []
+  for (let k = 5; k >= 0; k--) {
+    const ref = subMonths(hoje, k)
+    const y = ref.getFullYear(), m = ref.getMonth()
+    const venc = new Date(y, m, Math.min(diaV, getDaysInMonth(new Date(y, m, 1))))
+    const competencia = format(venc, 'yyyy-MM')
+    const pagoRow = faturasPagas.find(p => p.referencia_id === card.id && p.competencia === competencia)
+    let status = 'futura'
+    if (pagoRow?.pago) status = 'paga'
+    else if (venc < hoje) status = 'vencida'
+    else if (venc.getFullYear() === hoje.getFullYear() && venc.getMonth() === hoje.getMonth()) status = 'aberta'
+    out.push({ competencia, venc, status, valor: pagoRow?.valor, pagoRow })
+  }
+  return out
+}
+
+const CORES_HIST = { paga: 'var(--accent)', vencida: 'var(--red)', aberta: 'var(--amber)', futura: 'var(--border2)' }
+
 export default function Cartoes() {
   const { perfil } = useAuth()
   const run = useDb()
   const { toast } = useToast()
   const { emojiDe } = useCategorias()
   const [detalhe, setDetalhe] = useState(null)   // { card, f }
+  const [histSel, setHistSel] = useState(null)    // { card, h } — barrinha do histórico clicada
   const [cartoes, setCartoes] = useState([])
   const [gastos, setGastos] = useState([])
   const [parcelas, setParcelas] = useState([])
   const [assinaturas, setAssinaturas] = useState([])
+  const [faturasPagas, setFaturasPagas] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
@@ -83,17 +107,56 @@ export default function Cartoes() {
   async function carregar() {
     setLoading(true)
     const gid = perfil.grupo_id
-    const [{ data: cs }, { data: gs }, { data: ps }, { data: as }] = await Promise.all([
+    const [{ data: cs }, { data: gs }, { data: ps }, { data: as }, { data: fp }] = await Promise.all([
       supabase.from('cartoes').select('*').eq('grupo_id', gid).order('nome'),
       supabase.from('gastos').select('valor, data, cartao_id, descricao, categoria').eq('grupo_id', gid).not('cartao_id', 'is', null),
-      supabase.from('parcelas').select('valor, data_vencimento, numero, parcelamentos!inner(cartao_id, descricao, num_parcelas)').eq('grupo_id', gid).eq('paga', false),
+      supabase.from('parcelas').select('id, valor, data_vencimento, numero, parcelamentos!inner(cartao_id, descricao, num_parcelas)').eq('grupo_id', gid).eq('paga', false),
       supabase.from('assinaturas').select('nome, valor, dia_cobranca, cartao_id').eq('grupo_id', gid).eq('ativo', true).not('cartao_id', 'is', null),
+      supabase.from('contas_pagas').select('*').eq('grupo_id', gid).eq('tipo', 'fatura'),
     ])
     setCartoes(cs || [])
     setGastos(gs || [])
     setAssinaturas(as || [])
-    setParcelas((ps || []).map(p => ({ valor: p.valor, data_vencimento: p.data_vencimento, cartao_id: p.parcelamentos?.cartao_id, descricao: p.parcelamentos?.descricao, numero: p.numero, total: p.parcelamentos?.num_parcelas })))
+    setFaturasPagas(fp || [])
+    setParcelas((ps || []).map(p => ({ id: p.id, valor: p.valor, data_vencimento: p.data_vencimento, cartao_id: p.parcelamentos?.cartao_id, descricao: p.parcelamentos?.descricao, numero: p.numero, total: p.parcelamentos?.num_parcelas })))
     setLoading(false)
+  }
+
+  // Marca a fatura atual como paga (competência do vencimento) e conclui as parcelas daquele mês.
+  async function pagarFatura(card, f) {
+    const competencia = format(f.vencAtual, 'yyyy-MM')
+    if (!confirm(`Marcar a fatura de ${format(f.vencAtual, 'MM/yyyy')} (${fmt(f.atual)}) como paga?\nAs parcelas que vencem nesse mês entram como pagas.`)) return
+    const { error } = await run(
+      supabase.from('contas_pagas').upsert(
+        { grupo_id: perfil.grupo_id, tipo: 'fatura', referencia_id: card.id, competencia, valor: f.atual, pago: true, data_pagamento: hojeISO() },
+        { onConflict: 'tipo,referencia_id,competencia' }
+      ),
+      { ok: 'Fatura marcada como paga' }
+    )
+    if (error) return
+    const ym = f.vencAtual.getFullYear() * 12 + f.vencAtual.getMonth()
+    const idsMes = parcelas
+      .filter(p => p.cartao_id === card.id && (() => { const d = parseDataLocal(p.data_vencimento); return d.getFullYear() * 12 + d.getMonth() === ym })())
+      .map(p => p.id)
+    if (idsMes.length) await supabase.from('parcelas').update({ paga: true }).in('id', idsMes)
+    setDetalhe(null); carregar()
+  }
+
+  // Desfaz o pagamento registrado de uma fatura (não reabre parcelas automaticamente — faça isso em Parcelamentos).
+  async function desfazerPagamento(pagoRow) {
+    if (!pagoRow?.id) return
+    const { error } = await run(supabase.from('contas_pagas').delete().eq('id', pagoRow.id), { ok: 'Pagamento desfeito' })
+    if (!error) { setHistSel(null); carregar() }
+  }
+
+  // Joga uma parcela para a fatura seguinte (+1 mês no vencimento).
+  async function moverParcela(parcelaId) {
+    const p = parcelas.find(x => x.id === parcelaId)
+    if (!p) return
+    const nova = addMonths(parseDataLocal(p.data_vencimento), 1)
+    const iso = `${nova.getFullYear()}-${String(nova.getMonth() + 1).padStart(2, '0')}-${String(nova.getDate()).padStart(2, '0')}`
+    const { error } = await run(supabase.from('parcelas').update({ data_vencimento: iso }).eq('id', parcelaId), { ok: 'Parcela movida pra próxima fatura' })
+    if (!error) { setDetalhe(null); carregar() }
   }
 
   function abrirNovo() {
@@ -169,7 +232,15 @@ export default function Cartoes() {
         : cartoes.length === 0 ? <div className="empty-state">Nenhum cartão cadastrado</div>
         : cartoes.map(c => {
           const f = calcularFaturas(c, gastos, parcelas, assinaturas, hoje)
-          const usoPct = c.limite ? Math.min(100, Math.round((f.atual / Number(c.limite)) * 100)) : null
+          const ymAtual = f.vencAtual.getFullYear() * 12 + f.vencAtual.getMonth()
+          const futuras = parcelas.filter(p => { if (p.cartao_id !== c.id) return false; const d = parseDataLocal(p.data_vencimento); return d.getFullYear() * 12 + d.getMonth() > ymAtual })
+          const comprometidoFuturo = futuras.reduce((s, p) => s + Number(p.valor), 0)
+          const comprometido = f.atual + comprometidoFuturo
+          const usoPct = c.limite ? Math.min(100, Math.round((comprometido / Number(c.limite)) * 100)) : null
+          const compAtual = format(f.vencAtual, 'yyyy-MM')
+          const jaPaga = faturasPagas.some(p => p.referencia_id === c.id && p.competencia === compAtual && p.pago)
+          const pagaEsteMes = f.vencAtual.getFullYear() === hoje.getFullYear() && f.vencAtual.getMonth() === hoje.getMonth()
+          const hist = historicoFaturas(c, hoje, faturasPagas)
           return (
             <div key={c.id} className="card" style={{ marginBottom: 10, borderLeft: c.cor ? `4px solid ${c.cor}` : undefined }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -188,8 +259,13 @@ export default function Cartoes() {
 
               {/* Fatura atual — clica para ver a composição */}
               <button onClick={() => setDetalhe({ card: c, f })} style={{ width: '100%', textAlign: 'left', marginTop: 14, padding: '12px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--bg3)', color: 'var(--text)', border: 'none' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 4 }}>Fatura atual · vence {format(f.vencAtual, 'dd/MM')}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    Fatura atual · vence {format(f.vencAtual, 'dd/MM')}
+                    {jaPaga
+                      ? <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--accent-dim)', color: 'var(--accent2)', padding: '1px 7px', borderRadius: 10 }}>paga ✓</span>
+                      : pagaEsteMes && <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--bg2)', color: 'var(--amber-text)', padding: '1px 7px', borderRadius: 10 }}>você paga este mês</span>}
+                  </span>
                   <span style={{ fontSize: 20, fontWeight: 700, fontFamily: 'Syne', color: 'var(--text)' }}>{fmt(f.atual)}</span>
                 </div>
                 {c.limite && (
@@ -197,7 +273,10 @@ export default function Cartoes() {
                     <div style={{ background: 'var(--border2)', borderRadius: 4, height: 5, overflow: 'hidden', margin: '8px 0 4px' }}>
                       <div style={{ width: `${usoPct}%`, height: '100%', background: usoPct >= 90 ? 'var(--red)' : usoPct >= 70 ? 'var(--amber)' : 'var(--accent)', borderRadius: 4 }} />
                     </div>
-                    <span style={{ fontSize: 11, color: 'var(--text3)' }}>{usoPct}% do limite de {fmt(c.limite)}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+                      {usoPct}% do limite de {fmt(c.limite)}
+                      {comprometidoFuturo > 0 && ` · ${fmt(comprometido)} comprometido com parcelas futuras`}
+                    </span>
                   </>
                 )}
                 <p style={{ fontSize: 11, color: 'var(--accent-text)', marginTop: 8 }}>Ver o que compõe esta fatura →</p>
@@ -207,6 +286,34 @@ export default function Cartoes() {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--text2)', padding: '0 2px' }}>
                 <span>Próxima fatura · vence {format(f.vencProx, 'dd/MM')}</span>
                 <strong style={{ color: 'var(--text)' }}>{fmt(f.prox)}</strong>
+              </div>
+
+              {/* Pagar fatura (conclui as parcelas do mês) */}
+              {!jaPaga ? (
+                <button onClick={() => pagarFatura(c, f)} disabled={f.atual <= 0}
+                  style={{ width: '100%', marginTop: 12, padding: '9px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border2)', background: 'transparent', color: f.atual > 0 ? 'var(--accent-text)' : 'var(--text3)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Check size={15} /> Marcar fatura como paga
+                </button>
+              ) : (
+                <div style={{ marginTop: 12, padding: '9px', borderRadius: 'var(--radius-sm)', background: 'var(--accent-dim)', color: 'var(--accent2)', fontSize: 12, fontWeight: 600, textAlign: 'center' }}>
+                  Fatura de {format(f.vencAtual, 'MM/yyyy')} paga ✓
+                </div>
+              )}
+
+              {/* Histórico de faturas (últimos 6 meses) — clique numa barra */}
+              <div style={{ marginTop: 12 }}>
+                <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>Histórico de faturas</p>
+                <div style={{ display: 'flex', gap: 5, alignItems: 'flex-end', height: 34 }}>
+                  {hist.map(h => (
+                    <button key={h.competencia} onClick={() => setHistSel({ card: c, h })} title={format(h.venc, 'MM/yyyy')}
+                      style={{ flex: 1, height: h.status === 'paga' ? 30 : h.status === 'vencida' ? 24 : 16, background: CORES_HIST[h.status], borderRadius: 3, opacity: histSel?.h?.competencia === h.competencia && histSel?.card?.id === c.id ? 1 : 0.85 }} />
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 5, marginTop: 3 }}>
+                  {hist.map(h => (
+                    <span key={h.competencia} style={{ flex: 1, textAlign: 'center', fontSize: 9, color: 'var(--text3)' }}>{format(h.venc, 'MMM')}</span>
+                  ))}
+                </div>
               </div>
             </div>
           )
@@ -236,7 +343,14 @@ export default function Cartoes() {
                     <p style={{ fontSize: 11, color: 'var(--text3)' }}>{it.tipo === 'assinatura' ? (it.diaCobranca ? `Todo dia ${it.diaCobranca}` : 'Mensal') : fmtData(it.data, 'dd/MM')}</p>
                   </div>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--red-text)', flexShrink: 0 }}>{fmt(it.valor)}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--red-text)' }}>{fmt(it.valor)}</span>
+                  {it.tipo === 'parcela' && it.id && (
+                    <button onClick={() => moverParcela(it.id)} title="Jogar pra próxima fatura">
+                      <ArrowRight size={14} color="var(--text3)" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -250,10 +364,64 @@ export default function Cartoes() {
               </div>
               <Secao titulo="Fatura atual" venc={f.vencAtual} total={f.atual} itens={f.atualItens} />
               <Secao titulo="Próxima fatura" venc={f.vencProx} total={f.prox} itens={f.proxItens} />
+              {(() => {
+                const jaPagaDet = faturasPagas.some(p => p.referencia_id === card.id && p.competencia === format(f.vencAtual, 'yyyy-MM') && p.pago)
+                return jaPagaDet ? (
+                  <div style={{ padding: '10px', borderRadius: 'var(--radius-sm)', background: 'var(--accent-dim)', color: 'var(--accent2)', fontSize: 13, fontWeight: 600, textAlign: 'center' }}>
+                    Fatura atual já marcada como paga ✓
+                  </div>
+                ) : (
+                  <button className="btn-primary" style={{ width: '100%' }} onClick={() => pagarFatura(card, f)} disabled={f.atual <= 0}>
+                    Marcar fatura atual como paga
+                  </button>
+                )
+              })()}
             </div>
           </div>
         )
       })()}
+
+      {/* Popover de uma fatura do histórico */}
+      {histSel && (
+        <div className="modal-overlay" onClick={() => setHistSel(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 360 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h2 style={{ fontSize: 17 }}>{histSel.card.nome} · {format(histSel.h.venc, 'MM/yyyy')}</h2>
+              <button onClick={() => setHistSel(null)}><X size={20} color="var(--text2)" /></button>
+            </div>
+            {(() => {
+              const h = histSel.h
+              const rotulo = { paga: 'Paga', vencida: 'Vencida (não paga)', aberta: 'Aberta (vence este mês)', futura: 'Ainda não fechou' }[h.status]
+              return (
+                <>
+                  <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 8 }}>
+                    Vence {format(h.venc, "dd 'de' MMM")} · <strong style={{ color: CORES_HIST[h.status] }}>{rotulo}</strong>
+                  </p>
+                  {h.status === 'paga' && h.valor != null && (
+                    <p style={{ fontSize: 18, fontWeight: 700, fontFamily: 'Syne', marginBottom: 4 }}>{fmt(h.valor)}</p>
+                  )}
+                  {h.pagoRow?.data_pagamento && (
+                    <p style={{ fontSize: 12, color: 'var(--text3)' }}>Pago em {fmtData(h.pagoRow.data_pagamento, 'dd/MM/yyyy')}</p>
+                  )}
+                  {h.status !== 'paga' && (
+                    <p style={{ fontSize: 12.5, color: 'var(--text3)', lineHeight: 1.5 }}>
+                      {h.status === 'vencida'
+                        ? 'Essa fatura não ficou marcada como paga. Quando ela for a fatura vigente do cartão, use “Marcar fatura como paga”.'
+                        : 'Essa fatura ainda não fechou.'}
+                    </p>
+                  )}
+                  {h.status === 'paga' && (
+                    <button onClick={() => desfazerPagamento(h.pagoRow)}
+                      style={{ marginTop: 16, width: '100%', padding: '9px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border2)', color: 'var(--text2)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <Undo2 size={15} /> Desfazer pagamento
+                    </button>
+                  )}
+                </>
+              )
+            })()}
+          </div>
+        </div>
+      )}
 
       {modal && (
         <div className="modal-overlay" onClick={fecharModal}>
