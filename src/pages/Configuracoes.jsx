@@ -8,7 +8,7 @@ import Avatar from '../components/Avatar'
 import ConviteGrupo from '../components/ConviteGrupo'
 import AssinaturaCard from '../components/AssinaturaCard'
 import { copy } from '../copy/pt-BR'
-import { Compass, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera, Bell, Upload } from 'lucide-react'
+import { Compass, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera, Bell, Upload, Lock, Eye, EyeOff } from 'lucide-react'
 
 // Redimensiona (corte quadrado central) para um data URL leve.
 function redimensionar(file, max = 160) {
@@ -42,6 +42,24 @@ export default function Configuracoes() {
   const { toast } = useToast()
   const [salvandoFoto, setSalvandoFoto] = useState(false)
   const fotoRef = useRef(null)
+  const [senha, setSenha] = useState('')
+  const [senha2, setSenha2] = useState('')
+  const [verSenha, setVerSenha] = useState(false)
+  const [salvandoSenha, setSalvandoSenha] = useState(false)
+
+  async function alterarSenha() {
+    if (senha.length < 6) { toast('A senha precisa ter ao menos 6 caracteres.', 'erro'); return }
+    if (senha !== senha2) { toast('As senhas não conferem.', 'erro'); return }
+    setSalvandoSenha(true)
+    const { error } = await supabase.auth.updateUser({ password: senha })
+    setSalvandoSenha(false)
+    if (error) {
+      toast(error.message?.includes('different') ? 'Escolha uma senha diferente da atual.' : 'Não foi possível alterar a senha.', 'erro')
+      return
+    }
+    setSenha(''); setSenha2('')
+    toast('Senha alterada', 'ok')
+  }
 
   async function salvarFoto(novaUrl, msg) {
     setSalvandoFoto(true)
@@ -173,6 +191,34 @@ export default function Configuracoes() {
         </div>
         <ChevronRight size={18} color="var(--text3)" />
       </Link>
+
+      {/* Segurança — alterar senha */}
+      <p style={{ fontSize:12, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.04em', margin:'24px 2px 10px' }}>Segurança</p>
+      <div className="card" style={{ marginBottom:16 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+          <Lock size={18} color="var(--accent)" />
+          <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Alterar senha</p>
+        </div>
+        <div className="form-group">
+          <label>Nova senha</label>
+          <div style={{ position:'relative' }}>
+            <input type={verSenha ? 'text' : 'password'} value={senha} onChange={e => setSenha(e.target.value)}
+              placeholder="Mínimo 6 caracteres" autoComplete="new-password" style={{ paddingRight:44 }} />
+            <button type="button" onClick={() => setVerSenha(v => !v)} title={verSenha ? 'Ocultar' : 'Mostrar'}
+              style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)' }}>
+              {verSenha ? <EyeOff size={16} color="var(--text3)" /> : <Eye size={16} color="var(--text3)" />}
+            </button>
+          </div>
+        </div>
+        <div className="form-group">
+          <label>Repetir a nova senha</label>
+          <input type={verSenha ? 'text' : 'password'} value={senha2} onChange={e => setSenha2(e.target.value)}
+            placeholder="Digite de novo" autoComplete="new-password" />
+        </div>
+        <button className="btn-primary" style={{ width:'100%', opacity: salvandoSenha ? 0.6 : 1 }} onClick={alterarSenha} disabled={salvandoSenha}>
+          {salvandoSenha ? 'Salvando...' : 'Alterar senha'}
+        </button>
+      </div>
 
       {/* Info do usuário */}
       <div className="card">
