@@ -4,14 +4,16 @@ import { supabase } from '../lib/supabase'
 import { Plus, Trash2, Pencil, Repeat } from 'lucide-react'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
+import { useCategorias } from '../hooks/useCategorias'
 import { fmt } from '../lib/format'
 
-const novoForm = () => ({ nome: '', valor: '', dia_cobranca: '', cartao_id: '' })
+const novoForm = () => ({ nome: '', valor: '', dia_cobranca: '', cartao_id: '', categoria: 'outros' })
 
 export default function Assinaturas() {
   const { perfil } = useAuth()
   const run = useDb()
   const { toast } = useToast()
+  const { categorias, emojiDe } = useCategorias()
   const [itens, setItens] = useState([])
   const [cartoes, setCartoes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -36,7 +38,7 @@ export default function Assinaturas() {
   function abrirNovo() { setEditando(null); setForm(novoForm()); setModal(true) }
   function editar(a) {
     setEditando(a.id)
-    setForm({ nome: a.nome, valor: String(a.valor), dia_cobranca: String(a.dia_cobranca ?? ''), cartao_id: a.cartao_id || '' })
+    setForm({ nome: a.nome, valor: String(a.valor), dia_cobranca: String(a.dia_cobranca ?? ''), cartao_id: a.cartao_id || '', categoria: a.categoria || 'outros' })
     setModal(true)
   }
   function fecharModal() { setModal(false); setEditando(null); setForm(novoForm()) }
@@ -48,6 +50,7 @@ export default function Assinaturas() {
       valor: parseFloat(form.valor),
       dia_cobranca: form.dia_cobranca ? parseInt(form.dia_cobranca) : null,
       cartao_id: form.cartao_id || null,
+      categoria: form.categoria || 'outros',
     }
     setSalvando(true)
     const op = editando
@@ -66,6 +69,9 @@ export default function Assinaturas() {
   }
 
   const total = itens.reduce((s, a) => s + Number(a.valor), 0)
+  const porCategoria = Object.entries(
+    itens.reduce((acc, a) => { const c = a.categoria || 'outros'; acc[c] = (acc[c] || 0) + Number(a.valor); return acc }, {})
+  ).sort((a, b) => b[1] - a[1])
 
   return (
     <div>
@@ -79,9 +85,26 @@ export default function Assinaturas() {
         </button>
       </div>
 
-      <div className="card" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ color: 'var(--text2)', fontSize: 13 }}>Total mensal em assinaturas</span>
-        <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--purple-text)' }}>{fmt(total)}</span>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ color: 'var(--text2)', fontSize: 13 }}>Total mensal em assinaturas</span>
+          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 18, color: 'var(--purple-text)' }}>{fmt(total)}</span>
+        </div>
+        {porCategoria.length > 0 && (
+          <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {porCategoria.map(([cat, val]) => (
+              <div key={cat} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text2)', textTransform: 'capitalize' }}>
+                  <span style={{ fontSize: 16 }}>{emojiDe(cat)}</span> {cat}
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>{Math.round((val / total) * 100)}%</span>
+                  <strong>{fmt(val)}</strong>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? <div className="empty-state">Carregando...</div>
@@ -89,7 +112,7 @@ export default function Assinaturas() {
         : itens.map(a => (
           <div key={a.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 22 }}>📺</span>
+              <span style={{ fontSize: 22 }}>{emojiDe(a.categoria)}</span>
               <div>
                 <p style={{ fontSize: 14, fontWeight: 500 }}>{a.nome}</p>
                 <p style={{ fontSize: 12, color: 'var(--text2)' }}>
@@ -114,6 +137,12 @@ export default function Assinaturas() {
             <div className="form-row">
               <div className="form-group"><label>Valor mensal</label><input type="number" inputMode="decimal" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
               <div className="form-group"><label>Dia da cobrança</label><input type="number" inputMode="decimal" min="1" max="31" value={form.dia_cobranca} onChange={e => setForm(p => ({ ...p, dia_cobranca: e.target.value }))} placeholder="Opcional" /></div>
+            </div>
+            <div className="form-group">
+              <label>Categoria</label>
+              <select value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}>
+                {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
+              </select>
             </div>
             <div className="form-group">
               <label>Cobrada no cartão (opcional)</label>

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Trash2, Info, ChevronDown, ChevronUp, Check } from 'lucide-react'
+import { Trash2, Info, ChevronDown, ChevronUp, Check, Pencil } from 'lucide-react'
 import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
+import { useToast } from '../contexts/ToastContext'
 import { fmt, fmtData, hojeISO } from '../lib/format'
 
-function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir }) {
+function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir, onEditar }) {
   const [aberto, setAberto] = useState(false)
   const progresso = Math.round((p.pagas / p.total) * 100)
   const parcelasOrdenadas = [...(p.parcelas || [])].sort((a, b) => a.numero - b.numero)
@@ -21,7 +22,10 @@ function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir }) {
             <p style={{ fontSize: 12, color: 'var(--text2)' }}>{p.cartoes?.nome || 'Sem cartão'}</p>
           </div>
         </div>
-        <button onClick={() => onExcluir(p.id)}><Trash2 size={15} color="var(--text3)" /></button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => onEditar(p)}><Pencil size={14} color="var(--text3)" /></button>
+          <button onClick={() => onExcluir(p.id)}><Trash2 size={15} color="var(--text3)" /></button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 12, marginBottom: 12 }}>
@@ -75,12 +79,17 @@ function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir }) {
 
 export default function Parcelamentos() {
   const { perfil } = useAuth()
-  const { emojiDe } = useCategorias()
+  const { categorias, emojiDe } = useCategorias()
   const run = useDb()
+  const { toast } = useToast()
   const [parcelamentos, setParcelamentos] = useState([])
+  const [cartoes, setCartoes] = useState([])
   const [loading, setLoading] = useState(true)
+  const [editando, setEditando] = useState(null)   // id do parcelamento em edição
+  const [form, setForm] = useState({ descricao: '', categoria: 'outros', cartao_id: '' })
+  const [salvando, setSalvando] = useState(false)
 
-  useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil])
+  useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes() } }, [perfil])
 
   async function carregar() {
     setLoading(true)
@@ -91,6 +100,31 @@ export default function Parcelamentos() {
       .order('criado_em', { ascending: false })
     setParcelamentos(data || [])
     setLoading(false)
+  }
+
+  async function carregarCartoes() {
+    const { data } = await supabase.from('cartoes').select('id, nome').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('nome')
+    setCartoes(data || [])
+  }
+
+  function abrirEdicao(p) {
+    setEditando(p.id)
+    setForm({ descricao: p.descricao, categoria: p.categoria || 'outros', cartao_id: p.cartao_id || '' })
+  }
+  function fecharEdicao() { setEditando(null) }
+
+  async function salvarEdicao() {
+    if (!form.descricao.trim()) { toast('Informe a descrição.', 'erro'); return }
+    setSalvando(true)
+    const { error } = await run(
+      supabase.from('parcelamentos').update({
+        descricao: form.descricao.trim(), categoria: form.categoria, cartao_id: form.cartao_id || null,
+      }).eq('id', editando),
+      { ok: 'Parcelamento atualizado' }
+    )
+    setSalvando(false)
+    if (error) return
+    fecharEdicao(); carregar()
   }
 
   async function toggleParcela(parc) {
@@ -146,17 +180,51 @@ export default function Parcelamentos() {
                 <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Syne' }}>Em andamento</span>
                 <span style={{ fontSize: 12, color: 'var(--text2)' }}>falta pagar {fmt(totalRestante)}</span>
               </div>
-              {ativos.map(p => <CardParcelamento key={p.id} p={p} emojiDe={emojiDe} onToggleParcela={toggleParcela} onExcluir={excluir} />)}
+              {ativos.map(p => <CardParcelamento key={p.id} p={p} emojiDe={emojiDe} onToggleParcela={toggleParcela} onExcluir={excluir} onEditar={abrirEdicao} />)}
             </>
           )}
 
           {quitados.length > 0 && (
             <>
               <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Syne', margin: '20px 0 10px' }}>Quitados</p>
-              {quitados.map(p => <CardParcelamento key={p.id} p={p} emojiDe={emojiDe} onToggleParcela={toggleParcela} onExcluir={excluir} />)}
+              {quitados.map(p => <CardParcelamento key={p.id} p={p} emojiDe={emojiDe} onToggleParcela={toggleParcela} onExcluir={excluir} onEditar={abrirEdicao} />)}
             </>
           )}
         </>
+      )}
+
+      {/* Modal de edição (metadados — não altera as parcelas já geradas) */}
+      {editando && (
+        <div className="modal-overlay" onClick={fecharEdicao}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: 18, marginBottom: 20 }}>Editar parcelamento</h2>
+            <div className="form-group"><label>Descrição</label><input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Geladeira" /></div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Categoria</label>
+                <select value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}>
+                  {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Cartão</label>
+                <select value={form.cartao_id} onChange={e => setForm(p => ({ ...p, cartao_id: e.target.value }))}>
+                  <option value="">Sem cartão</option>
+                  {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+            </div>
+            <p style={{ fontSize: 11.5, color: 'var(--text3)', margin: '-4px 0 16px', lineHeight: 1.4 }}>
+              Para mudar valor, nº de parcelas ou datas, cancele e lance de novo — isso evita bagunçar as parcelas já marcadas como pagas.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharEdicao}>Cancelar</button>
+              <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} onClick={salvarEdicao} disabled={salvando}>
+                {salvando ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

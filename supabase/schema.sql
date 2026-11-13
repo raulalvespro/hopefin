@@ -59,6 +59,7 @@ create table if not exists public.gastos (
   cartao_id      uuid references public.cartoes(id) on delete set null,
   data           date not null default current_date,
   origem         text not null default 'app' check (origem in ('app','voz','texto','whatsapp')),  -- 0026
+  observacao     text,                                 -- anotação livre opcional — 0038
   criado_em      timestamptz not null default now()
 );
 
@@ -150,6 +151,7 @@ create table if not exists public.assinaturas (
   valor         numeric(12,2) not null,
   dia_cobranca  int,
   cartao_id     uuid references public.cartoes(id) on delete set null,
+  categoria     text default 'outros',                 -- agregador por categoria — 0038
   ativo         boolean not null default true,
   criado_em     timestamptz not null default now()
 );
