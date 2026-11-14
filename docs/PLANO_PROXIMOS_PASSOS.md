@@ -42,11 +42,10 @@
 ### E. Faxina
 - ~~Apagar `vercel.json`~~ **FEITO 14/11/2026** (repo limpo). Falta: **pausar/apagar o projeto no painel da Vercel** e
   **tirar `https://hopefin.vercel.app/**` das Redirect URLs do Supabase Auth** (ambos manuais, com o Raul).
-- /admin: botão "reenviar e-mail" — **CONSTRUÍDO 14/11/2026** na branch `autonomo-faxina-reenviar` (migração
-  `0041_admin_membros.sql` + Edge Function `admin-reenviar-email` + modal no /admin). **Falta, com o Raul:** aplicar a
-  migração (`node scripts/db.mjs supabase/migrations/0041_admin_membros.sql` + `npm run backup` antes + `npm run smoke`
-  depois), deploy da função (`supabase functions deploy admin-reenviar-email`) e `cf:deploy`. Reenvia por magic link
-  (acesso) ou recovery (senha) via Resend — funciona mesmo se o e-mail self-service do Supabase engasgar.
+- /admin: botão "reenviar e-mail" — **NO AR 14/11/2026** (migração `0041_admin_membros.sql` aplicada, Edge Function
+  `admin-reenviar-email` deployada, frontend em produção). Em cada grupo abre um modal com os membros (nome, e-mail,
+  último acesso) e reenvia por magic link (acesso) ou recovery (senha) via Resend — funciona mesmo se o e-mail
+  self-service do Supabase engasgar. Falta só o Raul ter acesso de admin pra usar.
 - Open Finance: só depois (plano Família+).
 
 ## Combinados que valem sempre
