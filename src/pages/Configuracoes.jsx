@@ -8,7 +8,7 @@ import Avatar from '../components/Avatar'
 import ConviteGrupo from '../components/ConviteGrupo'
 import AssinaturaCard from '../components/AssinaturaCard'
 import { copy } from '../copy/pt-BR'
-import { Compass, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera, Bell, Upload, Lock, Eye, EyeOff } from 'lucide-react'
+import { Compass, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera, Bell, Upload, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
 // Redimensiona (corte quadrado central) para um data URL leve.
 function redimensionar(file, max = 160) {
@@ -46,6 +46,7 @@ export default function Configuracoes() {
   const [senha2, setSenha2] = useState('')
   const [verSenha, setVerSenha] = useState(false)
   const [salvandoSenha, setSalvandoSenha] = useState(false)
+  const [senhaOk, setSenhaOk] = useState(false)
 
   async function alterarSenha() {
     if (senha.length < 6) { toast('A senha precisa ter ao menos 6 caracteres.', 'erro'); return }
@@ -57,8 +58,9 @@ export default function Configuracoes() {
       toast(error.message?.includes('different') ? 'Escolha uma senha diferente da atual.' : 'Não foi possível alterar a senha.', 'erro')
       return
     }
-    setSenha(''); setSenha2('')
-    toast('Senha alterada', 'ok')
+    setSenha(''); setSenha2(''); setVerSenha(false)
+    setSenhaOk(true)
+    toast('Senha alterada com sucesso', 'ok')
   }
 
   async function salvarFoto(novaUrl, msg) {
@@ -199,25 +201,37 @@ export default function Configuracoes() {
           <Lock size={18} color="var(--accent)" />
           <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Alterar senha</p>
         </div>
-        <div className="form-group">
-          <label>Nova senha</label>
-          <div style={{ position:'relative' }}>
-            <input type={verSenha ? 'text' : 'password'} value={senha} onChange={e => setSenha(e.target.value)}
-              placeholder="Mínimo 6 caracteres" autoComplete="new-password" style={{ paddingRight:44 }} />
-            <button type="button" onClick={() => setVerSenha(v => !v)} title={verSenha ? 'Ocultar' : 'Mostrar'}
-              style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)' }}>
-              {verSenha ? <EyeOff size={16} color="var(--text3)" /> : <Eye size={16} color="var(--text3)" />}
-            </button>
+        {senhaOk ? (
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:'var(--radius-sm)', background:'var(--accent-dim)', color:'var(--accent2)' }}>
+            <CheckCircle2 size={20} />
+            <div>
+              <p style={{ fontSize:14, fontWeight:600 }}>Senha alterada com sucesso</p>
+              <p style={{ fontSize:12, color:'var(--text2)' }}>Já pode usar a nova senha no próximo login.</p>
+            </div>
           </div>
-        </div>
-        <div className="form-group">
-          <label>Repetir a nova senha</label>
-          <input type={verSenha ? 'text' : 'password'} value={senha2} onChange={e => setSenha2(e.target.value)}
-            placeholder="Digite de novo" autoComplete="new-password" />
-        </div>
-        <button className="btn-primary" style={{ width:'100%', opacity: salvandoSenha ? 0.6 : 1 }} onClick={alterarSenha} disabled={salvandoSenha}>
-          {salvandoSenha ? 'Salvando...' : 'Alterar senha'}
-        </button>
+        ) : (
+          <>
+            <div className="form-group">
+              <label>Nova senha</label>
+              <div style={{ position:'relative' }}>
+                <input type={verSenha ? 'text' : 'password'} value={senha} onChange={e => setSenha(e.target.value)}
+                  placeholder="Mínimo 6 caracteres" autoComplete="new-password" style={{ paddingRight:44 }} />
+                <button type="button" onClick={() => setVerSenha(v => !v)} title={verSenha ? 'Ocultar' : 'Mostrar'}
+                  style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)' }}>
+                  {verSenha ? <EyeOff size={16} color="var(--text3)" /> : <Eye size={16} color="var(--text3)" />}
+                </button>
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Repetir a nova senha</label>
+              <input type={verSenha ? 'text' : 'password'} value={senha2} onChange={e => setSenha2(e.target.value)}
+                placeholder="Digite de novo" autoComplete="new-password" />
+            </div>
+            <button className="btn-primary" style={{ width:'100%', opacity: salvandoSenha ? 0.6 : 1 }} onClick={alterarSenha} disabled={salvandoSenha}>
+              {salvandoSenha ? 'Salvando...' : 'Alterar senha'}
+            </button>
+          </>
+        )}
       </div>
 
       {/* Info do usuário */}

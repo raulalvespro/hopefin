@@ -174,12 +174,13 @@ export default function Gastos() {
         const prim = subMonths(new Date(yy, mm - 1, dd), pagas)
         dataPrimeira = `${prim.getFullYear()}-${String(prim.getMonth() + 1).padStart(2, '0')}-${String(prim.getDate()).padStart(2, '0')}`
       }
+      const pessoaId = await resolverPessoaId()
       const { error } = await run(
         supabase.from('parcelamentos').insert({
           descricao: form.descricao, valor_total: valor, num_parcelas: n, valor_parcela: vParcela,
           cartao_id: form.cartao_id || null, categoria: form.categoria,
           data_primeira_parcela: dataPrimeira, parcelas_pagas: pagas,
-          grupo_id: perfil.grupo_id, usuario_id: perfil.id,
+          grupo_id: perfil.grupo_id, usuario_id: perfil.id, pessoa_id: pessoaId,
         }),
         { ok: `Parcelamento criado (${n}x)` }
       )
@@ -270,7 +271,7 @@ export default function Gastos() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ color: it.terceiro ? 'var(--text3)' : 'var(--red-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(it.valor)}</span>
-            {it.tipo === 'gasto' ? <ChevronLeft size={14} color="var(--border2)" /> : <Layers size={15} color="var(--text3)" />}
+            {it.tipo === 'parcela' && <Layers size={15} color="var(--text3)" />}
           </div>
         </div>
         </SwipeRow>
@@ -343,8 +344,8 @@ export default function Gastos() {
               </div>
             )}
 
-            {/* Gasto de outra pessoa (a receber) — só faz sentido à vista e não-assinatura */}
-            {!form.parcelado && !form.assinatura && (
+            {/* Gasto/compra de outra pessoa (a receber) — vale à vista E parcelado, menos assinatura */}
+            {!form.assinatura && (
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
                   <input type="checkbox" checked={form.de_terceiro} onChange={e => setForm(p => ({ ...p, de_terceiro: e.target.checked }))} />
@@ -355,7 +356,9 @@ export default function Gastos() {
                     <input list="pessoas-lista" value={form.pessoa_nome} onChange={e => setForm(p => ({ ...p, pessoa_nome: e.target.value }))} placeholder="Quem vai pagar (ex: Pai)" />
                     <datalist id="pessoas-lista">{pessoas.map(p => <option key={p.id} value={p.nome} />)}</datalist>
                     <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
-                      Esse valor não entra nos seus gastos — fica em “A receber” até você marcar como recebido.
+                      {form.parcelado
+                        ? 'Cada parcela vira um “A receber” no mês em que vence — você marca o que já recebeu parcela a parcela.'
+                        : 'Esse valor não entra nos seus gastos — fica em “A receber” até você marcar como recebido.'}
                     </span>
                   </div>
                 )}

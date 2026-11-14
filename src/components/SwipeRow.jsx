@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, ChevronLeft } from 'lucide-react'
 
 // Linha com ações reveladas ao arrastar para a esquerda (toque ou mouse).
 // Arrasta → aparece lápis (amarelo, editar) e/ou lixeira (vermelho, excluir).
+// Mostra um "handle" (‹) na borda direita como dica de que dá pra arrastar.
 // Sem onEdit/onDelete, renderiza o conteúdo direto (sem gesto).
 export default function SwipeRow({ children, onEdit, onDelete, style }) {
   const [dx, setDx] = useState(0)
@@ -21,20 +22,27 @@ export default function SwipeRow({ children, onEdit, onDelete, style }) {
     startDx.current = dx
     moved.current = false
     setDragging(true)
-    try { e.currentTarget.setPointerCapture?.(e.pointerId) } catch {}
+    // NÃO capturar o ponteiro aqui: capturar no down faz o clique ir pro wrapper
+    // e os botões internos (ex.: abrir fatura) deixam de receber o toque.
   }
   function onMove(e) {
     if (!dragging) return
     const delta = e.clientX - startX.current
-    if (Math.abs(delta) > 4) moved.current = true
-    setDx(Math.max(-PANEL, Math.min(0, startDx.current + delta)))
+    if (Math.abs(delta) > 4 && !moved.current) {
+      moved.current = true
+      try { e.currentTarget.setPointerCapture?.(e.pointerId) } catch {}  // só ao arrastar de fato
+    }
+    if (moved.current) setDx(Math.max(-PANEL, Math.min(0, startDx.current + delta)))
   }
-  function onUp() {
+  function onUp(e) {
     if (!dragging) return
     setDragging(false)
     setDx(d => (d < -PANEL / 2 ? -PANEL : 0))
+    try { e.currentTarget.releasePointerCapture?.(e.pointerId) } catch {}
   }
   function acionar(fn) { setDx(0); fn?.() }
+
+  const aberto = dx !== 0
 
   return (
     <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--radius)', ...style }}>
@@ -64,9 +72,21 @@ export default function SwipeRow({ children, onEdit, onDelete, style }) {
           transform: `translateX(${dx}px)`,
           transition: dragging ? 'none' : 'transform 0.2s ease',
           touchAction: 'pan-y', position: 'relative', background: 'var(--bg2)',
+          paddingRight: 20,
         }}
       >
         {children}
+        {/* Dica de swipe — handle na borda direita (some ao abrir) */}
+        {!aberto && (
+          <span aria-hidden style={{
+            position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 18, height: 34, borderRadius: 6, background: 'var(--bg3)',
+            color: 'var(--text3)', pointerEvents: 'none', opacity: 0.9,
+          }}>
+            <ChevronLeft size={15} />
+          </span>
+        )}
       </div>
     </div>
   )

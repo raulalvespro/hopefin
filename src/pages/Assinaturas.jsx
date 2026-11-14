@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Plus, Trash2, Pencil, Repeat } from 'lucide-react'
+import { Plus, Repeat } from 'lucide-react'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { useCategorias } from '../hooks/useCategorias'
+import SwipeRow from '../components/SwipeRow'
 import { fmt } from '../lib/format'
 
 const novoForm = () => ({ nome: '', valor: '', dia_cobranca: '', cartao_id: '', categoria: 'outros' })
@@ -110,7 +111,8 @@ export default function Assinaturas() {
       {loading ? <div className="empty-state">Carregando...</div>
         : itens.length === 0 ? <div className="empty-state">Nenhuma assinatura cadastrada</div>
         : itens.map(a => (
-          <div key={a.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <SwipeRow key={a.id} style={{ marginBottom: 8 }} onEdit={() => editar(a)} onDelete={() => excluir(a.id)}>
+          <div className="card" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 22 }}>{emojiDe(a.categoria)}</span>
               <div>
@@ -121,12 +123,9 @@ export default function Assinaturas() {
                 </p>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ color: 'var(--purple-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(a.valor)}</span>
-              <button onClick={() => editar(a)}><Pencil size={14} color="var(--text3)" /></button>
-              <button onClick={() => excluir(a.id)}><Trash2 size={15} color="var(--text3)" /></button>
-            </div>
+            <span style={{ color: 'var(--purple-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(a.valor)}</span>
           </div>
+          </SwipeRow>
         ))}
 
       {modal && (

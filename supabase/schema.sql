@@ -60,6 +60,7 @@ create table if not exists public.gastos (
   data           date not null default current_date,
   origem         text not null default 'app' check (origem in ('app','voz','texto','whatsapp')),  -- 0026
   observacao     text,                                 -- anotação livre opcional — 0038
+  fatura_ajuste  int not null default 0,                -- desloca a fatura do cartão (±N) — 0039
   criado_em      timestamptz not null default now()
 );
 
@@ -102,6 +103,7 @@ create table if not exists public.parcelamentos (
   valor_parcela        numeric(12,2) not null,
   cartao_id            uuid references public.cartoes(id) on delete set null,
   categoria            text default 'outros',
+  pessoa_id            uuid references public.pessoas(id) on delete set null,  -- parcelamento de terceiro — 0040
   data_primeira_parcela date not null default current_date,
   criado_em            timestamptz not null default now()
 );
@@ -115,6 +117,7 @@ create table if not exists public.parcelas (
   valor           numeric(12,2) not null,
   data_vencimento date not null,
   paga            boolean not null default false,
+  recebido        boolean not null default false,  -- parcela de terceiro já acertada — 0040
   criado_em       timestamptz not null default now()
 );
 
