@@ -18,8 +18,8 @@ depois), **planejado × praticado** nas contas recorrentes, grupo compartilhado 
   **separada** do SGQ). Auth + Postgres + Edge Functions.
 - **Hospedagem:** **Cloudflare Workers (static assets)** desde 08/11/2026 — Worker `hopefin-app`
   (`wrangler.jsonc` + `worker.js` + `public/_headers`), domínio `app.hopefin.com.br`. Publicar: `npm run cf:deploy`
-  (precisa de `wrangler login`). Guia/rollback em `docs/MIGRACAO_CLOUDFLARE.md`. A **Vercel** (`vercel.json`) segue como
-  plano de volta até 15/11/2026; depois desligar o projeto e remover `vercel.json`.
+  (precisa de `wrangler login`). Guia/rollback em `docs/MIGRACAO_CLOUDFLARE.md`. A **Vercel** era o plano de volta
+  (até 15/11/2026); **`vercel.json` removido do repo em 14/11/2026** — falta só pausar/apagar o projeto no painel da Vercel.
 
 Rodar local: `npm run dev` (porta 5173, ver `.claude/launch.json`).
 
@@ -202,7 +202,7 @@ em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `L
 
 ## Domínios
 
-- `hopefin.com.br` — site + páginas legais. `app.hopefin.com.br` — o app (Vercel por ora).
+- `hopefin.com.br` — site + páginas legais. `app.hopefin.com.br` — o app (**Cloudflare Workers** desde 08/11/2026).
 - `admin.hopefin.com.br` — **painel do dono**: **implementado (prompt 8)** como rota
   `/admin` dentro do próprio app (fora do Layout, `noindex`), guarda por
   `usuarios.is_admin` + RPCs `admin_*` (SECURITY DEFINER, migração **0021**). Mostra MRR,
@@ -226,12 +226,12 @@ em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `L
   assets) — hoje só uma página "em construção" por upload. A **landing** (prompt 6) virá
   do repo **`hopefin-site`** ligado a esse Worker. Usar **Workers com static assets, não o
   Pages antigo**.
-- **`app.hopefin.com.br`** → CNAME (proxy **desligado**) para o projeto **hopefin na
-  Vercel**; `hopefin.vercel.app` segue ativo.
+- **`app.hopefin.com.br`** → **Worker da Cloudflare `hopefin-app`** (static assets) desde 08/11/2026. A Vercel
+  (`hopefin.vercel.app`) era o fallback — `vercel.json` removido em 14/11/2026; falta pausar o projeto no painel.
 - **Supabase Auth:** Site URL `https://app.hopefin.com.br`; Redirect URLs
-  `https://app.hopefin.com.br/**`, `https://hopefin.vercel.app/**`, `http://localhost:5173/**`.
-- **Migração Vercel → Cloudflare (Workers static assets) antes do 1º cliente pagante
-  (prompt 21)** — o plano Free da Vercel não permite uso comercial.
+  `https://app.hopefin.com.br/**`, `http://localhost:5173/**` (tirar `https://hopefin.vercel.app/**` ao desligar a Vercel).
+- ~~Migração Vercel → Cloudflare (Workers static assets), prompt 21~~ **FEITA em 08/11/2026** — app em produção no
+  Worker `hopefin-app`.
 
 ### E-mail
 - Caixas `contato@` e `privacidade@` na **Hostinger** (MX, SPF, DKIM `hostingermail-a/b/c`,

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, RefreshCw, Users, CreditCard, Gift, Rocket, Clock, AlertTriangle,
-  Sparkles, Ticket, Webhook, Pause, Play, Check, Loader, X,
+  Sparkles, Ticket, Webhook, Pause, Play, Check, Loader, X, Mail, Send,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -33,6 +33,7 @@ export default function Admin() {
   const [busca, setBusca] = useState('')
   const cfgMascote = useMascote()
   const [acao, setAcao] = useState(null) // { tipo, grupo } para o modal
+  const [emailGrupo, setEmailGrupo] = useState(null) // grupo cujo e-mail vamos reenviar
 
   // noindex: o painel nunca deve ser indexado.
   useEffect(() => {
@@ -206,6 +207,7 @@ export default function Admin() {
                         <td style={{ color: 'var(--text2)' }}>{g.ciclo || '—'}</td>
                         <td style={{ color: 'var(--text2)' }}>{dataCurta(g.status === 'trial' ? g.trial_ends_at : g.current_period_end)}</td>
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: 12, marginRight: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => setEmailGrupo(g)} aria-label="Reenviar e-mail" title="Reenviar e-mail"><Mail size={14} /> e-mail</button>
                           <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 12, marginRight: 6 }} onClick={() => setAcao({ tipo: 'trial', grupo: g })}>+ trial</button>
                           <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setAcao({ tipo: 'cortesia', grupo: g })}>{g.is_cortesia ? 'tirar cortesia' : 'cortesia'}</button>
                         </td>
@@ -238,6 +240,7 @@ export default function Admin() {
       )}
 
       {acao && <ModalAcao acao={acao} onFechar={() => setAcao(null)} onFeito={() => { setAcao(null); carregar(busca) }} />}
+      {emailGrupo && <ModalEmail grupo={emailGrupo} onFechar={() => setEmailGrupo(null)} />}
       <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
@@ -364,5 +367,70 @@ function Cupons({ cupons, onMudou }) {
         </div>
       ))}
     </section>
+  )
+}
+
+// Reenviar e-mail de acesso (magic link) ou de redefinir senha para um membro do grupo.
+function ModalEmail({ grupo, onFechar }) {
+  const { toast } = useToast()
+  const [membros, setMembros] = useState(null)
+  const [enviando, setEnviando] = useState(null) // `${id}:${tipo}`
+
+  useEffect(() => {
+    supabase.rpc('admin_membros', { p_grupo_id: grupo.id }).then(({ data, error }) => {
+      if (error) { toast('Não consegui carregar os membros.', 'erro'); setMembros([]) }
+      else setMembros(data || [])
+    })
+  }, [grupo.id, toast])
+
+  async function reenviar(m, tipo) {
+    setEnviando(`${m.id}:${tipo}`)
+    const { data, error } = await supabase.functions.invoke('admin-reenviar-email', { body: { user_id: m.id, tipo } })
+    setEnviando(null)
+    if (error || data?.erro) return toast(data?.erro || 'Não consegui enviar.', 'erro')
+    toast(tipo === 'recuperar' ? 'E-mail de redefinição enviado.' : 'E-mail de acesso enviado.', 'ok')
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onFechar}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <h2 style={{ fontSize: 17 }}>Reenviar e-mail</h2>
+          <button onClick={onFechar} aria-label="Fechar"><X size={20} color="var(--text2)" /></button>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12 }}>Grupo: <strong>{grupo.nome}</strong></p>
+
+        {membros === null ? (
+          <Centro>Carregando membros…</Centro>
+        ) : membros.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--text3)' }}>Nenhum membro.</p>
+        ) : membros.map(m => (
+          <div key={m.id} style={{ padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+            <p style={{ fontSize: 14, fontWeight: 600 }}>
+              {m.nome || 'Sem nome'} {m.is_dono && <span className="tag tag-blue" style={{ marginLeft: 4 }}>dono</span>}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text2)', wordBreak: 'break-all' }}>{m.email}</p>
+            <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8 }}>
+              {m.ultimo_acesso ? `Último acesso: ${dataCurta(m.ultimo_acesso)}` : 'Nunca entrou'}
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+                onClick={() => reenviar(m, 'acesso')} disabled={enviando === `${m.id}:acesso`}>
+                {enviando === `${m.id}:acesso` ? <Loader size={14} className="spin" /> : <Send size={14} />} Enviar acesso
+              </button>
+              <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+                onClick={() => reenviar(m, 'recuperar')} disabled={enviando === `${m.id}:recuperar`}>
+                {enviando === `${m.id}:recuperar` ? <Loader size={14} className="spin" /> : <Mail size={14} />} Redefinir senha
+              </button>
+            </div>
+          </div>
+        ))}
+
+        <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 14 }}>
+          “Enviar acesso” manda um link de entrada direto. “Redefinir senha” manda um link para criar/trocar a senha.
+          O e-mail sai pelo nosso Resend, com o visual da marca.
+        </p>
+      </div>
+    </div>
   )
 }
