@@ -135,6 +135,7 @@ export function Grupos() {
   const [busca, setBusca] = useState('')
   const [acao, setAcao] = useState(null)
   const [emailGrupo, setEmailGrupo] = useState(null)
+  const [ficha, setFicha] = useState(null)
 
   const carregar = useCallback((q = '') => {
     supabase.rpc('admin_grupos', { p_busca: q || null }).then(({ data, error }) => {
@@ -161,7 +162,8 @@ export function Grupos() {
               const [rot, cls] = STATUS[g.status] || [g.status || 'sem plano', 'tag-amber']
               return (
                 <tr key={g.id}>
-                  <td>{g.nome}
+                  <td>
+                    <button onClick={() => setFicha(g)} style={{ color: 'var(--accent)', fontWeight: 600, textAlign: 'left' }}>{g.nome}</button>
                     {g.is_cortesia && <span className="tag tag-green" style={{ marginLeft: 6 }}>cortesia</span>}
                     {g.is_lancamento && <span className="tag tag-blue" style={{ marginLeft: 6 }}>lançamento</span>}
                   </td>
@@ -183,6 +185,7 @@ export function Grupos() {
       </div>
       {acao && <ModalAcao acao={acao} onFechar={() => setAcao(null)} onFeito={() => { setAcao(null); carregar(busca) }} />}
       {emailGrupo && <ModalEmail grupo={emailGrupo} onFechar={() => setEmailGrupo(null)} />}
+      {ficha && <ModalCliente grupo={ficha} onFechar={() => setFicha(null)} />}
     </section>
   )
 }
@@ -596,6 +599,166 @@ function ModalServico({ servico, onFechar, onFeito }) {
         <button className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={salvar} disabled={salvando}>
           {salvando ? <><Loader size={18} className="spin" /> Salvando…</> : <><Check size={18} /> Salvar</>}
         </button>
+      </div>
+    </div>
+  )
+}
+
+/* ============================ RECEITAS (métricas) ============================ */
+export function Receitas() {
+  const { toast } = useToast()
+  const [d, setD] = useState(null)
+  useEffect(() => {
+    supabase.rpc('admin_receitas').then(({ data, error }) => {
+      if (error) { toast('Falhou ao carregar.', 'erro'); setD(false) } else setD(data)
+    })
+  }, [toast])
+  if (d === null) return <section className="adm-sec"><div className="adm-vazio">Carregando…</div></section>
+  if (d === false) return <section className="adm-sec"><div className="adm-vazio">Não consegui carregar.</div></section>
+
+  const cards = [
+    { label: 'MRR', valor: reais(d.mrr_centavos), cor: 'var(--accent)' },
+    { label: 'ARR (ano)', valor: reais(d.arr_centavos), cor: 'var(--accent)' },
+    { label: 'Ticket médio (ARPA)', valor: reais(d.arpa_centavos), cor: 'var(--text2)' },
+    { label: 'Assinantes', valor: d.assinantes_ativos, cor: 'var(--accent)' },
+    { label: 'Trials ativos', valor: d.trials_ativos, cor: 'var(--blue)' },
+    { label: 'Churn (30d)', valor: `${d.churn_pct}%`, cor: d.churn_pct > 0 ? 'var(--red)' : 'var(--text2)' },
+    { label: 'LTV estimado', valor: d.ltv_centavos != null ? reais(d.ltv_centavos) : '—', cor: 'var(--purple)' },
+    { label: 'Cortesias', valor: d.cortesias, cor: 'var(--purple)' },
+  ]
+  return (
+    <>
+      <div className="adm-cards">
+        {cards.map(c => (
+          <div key={c.label} className="adm-card">
+            <div className="k">{c.label}</div>
+            <div className="v" style={{ color: c.cor }}>{c.valor}</div>
+          </div>
+        ))}
+      </div>
+      <section className="adm-sec">
+        <h2><TrendingUp size={16} color="var(--accent)" /> Funil dos últimos 30 dias</h2>
+        <Linha rotulo="Novos trials" valor={d.novos_trials_30d} />
+        <Linha rotulo="Converteram (1ª cobrança)" valor={d.convertidos_30d} cor="var(--accent)" />
+        <Linha rotulo="Cancelaram" valor={d.cancelados_30d} cor={d.cancelados_30d > 0 ? 'var(--red)' : undefined} />
+        <Linha rotulo="Cancelados no total" valor={d.cancelados_total} />
+        <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 10, lineHeight: 1.5 }}>
+          LTV = ticket médio ÷ churn mensal (fica “—” enquanto não houver cancelamento pra calcular). Com a base pequena, os números oscilam muito — servem de termômetro, não de previsão fechada.
+        </p>
+      </section>
+    </>
+  )
+}
+
+/* ============================ FICHA DO CLIENTE ============================ */
+function ModalCliente({ grupo, onFechar }) {
+  const { toast } = useToast()
+  const [d, setD] = useState(null)
+  const [nota, setNota] = useState('')
+  const [salvando, setSalvando] = useState(false)
+
+  const carregar = useCallback(() => {
+    supabase.rpc('admin_cliente', { p_grupo_id: grupo.id }).then(({ data, error }) => {
+      if (error) { toast('Não consegui carregar a ficha.', 'erro'); setD(false) } else setD(data)
+    })
+  }, [grupo.id, toast])
+  useEffect(() => { carregar() }, [carregar])
+
+  async function salvarNota() {
+    if (!nota.trim()) return
+    setSalvando(true)
+    const { error } = await supabase.rpc('admin_salvar_nota', { p_grupo_id: grupo.id, p_texto: nota.trim() })
+    setSalvando(false)
+    if (error) return toast('Falhou ao salvar.', 'erro')
+    setNota(''); carregar()
+  }
+  async function removerNota(id) {
+    const { error } = await supabase.rpc('admin_remover_nota', { p_id: id })
+    if (error) return toast('Falhou.', 'erro'); carregar()
+  }
+
+  const s = d && d.assinatura
+  const [rotS, clsS] = s ? (STATUS[s.status] || [s.status, 'tag-amber']) : ['sem plano', 'tag-amber']
+  const ACAO = { reenviar_email: 'Reenviou e-mail', estender_trial: 'Estendeu trial', marcar_cortesia: 'Cortesia', salvar_servico: 'Serviço', remover_servico: 'Serviço removido' }
+
+  return (
+    <div className="modal-overlay" onClick={onFechar}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560, maxHeight: '88vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <h2 style={{ fontSize: 18 }}>{grupo.nome}</h2>
+          <button onClick={onFechar} aria-label="Fechar"><X size={20} color="var(--text2)" /></button>
+        </div>
+        {d === null ? <div className="adm-vazio">Carregando…</div> : d === false ? <div className="adm-vazio">Erro ao carregar.</div> : (
+          <>
+            <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 14 }}>Código {d.grupo.codigo} · criado em {dataCurta(d.grupo.criado_em)}</p>
+
+            {/* Assinatura */}
+            <div style={{ background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 14, marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                <span className={`tag ${clsS}`}>{rotS}</span>
+                {s?.is_cortesia && <span className="tag tag-green">cortesia</span>}
+                {s?.is_lancamento && <span className="tag tag-blue">lançamento</span>}
+                {s?.cupom_codigo && <span className="tag tag-amber">{s.cupom_codigo}</span>}
+              </div>
+              {s ? (
+                <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.7 }}>
+                  <div>Plano: <strong>{s.ciclo || '—'}</strong> · {reais(s.preco_centavos)} {s.metodo_pagamento ? `· ${s.metodo_pagamento}` : ''} {s.parcelas ? `· ${s.parcelas}x` : ''}</div>
+                  {s.status === 'trial' && <div>Trial até {dataCurta(s.trial_ends_at)}</div>}
+                  {s.current_period_end && <div>Período até {dataCurta(s.current_period_end)}</div>}
+                  {s.primeira_cobranca_em && <div>1ª cobrança: {dataCurta(s.primeira_cobranca_em)}</div>}
+                  {s.canceled_at && <div style={{ color: 'var(--red)' }}>Cancelado em {dataCurta(s.canceled_at)}</div>}
+                </div>
+              ) : <p style={{ fontSize: 13, color: 'var(--text3)' }}>Sem assinatura registrada.</p>}
+            </div>
+
+            {/* Uso */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 12, marginBottom: 16 }}>
+              <Mini label="Interações IA" valor={d.uso.total} sub={`${d.uso.mes} no mês`} />
+              <Mini label="Lanç. por voz" valor={d.uso.voz_lanc} />
+              <Mini label="Membros" valor={d.membros.length} />
+            </div>
+
+            {/* Membros */}
+            <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text2)', marginBottom: 6 }}>Membros</p>
+            {d.membros.map(m => (
+              <div key={m.id} style={{ fontSize: 13, padding: '6px 0', borderTop: '1px solid var(--border)' }}>
+                <span style={{ fontWeight: 600 }}>{m.nome || 'Sem nome'}</span> {m.is_dono && <span className="tag tag-blue" style={{ marginLeft: 4 }}>dono</span>}
+                <div style={{ color: 'var(--text2)', wordBreak: 'break-all' }}>{m.email}{!m.email_confirmado && <span style={{ color: 'var(--amber)' }}> · e-mail não confirmado</span>}</div>
+                <div style={{ color: 'var(--text3)', fontSize: 11.5 }}>{m.ultimo_acesso ? `Último acesso: ${dataCurta(m.ultimo_acesso)}` : 'Nunca entrou'}</div>
+              </div>
+            ))}
+
+            {/* Linha do tempo */}
+            {d.timeline.length > 0 && (
+              <>
+                <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text2)', margin: '16px 0 6px' }}>Linha do tempo (ações do admin)</p>
+                {d.timeline.map((t, i) => (
+                  <div key={i} style={{ fontSize: 12.5, color: 'var(--text2)', padding: '5px 0', borderTop: '1px solid var(--border)' }}>
+                    <span style={{ fontWeight: 600 }}>{ACAO[t.acao] || t.acao}</span>{t.motivo ? ` — ${t.motivo}` : ''}
+                    <span style={{ color: 'var(--text3)', float: 'right' }}>{dataHora(t.criado_em)}</span>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Notas do dono */}
+            <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text2)', margin: '16px 0 6px' }}>Notas internas</p>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <input value={nota} onChange={e => setNota(e.target.value)} placeholder="Anotação sobre este cliente…" style={{ flex: 1 }} onKeyDown={e => e.key === 'Enter' && salvarNota()} />
+              <button className="btn-primary" style={{ padding: '0 14px' }} onClick={salvarNota} disabled={salvando}>{salvando ? <Loader size={16} className="spin" /> : 'Salvar'}</button>
+            </div>
+            {d.notas.length === 0 ? <p style={{ fontSize: 12.5, color: 'var(--text3)' }}>Nenhuma nota.</p> : d.notas.map(n => (
+              <div key={n.id} style={{ fontSize: 13, padding: '8px 0', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <div><p>{n.texto}</p><p style={{ fontSize: 11, color: 'var(--text3)' }}>{n.admin_nome || 'Admin'} · {dataHora(n.criado_em)}</p></div>
+                <button className="adm-icbtn" style={{ color: 'var(--red)', flexShrink: 0 }} aria-label="Remover nota" onClick={() => removerNota(n.id)}><Trash2 size={14} /></button>
+              </div>
+            ))}
+
+            <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 16, lineHeight: 1.5, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              Os lançamentos da família (gastos/entradas) nunca aparecem aqui — LGPD. Exportar/excluir dados do titular (LGPD) é a próxima etapa.
+            </p>
+          </>
+        )}
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   LayoutDashboard, Users, Wallet, Package, Ticket, LifeBuoy, Shield, Webhook, Activity,
-  Menu, X, Sun, Moon, LogOut, Loader, ShieldAlert, RefreshCw,
+  Menu, X, Sun, Moon, LogOut, Loader, ShieldAlert, RefreshCw, TrendingUp,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -9,18 +9,18 @@ import { useTema } from '../contexts/ThemeContext'
 import AdminLogin from './AdminLogin'
 import Guard2FA from './Guard2FA'
 import { ehPrevia } from './host'
-import { VisaoGeral, Grupos, Administradores, Cupons, Webhooks, Custos, Servicos, EmConstrucao } from './secoes'
+import { VisaoGeral, Grupos, Administradores, Cupons, Webhooks, Custos, Servicos, Receitas, EmConstrucao } from './secoes'
 import './painel.css'
 
 const MENU = [
   { grupo: 'Principal', itens: [{ id: 'visao', nome: 'Visão geral', icon: LayoutDashboard }] },
   { grupo: 'Clientes', itens: [{ id: 'grupos', nome: 'Clientes', icon: Users }] },
-  { grupo: 'Financeiro', itens: [{ id: 'custos', nome: 'Custos', icon: Wallet }, { id: 'servicos', nome: 'Serviços & créditos', icon: Package }] },
+  { grupo: 'Financeiro', itens: [{ id: 'receitas', nome: 'Receitas', icon: TrendingUp }, { id: 'custos', nome: 'Custos', icon: Wallet }, { id: 'servicos', nome: 'Serviços & créditos', icon: Package }] },
   { grupo: 'Crescimento', itens: [{ id: 'cupons', nome: 'Cupons', icon: Ticket }] },
   { grupo: 'Atendimento', itens: [{ id: 'suporte', nome: 'Suporte', icon: LifeBuoy }] },
   { grupo: 'Sistema', itens: [{ id: 'admins', nome: 'Administradores', icon: Shield }, { id: 'webhooks', nome: 'Webhooks', icon: Webhook }, { id: 'saude', nome: 'Saúde', icon: Activity }] },
 ]
-const TITULOS = { visao: 'Visão geral', grupos: 'Clientes', custos: 'Custos', servicos: 'Serviços & créditos', cupons: 'Cupons', suporte: 'Suporte', admins: 'Administradores', webhooks: 'Webhooks', saude: 'Saúde do sistema' }
+const TITULOS = { visao: 'Visão geral', grupos: 'Clientes', receitas: 'Receitas', custos: 'Custos', servicos: 'Serviços & créditos', cupons: 'Cupons', suporte: 'Suporte', admins: 'Administradores', webhooks: 'Webhooks', saude: 'Saúde do sistema' }
 
 function Centro({ children }) {
   return <div className="adm" style={{ alignItems: 'center', justifyContent: 'center' }}>{children}</div>
@@ -110,6 +110,7 @@ function Painel({ logout, email }) {
           {aba === 'cupons' && <Cupons cupons={cupons} recarregar={carregar} />}
           {aba === 'admins' && <Administradores />}
           {aba === 'webhooks' && <Webhooks webhooks={webhooks} />}
+          {aba === 'receitas' && <Receitas />}
           {aba === 'custos' && <Custos />}
           {aba === 'servicos' && <Servicos />}
           {aba === 'suporte' && <EmConstrucao titulo="Suporte" etapa={4} descricao="Receber os e-mails do domínio dentro do painel, com status, respostas prontas e ligação com a ficha do cliente." />}
