@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   LayoutDashboard, Users, Wallet, Package, Ticket, LifeBuoy, Shield, Webhook, Activity,
   Menu, X, Sun, Moon, LogOut, Loader, ShieldAlert, RefreshCw, TrendingUp, ScrollText, Settings,
+  MessageCircle, FlaskConical,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -9,7 +10,7 @@ import { useTema } from '../contexts/ThemeContext'
 import AdminLogin from './AdminLogin'
 import Guard2FA from './Guard2FA'
 import { ehPrevia } from './host'
-import { VisaoGeral, Grupos, Administradores, Cupons, Webhooks, Custos, Servicos, Receitas, Suporte, Saude, Auditoria, Configuracoes, BuscaGlobal, EmConstrucao } from './secoes'
+import { VisaoGeral, Grupos, Administradores, Cupons, Webhooks, Custos, Servicos, Receitas, Suporte, Saude, Auditoria, Configuracoes, BuscaGlobal, EmConstrucao, WhatsAppAdmin, AreaDev } from './secoes'
 import { Search } from 'lucide-react'
 import './painel.css'
 
@@ -21,7 +22,18 @@ const MENU = [
   { grupo: 'Atendimento', itens: [{ id: 'suporte', nome: 'Suporte', icon: LifeBuoy }] },
   { grupo: 'Sistema', itens: [{ id: 'admins', nome: 'Administradores', icon: Shield }, { id: 'config', nome: 'Configurações', icon: Settings }, { id: 'auditoria', nome: 'Auditoria', icon: ScrollText }, { id: 'webhooks', nome: 'Webhooks', icon: Webhook }, { id: 'saude', nome: 'Saúde', icon: Activity }] },
 ]
-const TITULOS = { visao: 'Visão geral', grupos: 'Clientes', receitas: 'Receitas', custos: 'Custos', servicos: 'Serviços & créditos', cupons: 'Cupons', suporte: 'Suporte', admins: 'Administradores', config: 'Configurações', auditoria: 'Auditoria', webhooks: 'Webhooks', saude: 'Saúde do sistema' }
+const TITULOS = { visao: 'Visão geral', grupos: 'Clientes', receitas: 'Receitas', custos: 'Custos', servicos: 'Serviços & créditos', cupons: 'Cupons', suporte: 'Suporte', admins: 'Administradores', config: 'Configurações', auditoria: 'Auditoria', webhooks: 'Webhooks', saude: 'Saúde do sistema', whatsapp: 'WhatsApp', dev: 'Área de desenvolvimento' }
+
+// Monta o menu conforme o papel. A gestão de WhatsApp fica fixa no painel (todo
+// admin vê — hoje só o dono). A Área de desenvolvimento (controle do que vai pro
+// app do usuário) só aparece pro dono do app.
+function montarMenu(isDono) {
+  const base = MENU.map(g => ({ grupo: g.grupo, itens: g.itens.slice() }))
+  const sis = base.find(g => g.grupo === 'Sistema')
+  if (sis) sis.itens.unshift({ id: 'whatsapp', nome: 'WhatsApp', icon: MessageCircle })
+  if (isDono) base.push({ grupo: 'Dono do app', itens: [{ id: 'dev', nome: 'Área de desenvolvimento', icon: FlaskConical }] })
+  return base
+}
 
 function Centro({ children }) {
   return <div className="adm" style={{ alignItems: 'center', justifyContent: 'center' }}>{children}</div>
@@ -45,10 +57,10 @@ export default function AdminApp() {
   if (loading) return <Centro><Loader size={28} className="spin" color="var(--accent)" /></Centro>
   if (!user) return <AdminLogin />
   if (!perfil?.is_admin) return <AcessoNegado email={perfil?.email || user.email} onSair={logout} />
-  return <Guard2FA><Painel logout={logout} email={perfil.email} /></Guard2FA>
+  return <Guard2FA><Painel logout={logout} email={perfil.email} isDono={!!perfil?.is_dono_app} /></Guard2FA>
 }
 
-function Painel({ logout, email }) {
+function Painel({ logout, email, isDono }) {
   const { tema, setTema } = useTema()
   const [aba, setAba] = useState('visao')
   const [sideAberta, setSideAberta] = useState(false)
@@ -88,13 +100,14 @@ function Painel({ logout, email }) {
 
   function ir(id) { setAba(id); setSideAberta(false) }
   const escuro = tema === 'dark'
+  const menu = montarMenu(isDono)
 
   return (
     <div className="adm">
       {sideAberta && <div className="adm-scrim" onClick={() => setSideAberta(false)} />}
       <aside className={`adm-side ${sideAberta ? 'aberta' : ''}`}>
         <div className="adm-logo">HopeFin <span className="pill">ADMIN{ehPrevia() ? ' · PRÉVIA' : ''}</span></div>
-        {MENU.map(g => (
+        {menu.map(g => (
           <div className="adm-grp" key={g.grupo}>
             <div className="adm-grp-tit">{g.grupo}</div>
             {g.itens.map(it => (
@@ -130,11 +143,13 @@ function Painel({ logout, email }) {
           {aba === 'config' && <Configuracoes />}
           {aba === 'auditoria' && <Auditoria />}
           {aba === 'saude' && <Saude />}
+          {aba === 'whatsapp' && <WhatsAppAdmin />}
+          {aba === 'dev' && isDono && <AreaDev />}
         </main>
       </div>
       {buscaAberta && (
         <BuscaGlobal
-          paginas={MENU.flatMap(g => g.itens.map(it => ({ id: it.id, nome: it.nome })))}
+          paginas={menu.flatMap(g => g.itens.map(it => ({ id: it.id, nome: it.nome })))}
           ir={ir}
           onFechar={() => setBuscaAberta(false)}
         />

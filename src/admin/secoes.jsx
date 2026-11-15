@@ -4,6 +4,7 @@ import {
   Pause, Play, Check, Loader, X, Mail, Send, Shield, UserPlus, Trash2, Hammer,
   Wallet, Package, TrendingUp, TrendingDown, Plus, Pencil, ExternalLink, Bell,
   Inbox, Archive, CornerUpLeft, Activity, CheckCircle2, XCircle, Database, Timer, Ban, Zap,
+  MessageCircle, FlaskConical,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
@@ -1462,5 +1463,144 @@ export function EmConstrucao({ titulo, etapa, descricao }) {
         <p style={{ marginTop: 12 }}>{descricao}</p>
       </div>
     </section>
+  )
+}
+
+/* ============================ WHATSAPP (gestão) ============================ */
+export function WhatsAppAdmin() {
+  const { toast } = useToast()
+  const [r, setR] = useState(null)
+  const [conex, setConex] = useState([])
+  const carregar = useCallback(() => {
+    setR(null)
+    Promise.all([supabase.rpc('admin_whatsapp_resumo'), supabase.rpc('admin_whatsapp_conexoes')])
+      .then(([a, b]) => {
+        if (a.error) { toast('Falhou ao carregar.', 'erro'); setR(false) } else setR(a.data)
+        setConex(b.data || [])
+      })
+  }, [toast])
+  useEffect(() => { carregar() }, [carregar])
+
+  async function togglePausa() {
+    const { error } = await supabase.rpc('admin_set_whatsapp', { p_pausado: !r.pausado, p_teto_centavos: r.teto_centavos })
+    if (error) { toast('Não consegui alterar.', 'erro'); return }
+    toast(r.pausado ? 'WhatsApp retomado' : 'WhatsApp pausado', 'ok'); carregar()
+  }
+
+  if (r === null) return <section className="adm-sec"><div className="adm-vazio">Carregando…</div></section>
+  if (r === false) return <section className="adm-sec"><div className="adm-vazio">Não consegui carregar.</div></section>
+
+  return (
+    <>
+      <section className="adm-sec">
+        <h2><MessageCircle size={16} color="var(--accent)" /> WhatsApp <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 400 }}>· este mês</span></h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 14 }}>
+          <Mini label="Números conectados" valor={r.conectados} />
+          <Mini label="Lançamentos" valor={r.lancamentos_mes} />
+          <Mini label="Mensagens" valor={r.mensagens_mes} />
+          <Mini label="Erros" valor={r.erros_mes} />
+          <Mini label="Custo estimado" valor={reais(r.custo_centavos)} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginTop: 16 }}>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 600 }}>WhatsApp {r.pausado ? 'pausado' : 'ativo'}</p>
+            <p style={{ fontSize: 12, color: 'var(--text2)' }}>Teto mensal de gasto: {reais(r.teto_centavos)} · ajuste em Configurações</p>
+          </div>
+          <button onClick={togglePausa} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 6, color: r.pausado ? 'var(--accent)' : 'var(--red)' }}>
+            {r.pausado ? <><Play size={15} /> Retomar</> : <><Pause size={15} /> Pausar</>}
+          </button>
+        </div>
+      </section>
+
+      <section className="adm-sec">
+        <h2><Users size={16} color="var(--accent)" /> Números conectados</h2>
+        {conex.length === 0
+          ? <p style={{ fontSize: 13, color: 'var(--text3)' }}>Ninguém conectou o WhatsApp ainda.</p>
+          : conex.map((c, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, padding: '8px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+              <span style={{ fontWeight: 600 }}>{c.nome || 'Sem nome'}</span>
+              <span style={{ color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' }}>{c.telefone_mascarado || '—'}</span>
+            </div>
+          ))}
+        <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 10, lineHeight: 1.5 }}>
+          Por privacidade (LGPD), o número aparece mascarado e o conteúdo das mensagens nunca é exibido aqui.
+        </p>
+      </section>
+
+      <section className="adm-sec">
+        <h2><Activity size={16} color="var(--amber)" /> Quando o número de produção entrar</h2>
+        <Linha rotulo="Saúde da conexão com a Meta" valor="em breve" cor="var(--text3)" />
+        <Linha rotulo="Enviar mensagem de teste" valor="em breve" cor="var(--text3)" />
+        <Linha rotulo="Status dos templates aprovados" valor="em breve" cor="var(--text3)" />
+        <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 10, lineHeight: 1.5 }}>
+          Essas checagens dependem do número de produção (chip) e dos templates aprovados pela Meta.
+        </p>
+      </section>
+    </>
+  )
+}
+
+/* ====================== ÁREA DE DESENVOLVIMENTO (dono) ====================== */
+const AUDIENCIAS = [
+  { v: 'dono', label: 'Só eu (teste)', cor: 'var(--purple)' },
+  { v: 'todos', label: 'Todos os usuários', cor: 'var(--accent)' },
+]
+export function AreaDev() {
+  const { toast } = useToast()
+  const [flags, setFlags] = useState(null)
+  const [salvando, setSalvando] = useState('')
+  const carregar = useCallback(() => {
+    setFlags(null)
+    supabase.rpc('admin_flags').then(({ data, error }) => {
+      if (error) { toast('Falhou ao carregar.', 'erro'); setFlags(false) } else setFlags(data || [])
+    })
+  }, [toast])
+  useEffect(() => { carregar() }, [carregar])
+
+  async function definir(chave, audiencia) {
+    setSalvando(chave)
+    const { error } = await supabase.rpc('admin_set_flag', { p_chave: chave, p_audiencia: audiencia })
+    setSalvando('')
+    if (error) { toast('Não consegui alterar.', 'erro'); return }
+    toast('Visibilidade atualizada', 'ok'); carregar()
+  }
+
+  if (flags === null) return <section className="adm-sec"><div className="adm-vazio">Carregando…</div></section>
+  if (flags === false) return <section className="adm-sec"><div className="adm-vazio">Não consegui carregar.</div></section>
+
+  return (
+    <>
+      <section className="adm-sec">
+        <h2><FlaskConical size={16} color="var(--purple)" /> Área de desenvolvimento</h2>
+        <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.55 }}>
+          Controle o que vai pro <strong>app do dia a dia</strong>. Cada funcionalidade nova começa <strong>só no seu usuário</strong> (teste em produção, com dados reais); quando aprovar, você <strong>libera pra todos</strong>. Só você vê e controla esta área.
+        </p>
+      </section>
+
+      <section className="adm-sec">
+        <h2><Rocket size={16} color="var(--accent)" /> Funcionalidades</h2>
+        {flags.length === 0
+          ? <p style={{ fontSize: 13, color: 'var(--text3)' }}>Nenhuma funcionalidade com flag ainda.</p>
+          : flags.map((f, i) => (
+            <div key={f.chave} style={{ padding: '12px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+              <p style={{ fontSize: 14, fontWeight: 600 }}>{f.titulo}</p>
+              {f.descricao && <p style={{ fontSize: 12.5, color: 'var(--text2)', marginTop: 2, lineHeight: 1.5 }}>{f.descricao}</p>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                {AUDIENCIAS.map(a => {
+                  const ativo = f.audiencia === a.v
+                  return (
+                    <button key={a.v} onClick={() => !ativo && definir(f.chave, a.v)} disabled={salvando === f.chave}
+                      style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: 12.5, fontWeight: 600,
+                        border: `1.5px solid ${ativo ? a.cor : 'var(--border2)'}`, background: ativo ? a.cor : 'transparent',
+                        color: ativo ? '#fff' : 'var(--text2)', opacity: salvando === f.chave ? 0.6 : 1 }}>
+                      {a.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+      </section>
+    </>
   )
 }

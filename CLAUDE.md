@@ -269,7 +269,24 @@ colocar** e o Raul mesmo cola. Secrets conhecidos (nomes, sem valores):
 
 - **Branch nova por tarefa.** Uma migração por mudança de banco.
 - **Nunca** commit/push sem o **ok explícito** do Raul.
-- Ao fim de cada tarefa: dizer **o que testar** e então fazer o commit (com ok).
+- **Publicar & aprovar (combinado 15/11/2026):**
+  - **Ajuste de app (melhoria, correção, visual) vai DIRETO pra geral:** o Raul já autorizou
+    publicar o que a gente conclui — commit + push + `npm run cf:deploy`. Não precisa de prévia
+    nem de flag. (Avisar o que foi/testar; coisas grandes ou arriscadas, dar um heads up antes.)
+  - **Funcionalidade NOVA que o Raul marcar como "testar primeiro"** entra atrás de uma
+    **feature flag** (audiência `dono`): nasce **só no usuário dele, em produção**, ele testa
+    com dados reais e **libera pra todos** na **Área de desenvolvimento** do /admin
+    (`AreaDev` + `admin_set_flag`). **Só as features que ELE disser** vão pra flag — não é toda
+    mudança. 1ª flag: `whatsapp_app` (card "Conectar meu WhatsApp"). Front: `src/hooks/useFlags.js`
+    (`minhas_flags`) + `src/admin/secoes.jsx`. Migrações 0057/0058.
+  - **Painel /admin:** é todo do Raul por enquanto (único admin) — **sem flags**; publicar no
+    oficial com cf:deploy é ok. Quando houver outro admin, a gente define como limitar.
+  - **Oficial/produção:** `npm run cf:deploy` (app `app.hopefin.com.br` + admin
+    `admin.hopefin.com.br`, mesmo worker `hopefin-app`).
+  - **Prévia** (`admin-preview.hopefin.com.br`, `npx wrangler deploy -c wrangler.preview.jsonc`)
+    e **local** ficam pros **redesenhos grandes de telas existentes** e refactors arriscados —
+    quando o Raul quer ver tudo antes de qualquer um.
+- Ao fim de cada tarefa: dizer **o que testar** e publicar conforme a regra acima.
 - Raul planeja no Claude.ai e implementa aqui. Comunicação **sempre em PT-BR**.
 
 > Roadmap completo e backlog por fases: `docs/ROADMAP_HOPEFIN.md`.

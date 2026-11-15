@@ -543,5 +543,34 @@ alter table public.webhook_log enable row level security;   -- select só admin
 -- O asaas-webhook grava cada evento em webhook_log (service_role).
 
 -- ============================================================
+-- WHATSAPP (lançamento por mensagem) — migrações 0055 + 0056 (prompt 11.1)
+-- ============================================================
+-- usuarios ganha: whatsapp_verificado bool, whatsapp_codigo text, whatsapp_codigo_expira timestamptz.
+create table if not exists public.whatsapp_mensagens (   -- auditoria + idempotência
+  id uuid primary key default gen_random_uuid(),
+  wa_message_id text unique,                              -- id da Meta (não processa 2x)
+  telefone text, usuario_id uuid references public.usuarios(id) on delete set null,
+  grupo_id uuid references public.grupos(id) on delete set null,
+  direcao text not null check (direcao in ('entrada','saida')),
+  tipo text not null default 'desconhecido'
+    check (tipo in ('conexao','lancamento','desconhecido','bloqueado','erro','resposta')),
+  texto text, criado_em timestamptz not null default now()
+);
+alter table public.whatsapp_mensagens enable row level security;  -- sem policy: só service_role
+
+-- RPCs:
+--   App (authenticated): gerar_codigo_whatsapp() -> text (código 15min),
+--     desconectar_whatsapp().
+--   Webhook (service_role, SECURITY DEFINER): wa_conectar(tel,cod), wa_usuario(tel),
+--     pode_lancar_grupo(g) [espelha grupo_pode_lancar p/ g dado],
+--     wa_pode_grupo(g) [paywall + teto mensal de IA, mesmo contador da voz],
+--     wa_salvar_lancamento(g,u,dados jsonb) [insere gasto/entrada/parcelamento origem='whatsapp'].
+--   Admin (sou_admin()): admin_whatsapp_resumo() -> jsonb (conectados, msgs/mês, erros,
+--     pausado, teto), admin_whatsapp_conexoes() -> (nome, telefone mascarado, conectado).
+-- Edge Function `whatsapp-webhook` (deploy --no-verify-jwt): valida assinatura da Meta,
+--   idempotência por wa_message_id, vínculo opção A, interpreta (Haiku) e salva. LGPD: o
+--   admin NUNCA vê o texto financeiro — só contagens e número mascarado.
+
+-- ============================================================
 -- FIM
 -- ============================================================

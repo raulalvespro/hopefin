@@ -7,6 +7,8 @@ import { supabase } from '../lib/supabase'
 import Avatar from '../components/Avatar'
 import ConviteGrupo from '../components/ConviteGrupo'
 import AssinaturaCard from '../components/AssinaturaCard'
+import WhatsAppCard from '../components/WhatsAppCard'
+import { useFlags } from '../hooks/useFlags'
 import { copy } from '../copy/pt-BR'
 import { Compass, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera, Bell, Upload, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
@@ -40,6 +42,7 @@ export default function Configuracoes() {
   const { perfil, user, carregarPerfil } = useAuth()
   const { tema, setTema } = useTema()
   const { toast } = useToast()
+  const flags = useFlags()
   const [salvandoFoto, setSalvandoFoto] = useState(false)
   const fotoRef = useRef(null)
   const [senha, setSenha] = useState('')
@@ -139,6 +142,10 @@ export default function Configuracoes() {
         </div>
         <ChevronRight size={18} color="var(--text3)" />
       </Link>
+
+      {/* Lançar por WhatsApp (conectar/desconectar) — atrás da flag whatsapp_app:
+          começa só no dono (teste) e é liberado pra todos pela Área de desenvolvimento. */}
+      {flags?.whatsapp_app && <WhatsAppCard />}
 
       {/* Categorias */}
       <Link to="/categorias" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>
