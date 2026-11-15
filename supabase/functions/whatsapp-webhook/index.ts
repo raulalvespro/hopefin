@@ -29,6 +29,7 @@ const WA_TOKEN = Deno.env.get('WHATSAPP_TOKEN') || ''
 const VERIFY_TOKEN = Deno.env.get('WHATSAPP_VERIFY_TOKEN') || ''
 const APP_SECRET = Deno.env.get('WHATSAPP_APP_SECRET') || ''
 const ANTHROPIC_KEY = Deno.env.get('ANTHROPIC_API_KEY') || ''
+const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY') || ''   // transcrição de áudio (Whisper)
 const STICKER_JOCA = Deno.env.get('WHATSAPP_STICKER_JOCA_ID') || ''
 const MODELO = 'claude-haiku-5-5'
 const GRAPH = 'https://graph.facebook.com/v21.0'
@@ -50,6 +51,16 @@ function extrairJson(txt: string): any {
 }
 function brl(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+// Para ENVIAR a um celular brasileiro: a Meta entrega o `from` SEM o 9 (55+DDD+8
+// = 12 dígitos), mas a lista de permissão/entrega espera o número COM o 9. Então
+// reinserimos o 9 após o DDD no envio. A Meta normaliza de volta no wa_id. A
+// entrada/armazenamento continua como vem (o wa_id canônico, sem o 9).
+function paraEnvio(num: string): string {
+  const d = String(num).replace(/\D/g, '')
+  if (d.startsWith('55') && d.length === 12) return d.slice(0, 4) + '9' + d.slice(4)
+  return d
 }
 
 // Valida a assinatura X-Hub-Signature-256 (HMAC-SHA256 do corpo cru com o App Secret).
@@ -76,7 +87,7 @@ async function enviarTexto(to: string, body: string) {
     await fetch(`${GRAPH}/${PHONE_ID}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body } }),
+      body: JSON.stringify({ messaging_product: 'whatsapp', to: paraEnvio(to), type: 'text', text: { body } }),
     })
   } catch (e) { console.error('[whatsapp] enviarTexto', (e as Error).message) }
 }
@@ -87,13 +98,44 @@ async function enviarStickerJoca(to: string) {
     await fetch(`${GRAPH}/${PHONE_ID}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'sticker', sticker: { id: STICKER_JOCA } }),
+      body: JSON.stringify({ messaging_product: 'whatsapp', to: paraEnvio(to), type: 'sticker', sticker: { id: STICKER_JOCA } }),
     })
   } catch (_) { /* opcional, silencioso */ }
 }
 
 async function logMsg(row: Record<string, unknown>) {
   try { await admin.from('whatsapp_mensagens').insert(row) } catch (_) { /* silencioso */ }
+}
+
+// Baixa o áudio da Meta (Graph) e transcreve via OpenAI Whisper -> texto PT-BR.
+// WhatsApp manda nota de voz como audio/ogg (opus), que o Whisper aceita.
+async function transcreverAudio(mediaId: string | undefined): Promise<string> {
+  if (!OPENAI_KEY) throw new Error('sem OPENAI_API_KEY')
+  if (!mediaId) throw new Error('sem media id')
+  // 1) metadados da mídia -> URL temporária
+  const meta = await fetch(`${GRAPH}/${mediaId}`, { headers: { Authorization: `Bearer ${WA_TOKEN}` } })
+  const mj = await meta.json()
+  if (!meta.ok || !mj?.url) throw new Error(mj?.error?.message || 'mídia sem url')
+  // 2) baixa o binário (exige o mesmo Bearer da Graph)
+  const bin = await fetch(mj.url, { headers: { Authorization: `Bearer ${WA_TOKEN}` } })
+  if (!bin.ok) throw new Error(`download HTTP ${bin.status}`)
+  const buf = new Uint8Array(await bin.arrayBuffer())
+  const mime = String(mj.mime_type || 'audio/ogg').split(';')[0]
+  const ext = mime.includes('mpeg') || mime.includes('mp3') ? 'mp3'
+    : mime.includes('wav') ? 'wav'
+    : mime.includes('mp4') || mime.includes('m4a') ? 'm4a'
+    : mime.includes('webm') ? 'webm' : 'ogg'
+  // 3) Whisper (pt). Form multipart.
+  const form = new FormData()
+  form.append('file', new Blob([buf], { type: mime }), `audio.${ext}`)
+  form.append('model', 'whisper-1')
+  form.append('language', 'pt')
+  const tr = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST', headers: { Authorization: `Bearer ${OPENAI_KEY}` }, body: form,
+  })
+  const tj = await tr.json()
+  if (!tr.ok) throw new Error(tj?.error?.message || `Whisper HTTP ${tr.status}`)
+  return String(tj?.text || '').trim()
 }
 
 // Interpreta o texto no contexto do grupo (categorias/contas/cartões), service_role.
@@ -174,15 +216,17 @@ Deno.serve(async (req) => {
     for (const ch of changes) {
       const msgs = ch?.value?.messages || []
       for (const m of msgs) {
-        if (m?.type !== 'text') continue
+        const tipoMsg = m?.type
+        if (tipoMsg !== 'text' && tipoMsg !== 'audio') continue
         const waId = String(m.id || '')
         const from = String(m.from || '')          // dígitos com DDI, ex. 5511999998888
-        const texto = String(m?.text?.body || '').trim()
-        if (!waId || !from || !texto) continue
+        if (!waId || !from) continue
 
-        // Idempotência: a tabela tem unique(wa_message_id). Se já existe, pula.
+        // Idempotência (ANTES de transcrever/gastar): a tabela tem unique(wa_message_id).
+        // Para áudio gravamos um marcador; o texto transcrito vai no log de saída.
         const { error: dupErr } = await admin.from('whatsapp_mensagens').insert({
-          wa_message_id: waId, telefone: from, direcao: 'entrada', tipo: 'desconhecido', texto,
+          wa_message_id: waId, telefone: from, direcao: 'entrada', tipo: 'desconhecido',
+          texto: tipoMsg === 'audio' ? '[áudio]' : String(m?.text?.body || '').trim(),
         })
         if (dupErr) { if ((dupErr as any).code === '23505') continue; /* outro erro: segue mesmo assim */ }
 
@@ -194,6 +238,28 @@ Deno.serve(async (req) => {
           continue
         }
 
+        // Resolve o texto: se for áudio, baixa a mídia e transcreve (Whisper).
+        let texto = ''
+        if (tipoMsg === 'audio') {
+          try {
+            texto = await transcreverAudio(m?.audio?.id)
+          } catch (e) {
+            console.error('[whatsapp] transcrever', (e as Error).message)
+            await enviarTexto(from, 'Não consegui ouvir seu áudio agora 😅. Pode mandar por texto, por favor?')
+            await logMsg({ telefone: from, direcao: 'saida', tipo: 'erro', texto: 'falha transcrição' })
+            continue
+          }
+        } else {
+          texto = String(m?.text?.body || '').trim()
+        }
+        if (!texto) {
+          await enviarTexto(from, tipoMsg === 'audio'
+            ? 'Seu áudio chegou sem fala que eu entendesse 🤔. Tenta de novo, ex.: "mercado cento e vinte".'
+            : 'Não entendi 🤔. Me manda o gasto, ex.: "mercado 120".')
+          await logMsg({ telefone: from, direcao: 'saida', tipo: 'erro', texto: 'sem texto' })
+          continue
+        }
+
         // 3) Tenta vincular pelo código (opção A). A mensagem pode ser uma frase
         // ("...meu código é A1B2C3"), então extraímos os tokens de 6 hex (formato do
         // código) e tentamos cada um. Um lançamento comum não bate com código pendente.
@@ -202,7 +268,23 @@ Deno.serve(async (req) => {
         for (const cod of candidatos) {
           const { data: conn } = await admin.rpc('wa_conectar', { p_telefone: from, p_codigo: cod })
           if (conn?.ok) {
-            await enviarTexto(from, `Prontinho, ${conn.nome?.split(' ')?.[0] || ''}! Seu WhatsApp está conectado ao HopeFin. 🎉\nAgora é só me mandar seus gastos, tipo: "mercado 120 no crédito" ou "recebi 2000 de salário".`)
+            await enviarTexto(from, [
+              `Prontinho, ${conn.nome?.split(' ')?.[0] || ''}! ✅ Seu WhatsApp agora está conectado ao HopeFin.`,
+              '',
+              'Daqui pra frente, é só me mandar seus gastos e entradas em português normal que eu lanço no app na hora. Veja como:',
+              '',
+              '💸 *Gastos*',
+              '• "mercado 120"',
+              '• "uber 23,50 ontem"',
+              '• "farmácia 48,90 no crédito"',
+              '• "almoço 35 parcelado em 3x"',
+              '',
+              '💰 *Entradas*',
+              '• "recebi 2000 de salário"',
+              '• "entrou 150 de freela sexta"',
+              '',
+              'Eu entendo sozinho o valor, a data ("ontem", "sexta", "dia 3"), a categoria, o cartão e as parcelas. Manda um lançamento de cada vez. 💙',
+            ].join('\n'))
             await enviarStickerJoca(from)
             await logMsg({ telefone: from, direcao: 'saida', usuario_id: conn.usuario_id, grupo_id: conn.grupo_id, tipo: 'conexao', texto: 'conectado' })
             conectou = true

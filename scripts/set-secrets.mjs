@@ -69,6 +69,11 @@ if (env.ANTHROPIC_API_KEY) secrets.push({ name: 'ANTHROPIC_API_KEY', value: env.
 if (env.OPENAI_API_KEY)    secrets.push({ name: 'OPENAI_API_KEY', value: env.OPENAI_API_KEY })
 if (env.RESEND_API_KEY)    secrets.push({ name: 'RESEND_API_KEY', value: env.RESEND_API_KEY })
 
+// WhatsApp (Cloud API — webhook de lançamento, prompt 11.1). Só entram se preenchidos.
+for (const n of ['WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_TOKEN', 'WHATSAPP_VERIFY_TOKEN', 'WHATSAPP_APP_SECRET', 'WHATSAPP_STICKER_JOCA_ID']) {
+  if (env[n]) secrets.push({ name: n, value: env[n] })
+}
+
 const res = await fetch(`https://api.supabase.com/v1/projects/${REF}/secrets`, {
   method: 'POST',
   headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
