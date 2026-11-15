@@ -9,7 +9,7 @@ import { useTema } from '../contexts/ThemeContext'
 import AdminLogin from './AdminLogin'
 import Guard2FA from './Guard2FA'
 import { ehPrevia } from './host'
-import { VisaoGeral, Grupos, Administradores, Cupons, Webhooks, Custos, Servicos, Receitas, EmConstrucao } from './secoes'
+import { VisaoGeral, Grupos, Administradores, Cupons, Webhooks, Custos, Servicos, Receitas, Suporte, EmConstrucao } from './secoes'
 import './painel.css'
 
 const MENU = [
@@ -113,7 +113,7 @@ function Painel({ logout, email }) {
           {aba === 'receitas' && <Receitas />}
           {aba === 'custos' && <Custos />}
           {aba === 'servicos' && <Servicos />}
-          {aba === 'suporte' && <EmConstrucao titulo="Suporte" etapa={4} descricao="Receber os e-mails do domínio dentro do painel, com status, respostas prontas e ligação com a ficha do cliente." />}
+          {aba === 'suporte' && <Suporte />}
           {aba === 'saude' && <EmConstrucao titulo="Saúde do sistema" etapa={5} descricao="Checagem de hora em hora: sites/funções no ar, crons rodando, falhas de IA, inadimplência e alertas por e-mail." />}
         </main>
       </div>

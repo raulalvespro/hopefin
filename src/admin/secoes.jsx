@@ -3,6 +3,7 @@ import {
   CreditCard, Users, Clock, AlertTriangle, Gift, Rocket, Sparkles, Ticket, Webhook,
   Pause, Play, Check, Loader, X, Mail, Send, Shield, UserPlus, Trash2, Hammer,
   Wallet, Package, TrendingUp, TrendingDown, Plus, Pencil, ExternalLink, Bell,
+  Inbox, Archive, CornerUpLeft,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
@@ -759,6 +760,125 @@ function ModalCliente({ grupo, onFechar }) {
             </p>
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+/* ============================ SUPORTE (caixa de e-mails) ============================ */
+const SUP_STATUS = { novo: ['Novo', 'tag-blue'], lido: ['Lido', 'tag-amber'], respondido: ['Respondido', 'tag-green'], arquivado: ['Arquivado', 'tag-red'] }
+
+export function Suporte() {
+  const { toast } = useToast()
+  const [d, setD] = useState(null)
+  const [filtro, setFiltro] = useState(null)
+  const [aberto, setAberto] = useState(null)
+
+  const carregar = useCallback(() => {
+    supabase.rpc('admin_suporte_listar', { p_status: null }).then(({ data, error }) => {
+      if (error) { toast('Falhou ao carregar.', 'erro'); setD(false) } else setD(data)
+    })
+  }, [toast])
+  useEffect(() => { carregar() }, [carregar])
+
+  if (d === null) return <section className="adm-sec"><div className="adm-vazio">Carregando…</div></section>
+  if (d === false) return <section className="adm-sec"><div className="adm-vazio">Não consegui carregar.</div></section>
+
+  const cont = d.contagem || {}
+  const itens = filtro ? d.itens.filter(i => i.status === filtro) : d.itens
+  const chips = [['Todos', null], ['Novos', 'novo'], ['Lidos', 'lido'], ['Respondidos', 'respondido'], ['Arquivados', 'arquivado']]
+
+  return (
+    <section className="adm-sec">
+      <h2><Inbox size={16} color="var(--accent)" /> Caixa de suporte</h2>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0 14px' }}>
+        {chips.map(([rot, st]) => {
+          const n = st ? (cont[st] || 0) : d.itens.length
+          return (
+            <button key={rot} onClick={() => setFiltro(st)}
+              className={`tag ${filtro === st ? 'tag-green' : ''}`}
+              style={{ cursor: 'pointer', border: filtro === st ? 'none' : '1px solid var(--border)', background: filtro === st ? undefined : 'transparent', color: filtro === st ? undefined : 'var(--text2)' }}>
+              {rot} {n > 0 && <strong>· {n}</strong>}
+            </button>
+          )
+        })}
+      </div>
+      {itens.length === 0 ? <p style={{ fontSize: 13, color: 'var(--text3)' }}>Nenhum e-mail aqui.</p> : itens.map(m => {
+        const [rot, cls] = SUP_STATUS[m.status] || [m.status, 'tag-amber']
+        return (
+          <button key={m.id} onClick={() => setAberto(m)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '11px 0', borderTop: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+              <span style={{ fontSize: 14, fontWeight: 600 }}>{m.de_nome || m.de_email}</span>
+              <span style={{ fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{dataHora(m.recebido_em)}</span>
+            </div>
+            <div style={{ fontSize: 13.5, color: 'var(--text)', marginTop: 2 }}>{m.assunto || '(sem assunto)'}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(m.corpo || '').replace(/\n/g, ' ')}</div>
+            <span className={`tag ${cls}`} style={{ marginTop: 6, display: 'inline-block' }}>{rot}</span>
+          </button>
+        )
+      })}
+      {aberto && <ModalSuporteMsg msg={aberto} onFechar={() => setAberto(null)} onMudou={() => { carregar() }} />}
+    </section>
+  )
+}
+
+function ModalSuporteMsg({ msg, onFechar, onMudou }) {
+  const { toast } = useToast()
+  const [resposta, setResposta] = useState('')
+  const [enviando, setEnviando] = useState(false)
+
+  // Abriu um "novo" → marca como lido (sem bloquear a tela).
+  useEffect(() => {
+    if (msg.status === 'novo') supabase.rpc('admin_suporte_marcar', { p_id: msg.id, p_status: 'lido' }).then(() => onMudou())
+  }, [msg.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function responder() {
+    if (!resposta.trim()) return toast('Escreva a resposta.', 'erro')
+    setEnviando(true)
+    const { data, error } = await supabase.functions.invoke('admin-suporte-responder', { body: { id: msg.id, texto: resposta.trim() } })
+    setEnviando(false)
+    if (error || data?.erro) return toast(data?.erro || 'Não consegui enviar.', 'erro')
+    toast('Resposta enviada.', 'ok'); onMudou(); onFechar()
+  }
+  async function marcar(status) {
+    const { error } = await supabase.rpc('admin_suporte_marcar', { p_id: msg.id, p_status: status })
+    if (error) return toast('Falhou.', 'erro')
+    toast('Atualizado.', 'ok'); onMudou(); onFechar()
+  }
+  async function remover() {
+    const { error } = await supabase.rpc('admin_suporte_remover', { p_id: msg.id })
+    if (error) return toast('Falhou.', 'erro')
+    toast('Removido.', 'ok'); onMudou(); onFechar()
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onFechar}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560, maxHeight: '88vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+          <h2 style={{ fontSize: 17 }}>{msg.assunto || '(sem assunto)'}</h2>
+          <button onClick={onFechar} aria-label="Fechar"><X size={20} color="var(--text2)" /></button>
+        </div>
+        <p style={{ fontSize: 12.5, color: 'var(--text2)', marginBottom: 2 }}>{msg.de_nome ? `${msg.de_nome} · ` : ''}<span style={{ wordBreak: 'break-all' }}>{msg.de_email}</span></p>
+        <p style={{ fontSize: 11.5, color: 'var(--text3)', marginBottom: 12 }}>{dataHora(msg.recebido_em)}</p>
+        <div style={{ background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 14, marginBottom: 16, fontSize: 14, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.corpo || '(sem conteúdo)'}</div>
+
+        {msg.resposta && (
+          <div style={{ borderLeft: '3px solid var(--accent)', paddingLeft: 12, marginBottom: 16 }}>
+            <p style={{ fontSize: 11.5, color: 'var(--text2)', marginBottom: 4 }}>Sua resposta · {dataHora(msg.respondido_em)}</p>
+            <div style={{ fontSize: 13.5, color: 'var(--text2)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.resposta}</div>
+          </div>
+        )}
+
+        <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text2)', display: 'block', marginBottom: 6 }}>Responder (vai pelo e-mail avisos@, assinado HopeFin)</label>
+        <textarea value={resposta} onChange={e => setResposta(e.target.value)} rows={5} placeholder="Escreva a resposta ao cliente…" style={{ width: '100%', marginBottom: 12, resize: 'vertical' }} />
+        <button className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12 }} onClick={responder} disabled={enviando}>
+          {enviando ? <><Loader size={18} className="spin" /> Enviando…</> : <><CornerUpLeft size={18} /> Enviar resposta</>}
+        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => marcar('arquivado')}><Archive size={14} /> Arquivar</button>
+          <button className="btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => marcar('novo')}>Marcar não lido</button>
+          <button className="btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5, color: 'var(--red)', display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }} onClick={remover}><Trash2 size={14} /> Remover</button>
+        </div>
       </div>
     </div>
   )
