@@ -3,7 +3,7 @@ import {
   CreditCard, Users, Clock, AlertTriangle, Gift, Rocket, Sparkles, Ticket, Webhook,
   Pause, Play, Check, Loader, X, Mail, Send, Shield, UserPlus, Trash2, Hammer,
   Wallet, Package, TrendingUp, TrendingDown, Plus, Pencil, ExternalLink, Bell,
-  Inbox, Archive, CornerUpLeft,
+  Inbox, Archive, CornerUpLeft, Activity, CheckCircle2, XCircle, Database, Timer,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
@@ -881,6 +881,83 @@ function ModalSuporteMsg({ msg, onFechar, onMudou }) {
         </div>
       </div>
     </div>
+  )
+}
+
+/* ============================ SAÚDE DO SISTEMA ============================ */
+const NIVEL = {
+  ok: ['Tudo certo', 'var(--accent)', CheckCircle2],
+  atencao: ['Atenção', 'var(--amber)', AlertTriangle],
+  erro: ['Problema', 'var(--red)', XCircle],
+}
+function corCron(st) { return st === 'succeeded' ? 'var(--accent)' : st == null ? 'var(--amber)' : 'var(--red)' }
+
+export function Saude() {
+  const { toast } = useToast()
+  const [d, setD] = useState(null)
+  const carregar = useCallback(() => {
+    setD(null)
+    supabase.rpc('admin_saude').then(({ data, error }) => {
+      if (error) { toast('Falhou ao checar.', 'erro'); setD(false) } else setD(data)
+    })
+  }, [toast])
+  useEffect(() => { carregar() }, [carregar])
+
+  if (d === null) return <section className="adm-sec"><div className="adm-vazio">Checando…</div></section>
+  if (d === false) return <section className="adm-sec"><div className="adm-vazio">Não consegui checar.</div></section>
+
+  const [rot, cor, Icone] = NIVEL[d.nivel] || NIVEL.atencao
+
+  return (
+    <>
+      <section className="adm-sec" style={{ borderColor: cor }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Icone size={30} color={cor} />
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 18, fontFamily: 'Syne, sans-serif', fontWeight: 700, color: cor }}>{rot}</p>
+            <p style={{ fontSize: 12, color: 'var(--text3)' }}>Checado agora · {dataHora(d.gerado_em)}</p>
+          </div>
+          <button className="adm-icbtn" onClick={carregar} aria-label="Rechecar"><Activity size={18} /></button>
+        </div>
+        {d.problemas?.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            {d.problemas.map((p, i) => (
+              <div key={i} style={{ fontSize: 13, color: 'var(--text2)', padding: '5px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                <AlertTriangle size={13} color={cor} style={{ verticalAlign: -2, marginRight: 6 }} />{p}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="adm-sec">
+        <h2><Database size={16} color="var(--accent)" /> Checagens</h2>
+        <Linha rotulo="Banco de dados" valor="OK" cor="var(--accent)" />
+        <Linha rotulo="Trials vencidos ainda como trial" valor={d.trials_vencidos} cor={d.trials_vencidos > 0 ? 'var(--amber)' : 'var(--accent)'} />
+        <Linha rotulo="Assinaturas inadimplentes" valor={d.past_due} cor={d.past_due > 0 ? 'var(--amber)' : 'var(--accent)'} />
+        <Linha rotulo="Erros de webhook (24h)" valor={d.webhooks_erro_24h} cor={d.webhooks_erro_24h > 0 ? 'var(--red)' : 'var(--accent)'} />
+      </section>
+
+      <section className="adm-sec">
+        <h2><Timer size={16} color="var(--purple)" /> Tarefas agendadas (crons)</h2>
+        {(!d.crons || d.crons.length === 0) ? <p style={{ fontSize: 13, color: 'var(--text3)' }}>Nenhum cron.</p> : d.crons.map((c, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: '1px solid var(--border)' }}>
+            <span style={{ width: 9, height: 9, borderRadius: 5, background: corCron(c.ultimo_status), flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 13.5, fontWeight: 600 }}>{c.jobname}</p>
+              <p style={{ fontSize: 11.5, color: 'var(--text3)' }}>{c.schedule}{!c.active && ' · inativo'}</p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: 12.5, color: corCron(c.ultimo_status) }}>{c.ultimo_status || 'nunca rodou'}</p>
+              {c.ultimo_em && <p style={{ fontSize: 11, color: 'var(--text3)' }}>{dataHora(c.ultimo_em)}</p>}
+            </div>
+          </div>
+        ))}
+        <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 10, lineHeight: 1.5 }}>
+          Checagem sob demanda. O alerta automático por e-mail (de hora em hora, só quando surge um problema novo) é a próxima sub-etapa.
+        </p>
+      </section>
+    </>
   )
 }
 
