@@ -432,6 +432,7 @@ create policy planos_config_select on public.planos_config
 --   planos_publicos()        -> json de preços + lancamento_ativo (grant anon)
 --   grupo_pode_lancar()      -> cortesia | active (cancelada: até current_period_end — 0027) | trial válido | legado (sem linha)
 --   encerrar_assinaturas_canceladas() -> cron: active cancelada vencida vira 'canceled' (0027)
+--   encerrar_trials_vencidos() -> cron: trial vencido (não-cortesia) vira 'expired' (0053)
 --   limite_ia_status()       -> json de uso/limite de IA do grupo (0019)
 --   registrar_consumo_ia(text,int,int) -> grava um uso de IA (0019)
 --   resgatar_cupom(text)     -> resgate atômico de cortesia; 1 cupom por grupo (0019)

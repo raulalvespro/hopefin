@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, addMonths, getDaysInMonth } from 'date-fns'
 import { useCategorias } from './useCategorias'
 import { fmt, parseDataLocal } from '../lib/format'
+import { estadoAssinatura } from '../lib/assinatura'
 
 const clampDay = (y, m, d) => Math.min(d, getDaysInMonth(new Date(y, m, 1)))
 const diasEntre = (a, b) => Math.round((a - b) / 86400000)
@@ -47,7 +48,7 @@ export function useAlertas() {
     const fimAtual = format(endOfMonth(mesAtual), 'yyyy-MM-dd')
     const fimProx = format(endOfMonth(prox), 'yyyy-MM-dd')
 
-    const [cf, cartoes, gastos, parcelas, assinaturas, lanc, pagas, orc, entradas, cofrinhos, supr, pref] = await Promise.all([
+    const [cf, cartoes, gastos, parcelas, assinaturas, lanc, pagas, orc, entradas, cofrinhos, supr, pref, subAssin] = await Promise.all([
       supabase.from('contas_fixas').select('id, nome, valor, categoria, dia_vencimento, alerta_dias').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('cartoes').select('id, nome, dia_fechamento, dia_vencimento, alerta_dias').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('gastos').select('valor, data, cartao_id, categoria').eq('grupo_id', gid),
@@ -60,6 +61,7 @@ export function useAlertas() {
       supabase.from('cofrinhos').select('id, nome, meta, meta_data, saldo_atual').eq('grupo_id', gid),
       supabase.from('alertas_dispensados').select('alerta_id, lembrar_em').eq('grupo_id', gid),
       supabase.from('preferencias_notificacao').select('*').eq('grupo_id', gid).maybeSingle(),
+      supabase.from('subscriptions').select('*').maybeSingle(),
     ])
 
     // Preferências (ausência = tudo ligado). dias_padrao vale p/ parcelas e assinaturas.
@@ -185,6 +187,14 @@ export function useAlertas() {
         }
       }
     })
+
+    // 6) Assinatura: trial/acesso acabando, pagamento pendente, vencida ou renovação próxima.
+    const { aviso: avisoAssin } = estadoAssinatura(subAssin.data)
+    if (avisoAssin) {
+      const emoji = avisoAssin.severidade === 'info' ? '💳' : avisoAssin.severidade === 'vencido' ? '⚠️' : '⏳'
+      const ord = avisoAssin.severidade === 'vencido' ? 0.1 : avisoAssin.severidade === 'vence' ? 0.5 : 1.3
+      out.push({ id: avisoAssin.chave, severidade: avisoAssin.severidade, emoji, titulo: avisoAssin.titulo, descricao: avisoAssin.texto, destino: '/planos', ord })
+    }
 
     out.sort((a, b) => (a.ord - b.ord) || ((a.venc?.getTime() || 0) - (b.venc?.getTime() || 0)))
     setAlertas(out.filter(a => !suprimidosRef.current.has(a.id)))

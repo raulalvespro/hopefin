@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronDown, Check, Sparkles, Users, Infinity as InfinityIcon, LineChart, PiggyBank, Smartphone, ShieldCheck, Tag as TagIcon, Mic, CalendarCheck, Bell, ClipboardCheck, Upload, Moon, Lock, Unlock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { fmt } from '../lib/format'
+import { fmt, fmtData } from '../lib/format'
 import { PRECOS_PADRAO, precosVigentes, economiaPct, porMesReais } from '../lib/precos'
 import { useAssinatura } from '../hooks/useAssinatura'
 import { Tag } from '../components/ui'
@@ -29,7 +29,7 @@ export default function Planos() {
   const [resgatando, setResgatando] = useState(false)
   const [verTudo, setVerTudo] = useState(false)
   const [uso, setUso] = useState(null) // { dias, gastos, contas } durante o teste
-  const { assinatura, emTrial, vencida, status, diasRestantes } = useAssinatura()
+  const { assinatura, status, diasRestantes, estado, ciclo, renovaEm, terminaEm } = useAssinatura()
 
   useEffect(() => {
     supabase.rpc('planos_publicos').then(({ data, error }) => {
@@ -71,12 +71,18 @@ export default function Planos() {
     setCupom('')
   }
 
-  // Selo de situação do teste (dados reais da assinatura do grupo).
-  const seloTeste = emTrial && diasRestantes != null
-    ? <Tag cor="amber" style={{ alignSelf: 'flex-start' }}>{t.testeTermina(diasRestantes)}</Tag>
-    : (vencida && status === 'trial') || status === 'expired'
-      ? <Tag cor="vermelho" style={{ alignSelf: 'flex-start' }}>{t.testeAcabou}</Tag>
-      : null
+  // Cabeçalho "situação atual" do plano (dados reais da assinatura do grupo).
+  const ts = t.situacao
+  const fData = d => (d ? fmtData(d) : null)
+  const SIT = {
+    cortesia: { cor: 'verde', tag: ts.cortesiaTag, txt: ts.cortesiaTxt },
+    ativa: { cor: 'verde', tag: ts.ativaTag(ciclo), txt: ts.ativaTxt(fData(renovaEm)) },
+    cancelada: { cor: 'amber', tag: ts.canceladaTag, txt: ts.canceladaTxt(fData(terminaEm)) },
+    trial: { cor: 'amber', tag: ts.trialTag, txt: ts.trialTxt(diasRestantes ?? 0) },
+    pendente: { cor: 'vermelho', tag: ts.pendenteTag, txt: ts.pendenteTxt },
+    encerrada: { cor: 'vermelho', tag: ts.encerradaTag, txt: ts.encerradaTxt },
+  }
+  const sit = SIT[estado] || null
 
   const cartaoBtn = {
     display: 'block', width: '100%', padding: '12px', minHeight: 44, boxSizing: 'border-box', textAlign: 'center', textDecoration: 'none',
@@ -94,7 +100,12 @@ export default function Planos() {
       </Link>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-        {seloTeste}
+        {sit && (
+          <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
+            <Tag cor={sit.cor}>{sit.tag}</Tag>
+            <p style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>{sit.txt}</p>
+          </div>
+        )}
         <h2 style={{ fontSize: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
           <Sparkles size={22} color="var(--accent)" /> {t.titulo}
         </h2>

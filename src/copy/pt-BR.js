@@ -221,6 +221,16 @@ export const copy = {
     subtitulo: 'Um preço para a casa toda. As finanças da família inteira em um lugar — sem cobrar por pessoa.',
     testeTermina: (n) => (n === 0 ? 'Seu teste termina hoje' : n === 1 ? 'Seu teste termina em 1 dia' : `Seu teste termina em ${n} dias`),
     testeAcabou: 'Seu período de teste terminou',
+    // Cabeçalho "situação atual" do plano (todo estado) no topo da tela.
+    situacao: {
+      cortesiaTag: 'Cortesia', cortesiaTxt: 'Você usa o HopeFin como cortesia, sem cobrança.',
+      ativaTag: (ciclo) => (ciclo === 'anual' ? 'Plano anual ativo' : 'Plano mensal ativo'),
+      ativaTxt: (d) => (d ? `Renova em ${d}. Cancele quando quiser.` : 'Assinatura ativa. Cancele quando quiser.'),
+      canceladaTag: 'Cancelada', canceladaTxt: (d) => (d ? `Seu acesso vai até ${d} e não há nova cobrança.` : 'Cancelamento agendado.'),
+      trialTag: 'Teste grátis', trialTxt: (n) => (n === 0 ? 'Termina hoje.' : n === 1 ? 'Termina amanhã.' : `Faltam ${n} dias.`),
+      pendenteTag: 'Pagamento pendente', pendenteTxt: 'Regularize para voltar a lançar.',
+      encerradaTag: 'Teste acabou', encerradaTxt: 'Assine para voltar a lançar — você segue vendo e exportando tudo.',
+    },
     trialTitulo: (dias) => `${dias} dias grátis, sem cartão`,
     trialTexto: 'Experimente tudo antes de decidir. Você só paga se quiser continuar.',
     escolhaPlano: 'Escolha o plano',

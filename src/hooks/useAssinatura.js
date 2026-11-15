@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { estadoAssinatura } from '../lib/assinatura'
 
-// Lê a assinatura do grupo logado (uma por grupo, filtrada pela RLS).
-// Espelha a função grupo_pode_lancar() do banco:
-//   - sem linha (grupo legado) -> pode lançar
-//   - active -> pode lançar
-//   - trial válido (não vencido) -> pode lançar
-//   - resto (past_due / canceled / expired / trial vencido) -> bloqueado
-// A trava real é no banco (RLS restritiva de INSERT); aqui é só para a UX.
+// Lê a assinatura do grupo logado (uma por grupo, filtrada pela RLS) e deriva o
+// estado humano + aviso via estadoAssinatura() (fonte única em lib/assinatura.js),
+// que espelha grupo_pode_lancar() do banco. A trava real é no banco (RLS de INSERT).
 export function useAssinatura() {
   const [assinatura, setAssinatura] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -25,29 +22,18 @@ export function useAssinatura() {
 
   useEffect(() => { recarregar() }, [recarregar])
 
-  const status = assinatura?.status ?? null
-  const fimTrial = assinatura?.trial_ends_at ? new Date(assinatura.trial_ends_at) : null
-  const trialValido = status === 'trial' && (!fimTrial || fimTrial > new Date())
-
-  // Dias inteiros restantes de trial (0 quando já venceu ou não há trial).
-  const diasRestantes = fimTrial
-    ? Math.max(0, Math.ceil((fimTrial - new Date()) / 86400000))
-    : null
-
-  // Cancelada pelo usuário: o acesso vai até o fim do período já pago (espelha o banco).
-  const cancelaNoFim = !!assinatura?.cancel_at_period_end && status === 'active'
-  const fimPeriodo = assinatura?.current_period_end ? new Date(assinatura.current_period_end) : null
-  const ativaPaga = status === 'active' && (!cancelaNoFim || !fimPeriodo || fimPeriodo > new Date())
-
-  const podeLancar = !assinatura
-    ? true
-    : ativaPaga || trialValido
-
-  const vencida = !!assinatura && !podeLancar
+  const est = estadoAssinatura(assinatura)
 
   return {
-    assinatura, status, loading, recarregar,
-    podeLancar, vencida, emTrial: trialValido, diasRestantes,
-    cancelaNoFim, acessoAte: cancelaNoFim ? fimPeriodo : null,
+    assinatura, loading, recarregar,
+    // compat com quem já usa:
+    status: est.status, podeLancar: est.podeLancar, vencida: est.vencida,
+    emTrial: est.emTrial, diasRestantes: est.diasRestantes,
+    cancelaNoFim: est.cancelaNoFim, acessoAte: est.acessoAte,
+    // estado rico do plano:
+    estado: est.estado, emCortesia: est.emCortesia, ciclo: est.ciclo,
+    renovaEm: est.renovaEm, terminaEm: est.terminaEm,
+    diasRenova: est.diasRenova, diasTermina: est.diasTermina,
+    precoCentavos: est.precoCentavos, aviso: est.aviso,
   }
 }
