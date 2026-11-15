@@ -5,6 +5,8 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import App from './App'
+import AdminApp from './admin/AdminApp'
+import { ehHostAdmin } from './admin/host'
 import './index.css'
 import { initSentry, Sentry } from './lib/sentry'
 import { initPostHog } from './lib/analytics'
@@ -16,26 +18,20 @@ initSentry()
 initPostHog()
 iniciarAutoAtualizacao()
 
-// Painel do dono no subdomínio: admin.hopefin.com.br abre direto o /admin.
-// (o mesmo app/worker serve os dois domínios; o guard de is_admin continua valendo)
-if (typeof window !== 'undefined' &&
-    window.location.hostname === 'admin.hopefin.com.br' &&
-    window.location.pathname === '/') {
-  window.history.replaceState(null, '', '/admin')
-}
+// No subdomínio do painel (admin.hopefin.com.br / admin-preview / localhost?admin=1)
+// renderizamos o PAINEL DO DONO — login próprio + ERP, nada a ver com o app.
+const ehAdmin = ehHostAdmin()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Sentry.ErrorBoundary fallback={<p style={{ padding: 24, textAlign: 'center' }}>Algo deu errado. Recarregue a página.</p>}>
-      <BrowserRouter>
-        <ThemeProvider>
-          <ToastProvider>
-            <AuthProvider>
-              <App />
-            </AuthProvider>
-          </ToastProvider>
-        </ThemeProvider>
-      </BrowserRouter>
+      <ThemeProvider>
+        <ToastProvider>
+          <AuthProvider>
+            {ehAdmin ? <AdminApp /> : <BrowserRouter><App /></BrowserRouter>}
+          </AuthProvider>
+        </ToastProvider>
+      </ThemeProvider>
     </Sentry.ErrorBoundary>
   </React.StrictMode>
 )

@@ -1,0 +1,14 @@
+// Worker de PRÉVIA do painel do dono — serve o MESMO build (dist/) num endereço separado,
+// pra revisar o admin novo sem publicar no oficial. Deploy: npx wrangler deploy -c wrangler.preview.jsonc
+// (não roda build; buildar antes com `npm run build`). O app novo só ativa no host admin (ver src/admin/host.js).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hopefin-admin-preview",
+  "main": "worker.js",
+  "routes": [{ "pattern": "admin-preview.hopefin.com.br", "custom_domain": true }],
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  }
+}

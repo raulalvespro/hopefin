@@ -1,0 +1,69 @@
+/* Painel do dono (ERP) — usa os tokens do HopeFin (cor/fonte/raio), tudo escopado em .adm.
+   Layout: menu lateral agrupado + topo + conteúdo. Responsivo (sidebar vira gaveta no celular). */
+
+.adm { min-height: 100vh; background: var(--bg); color: var(--text); display: flex; }
+.adm * { box-sizing: border-box; }
+
+/* ---- Sidebar ---- */
+.adm-side {
+  width: 236px; flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.adm-logo { display: flex; align-items: center; gap: 8px; padding: 18px 20px 14px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px; }
+.adm-logo .pill { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--amber); color: #3b2a00; letter-spacing: .3px; }
+.adm-grp { padding: 10px 14px 2px; }
+.adm-grp-tit { font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--text3); padding: 0 8px 6px; }
+.adm-nav { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border-radius: var(--radius-sm); font-size: 14px; color: var(--text2); text-align: left; transition: background .15s, color .15s; }
+.adm-nav:hover { background: var(--bg3); color: var(--text); }
+.adm-nav.on { background: var(--accent); color: #fff; font-weight: 600; }
+.adm-nav.on svg { color: #fff; }
+.adm-nav .tag { margin-left: auto; }
+
+/* ---- Topbar ---- */
+.adm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.adm-top { height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 5; }
+.adm-top h1 { font-size: 16px; font-family: 'Syne', sans-serif; font-weight: 700; flex: 1; }
+.adm-top .email { font-size: 12.5px; color: var(--text2); }
+.adm-icbtn { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--radius-sm); color: var(--text2); }
+.adm-icbtn:hover { background: var(--bg3); color: var(--text); }
+.adm-burger { display: none; }
+
+/* ---- Conteúdo ---- */
+.adm-body { padding: 22px 20px 60px; max-width: 1060px; width: 100%; }
+.adm-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.adm-card { background: var(--panel, var(--bg2)); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.adm-card .k { display: flex; align-items: center; gap: 6px; color: var(--text2); font-size: 12px; margin-bottom: 8px; }
+.adm-card .v { font-size: 24px; font-family: 'Syne', sans-serif; font-weight: 700; }
+.adm-sec { background: var(--panel, var(--bg2)); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 18px; }
+.adm-sec h2 { font-size: 15px; display: flex; align-items: center; gap: 8px; margin: 0 0 14px; }
+
+/* ---- Tabela ---- */
+.adm-tbl-wrap { overflow-x: auto; }
+.adm-tbl { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 560px; }
+.adm-tbl th { color: var(--text2); font-size: 11.5px; text-transform: uppercase; letter-spacing: .3px; text-align: left; padding: 6px 8px; font-weight: 600; }
+.adm-tbl td { padding: 9px 8px; border-top: 1px solid var(--border); }
+.adm-tbl tr:hover td { background: var(--bg3); }
+
+/* ---- Spinner (escopado no painel) ---- */
+.adm .spin, .adm-auth .spin { animation: admspin 1s linear infinite; }
+@keyframes admspin { to { transform: rotate(360deg); } }
+
+/* ---- Login / 2FA ---- */
+.adm-auth { min-height: 100vh; width: 100%; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--bg); color: var(--text); }
+.adm-auth-card { width: 100%; max-width: 380px; background: var(--panel, var(--bg2)); border: 1px solid var(--border); border-radius: var(--radius-lg, 18px); padding: 28px; }
+.adm-auth-card h1 { font-family: 'Syne', sans-serif; font-size: 22px; margin: 0 0 4px; }
+.adm-auth-card .sub { color: var(--text2); font-size: 13px; margin: 0 0 20px; }
+.adm-qr { display: block; width: 190px; height: 190px; margin: 10px auto 12px; background: #fff; border-radius: 12px; padding: 8px; }
+.adm-badge-previa { position: fixed; bottom: 12px; right: 12px; z-index: 50; background: var(--amber); color: #3b2a00; font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 999px; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+
+/* ---- Vazio / placeholder ---- */
+.adm-vazio { text-align: center; color: var(--text3); padding: 40px 16px; font-size: 14px; }
+.adm-soon { display: inline-flex; align-items: center; gap: 8px; background: var(--bg3); color: var(--text2); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; }
+
+/* ---- Mobile ---- */
+@media (max-width: 760px) {
+  .adm-side { position: fixed; z-index: 30; left: 0; top: 0; transform: translateX(-100%); transition: transform .2s; box-shadow: 0 0 40px rgba(0,0,0,.25); }
+  .adm-side.aberta { transform: translateX(0); }
+  .adm-burger { display: inline-flex; }
+  .adm-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 29; }
+}
