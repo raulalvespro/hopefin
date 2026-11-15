@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   LayoutDashboard, Users, Wallet, Package, Ticket, LifeBuoy, Shield, Webhook, Activity,
-  Menu, X, Sun, Moon, LogOut, Loader, ShieldAlert, RefreshCw, TrendingUp,
+  Menu, X, Sun, Moon, LogOut, Loader, ShieldAlert, RefreshCw, TrendingUp, ScrollText, Settings,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -9,7 +9,8 @@ import { useTema } from '../contexts/ThemeContext'
 import AdminLogin from './AdminLogin'
 import Guard2FA from './Guard2FA'
 import { ehPrevia } from './host'
-import { VisaoGeral, Grupos, Administradores, Cupons, Webhooks, Custos, Servicos, Receitas, Suporte, Saude, EmConstrucao } from './secoes'
+import { VisaoGeral, Grupos, Administradores, Cupons, Webhooks, Custos, Servicos, Receitas, Suporte, Saude, Auditoria, Configuracoes, BuscaGlobal, EmConstrucao } from './secoes'
+import { Search } from 'lucide-react'
 import './painel.css'
 
 const MENU = [
@@ -18,9 +19,9 @@ const MENU = [
   { grupo: 'Financeiro', itens: [{ id: 'receitas', nome: 'Receitas', icon: TrendingUp }, { id: 'custos', nome: 'Custos', icon: Wallet }, { id: 'servicos', nome: 'Serviços & créditos', icon: Package }] },
   { grupo: 'Crescimento', itens: [{ id: 'cupons', nome: 'Cupons', icon: Ticket }] },
   { grupo: 'Atendimento', itens: [{ id: 'suporte', nome: 'Suporte', icon: LifeBuoy }] },
-  { grupo: 'Sistema', itens: [{ id: 'admins', nome: 'Administradores', icon: Shield }, { id: 'webhooks', nome: 'Webhooks', icon: Webhook }, { id: 'saude', nome: 'Saúde', icon: Activity }] },
+  { grupo: 'Sistema', itens: [{ id: 'admins', nome: 'Administradores', icon: Shield }, { id: 'config', nome: 'Configurações', icon: Settings }, { id: 'auditoria', nome: 'Auditoria', icon: ScrollText }, { id: 'webhooks', nome: 'Webhooks', icon: Webhook }, { id: 'saude', nome: 'Saúde', icon: Activity }] },
 ]
-const TITULOS = { visao: 'Visão geral', grupos: 'Clientes', receitas: 'Receitas', custos: 'Custos', servicos: 'Serviços & créditos', cupons: 'Cupons', suporte: 'Suporte', admins: 'Administradores', webhooks: 'Webhooks', saude: 'Saúde do sistema' }
+const TITULOS = { visao: 'Visão geral', grupos: 'Clientes', receitas: 'Receitas', custos: 'Custos', servicos: 'Serviços & créditos', cupons: 'Cupons', suporte: 'Suporte', admins: 'Administradores', config: 'Configurações', auditoria: 'Auditoria', webhooks: 'Webhooks', saude: 'Saúde do sistema' }
 
 function Centro({ children }) {
   return <div className="adm" style={{ alignItems: 'center', justifyContent: 'center' }}>{children}</div>
@@ -56,6 +57,17 @@ function Painel({ logout, email }) {
   const [cupons, setCupons] = useState([])
   const [webhooks, setWebhooks] = useState([])
   const [carregando, setCarregando] = useState(true)
+  const [buscaAberta, setBuscaAberta] = useState(false)
+
+  // ⌘K / Ctrl+K abre a busca global de qualquer tela.
+  useEffect(() => {
+    function onKey(e) {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setBuscaAberta(v => !v) }
+      if (e.key === 'Escape') setBuscaAberta(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // noindex: o painel nunca deve ser indexado.
   useEffect(() => {
@@ -99,13 +111,14 @@ function Painel({ logout, email }) {
           <button className="adm-icbtn adm-burger" onClick={() => setSideAberta(true)} aria-label="Menu"><Menu size={20} /></button>
           <h1>{TITULOS[aba]}</h1>
           <span className="email">{email}</span>
+          <button className="adm-icbtn" onClick={() => setBuscaAberta(true)} aria-label="Buscar (⌘K)" title="Buscar (⌘K)"><Search size={18} /></button>
           <button className="adm-icbtn" onClick={() => setTema(escuro ? 'light' : 'dark')} aria-label="Tema">{escuro ? <Sun size={18} /> : <Moon size={18} />}</button>
           <button className="adm-icbtn" onClick={carregar} aria-label="Atualizar"><RefreshCw size={17} className={carregando ? 'spin' : ''} /></button>
           <button className="adm-icbtn" onClick={logout} aria-label="Sair"><LogOut size={18} /></button>
         </header>
 
         <main className="adm-body">
-          {aba === 'visao' && <VisaoGeral metr={metr} consumo={consumo} recarregar={carregar} />}
+          {aba === 'visao' && <VisaoGeral metr={metr} consumo={consumo} recarregar={carregar} ir={ir} />}
           {aba === 'grupos' && <Grupos />}
           {aba === 'cupons' && <Cupons cupons={cupons} recarregar={carregar} />}
           {aba === 'admins' && <Administradores />}
@@ -114,9 +127,18 @@ function Painel({ logout, email }) {
           {aba === 'custos' && <Custos />}
           {aba === 'servicos' && <Servicos />}
           {aba === 'suporte' && <Suporte />}
+          {aba === 'config' && <Configuracoes />}
+          {aba === 'auditoria' && <Auditoria />}
           {aba === 'saude' && <Saude />}
         </main>
       </div>
+      {buscaAberta && (
+        <BuscaGlobal
+          paginas={MENU.flatMap(g => g.itens.map(it => ({ id: it.id, nome: it.nome })))}
+          ir={ir}
+          onFechar={() => setBuscaAberta(false)}
+        />
+      )}
     </div>
   )
 }

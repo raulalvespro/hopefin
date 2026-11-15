@@ -98,7 +98,11 @@ Deno.serve(async (req) => {
     contas: (contas || []).map((c: any) => ({ id: c.id, nome: c.nome })),
   })
 
+  // Custo REAL de IA: medimos tokens + tempo de cada chamada e gravamos via RPC
+  // (registrar_ia_chamada calcula o US$ pela tarifa do modelo). Fase 0 do painel.
   let dados: any
+  let tokensIn = 0, tokensOut = 0
+  const t0 = Date.now()
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -116,15 +120,27 @@ Deno.serve(async (req) => {
     })
     const out = await r.json()
     if (!r.ok) throw new Error(out?.error?.message || `Anthropic HTTP ${r.status}`)
+    tokensIn = Number(out?.usage?.input_tokens) || 0
+    tokensOut = Number(out?.usage?.output_tokens) || 0
     // O Haiku pode devolver um bloco "thinking" antes do texto — pegue o de texto.
     const textoResp = Array.isArray(out?.content)
       ? (out.content.find((b: any) => b.type === 'text')?.text || '')
       : ''
     dados = extrairJson(textoResp)
   } catch (err) {
-    console.error('[interpretar-lancamento]', (err as Error)?.message)
+    const msg = (err as Error)?.message
+    console.error('[interpretar-lancamento]', msg)
+    // Registra a falha no custo de IA (não derruba a resposta se a gravação falhar).
+    try {
+      await sb.rpc('registrar_ia_chamada', {
+        p_operacao: 'interpretar_lancamento', p_modelo: MODELO,
+        p_tokens_entrada: tokensIn, p_tokens_saida: tokensOut,
+        p_ms: Date.now() - t0, p_sucesso: false, p_erro: String(msg || '').slice(0, 300),
+      })
+    } catch (_) { /* silencioso */ }
     return json({ erro: 'não consegui interpretar agora. Tente de novo ou lance manualmente.' }, 502)
   }
+  const msChamada = Date.now() - t0
 
   // Validação/saneamento (nunca confiar cegamente na IA).
   const idsCartao = new Set((cartoes || []).map((c: any) => c.id))
@@ -146,6 +162,14 @@ Deno.serve(async (req) => {
   await sb.rpc('registrar_consumo_ia', {
     p_origem: origem === 'whatsapp' ? 'whatsapp' : 'app', p_qtd: 1, p_custo: 0,
   })
+  // Custo REAL de IA desta chamada (tokens medidos + tempo). Não derruba a resposta.
+  try {
+    await sb.rpc('registrar_ia_chamada', {
+      p_operacao: 'interpretar_lancamento', p_modelo: MODELO,
+      p_tokens_entrada: tokensIn, p_tokens_saida: tokensOut,
+      p_ms: msChamada, p_sucesso: true, p_erro: null,
+    })
+  } catch (_) { /* silencioso */ }
   const { data: logRow } = await sb.from('interpretacoes_log')
     .insert({ grupo_id: perfil.grupo_id, usuario_id: uid, origem, texto, json_ia: limpo })
     .select('id').maybeSingle()
