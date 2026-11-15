@@ -16,6 +16,14 @@ initSentry()
 initPostHog()
 iniciarAutoAtualizacao()
 
+// Painel do dono no subdomínio: admin.hopefin.com.br abre direto o /admin.
+// (o mesmo app/worker serve os dois domínios; o guard de is_admin continua valendo)
+if (typeof window !== 'undefined' &&
+    window.location.hostname === 'admin.hopefin.com.br' &&
+    window.location.pathname === '/') {
+  window.history.replaceState(null, '', '/admin')
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Sentry.ErrorBoundary fallback={<p style={{ padding: 24, textAlign: 'center' }}>Algo deu errado. Recarregue a página.</p>}>

@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { useState, useCallback, useEffect } from 'react'
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
@@ -76,12 +76,29 @@ function RotaAdmin({ children }) {
   return children
 }
 
+// Subdomínio do painel: em admin.hopefin.com.br, depois que o admin loga e cai na home,
+// mandamos pro /admin. Só redireciona quem é admin — não-admin fica na home (sem loop).
+function PortaoAdminHost() {
+  const { perfil } = useAuth()
+  const loc = useLocation()
+  const nav = useNavigate()
+  useEffect(() => {
+    if (typeof window !== 'undefined' &&
+        window.location.hostname === 'admin.hopefin.com.br' &&
+        perfil?.is_admin && loc.pathname === '/') {
+      nav('/admin', { replace: true })
+    }
+  }, [perfil, loc.pathname, nav])
+  return null
+}
+
 export default function App() {
   const [splash, setSplash] = useState(deveMostrarSplash)
   const fecharSplash = useCallback(() => { marcarSplash(); setSplash(false) }, [])
 
   return (
     <>
+    <PortaoAdminHost />
     {splash && <Splash onDone={fecharSplash} />}
     <Routes>
       <Route path="/login" element={<Login />} />
