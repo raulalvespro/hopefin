@@ -9,7 +9,7 @@ import { useTema } from '../contexts/ThemeContext'
 import AdminLogin from './AdminLogin'
 import Guard2FA from './Guard2FA'
 import { ehPrevia } from './host'
-import { VisaoGeral, Grupos, Administradores, Cupons, Webhooks, EmConstrucao } from './secoes'
+import { VisaoGeral, Grupos, Administradores, Cupons, Webhooks, Custos, Servicos, EmConstrucao } from './secoes'
 import './painel.css'
 
 const MENU = [
@@ -110,8 +110,8 @@ function Painel({ logout, email }) {
           {aba === 'cupons' && <Cupons cupons={cupons} recarregar={carregar} />}
           {aba === 'admins' && <Administradores />}
           {aba === 'webhooks' && <Webhooks webhooks={webhooks} />}
-          {aba === 'custos' && <EmConstrucao titulo="Custos" etapa={2} descricao="Receita líquida − IA − custos fixos, com custo por operação e por cliente. Precisa do registro por chamada de IA (modelo/tokens/US$)." />}
-          {aba === 'servicos' && <EmConstrucao titulo="Serviços & créditos" etapa={2} descricao="Um cartão por serviço (Supabase, Cloudflare, Resend, Anthropic, Asaas): plano, renovação, saldo e alerta de saldo baixo." />}
+          {aba === 'custos' && <Custos />}
+          {aba === 'servicos' && <Servicos />}
           {aba === 'suporte' && <EmConstrucao titulo="Suporte" etapa={4} descricao="Receber os e-mails do domínio dentro do painel, com status, respostas prontas e ligação com a ficha do cliente." />}
           {aba === 'saude' && <EmConstrucao titulo="Saúde do sistema" etapa={5} descricao="Checagem de hora em hora: sites/funções no ar, crons rodando, falhas de IA, inadimplência e alertas por e-mail." />}
         </main>

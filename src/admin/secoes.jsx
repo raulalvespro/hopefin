@@ -2,12 +2,30 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   CreditCard, Users, Clock, AlertTriangle, Gift, Rocket, Sparkles, Ticket, Webhook,
   Pause, Play, Check, Loader, X, Mail, Send, Shield, UserPlus, Trash2, Hammer,
+  Wallet, Package, TrendingUp, TrendingDown, Plus, Pencil, ExternalLink, Bell,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
 import { useMascote, atualizarConfigMascote } from '../lib/mascote'
 
 export const reais = (c) => ((c || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+export const dolares = (c) => ((c || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'USD' })
+
+// Cotação USD→BRL do dia (AwesomeAPI, pública e sem chave). Fallback conservador
+// se a rede falhar — é só pra converter os custos em dólar na tela, não é cobrança.
+const COTACAO_FALLBACK = 5.4
+function useCotacaoUsd() {
+  const [cotacao, setCotacao] = useState(null)
+  useEffect(() => {
+    let vivo = true
+    fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL')
+      .then(r => r.json())
+      .then(d => { if (vivo) setCotacao({ valor: Number(d?.USDBRL?.bid) || COTACAO_FALLBACK, real: true }) })
+      .catch(() => { if (vivo) setCotacao({ valor: COTACAO_FALLBACK, real: false }) })
+    return () => { vivo = false }
+  }, [])
+  return cotacao
+}
 export const dataCurta = (s) => s ? new Date(s).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'
 export const dataHora = (s) => s ? new Date(s).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'
 const STATUS = {
@@ -374,6 +392,212 @@ export function Webhooks({ webhooks }) {
         </div>
       ))}
     </section>
+  )
+}
+
+/* ============================ CUSTOS (receita x saída) ============================ */
+export function Custos() {
+  const { toast } = useToast()
+  const [d, setD] = useState(null)
+  const cot = useCotacaoUsd()
+  const carregar = useCallback(() => {
+    supabase.rpc('admin_custos_mes').then(({ data, error }) => {
+      if (error) { toast('Falhou ao carregar custos.', 'erro'); setD(false) } else setD(data)
+    })
+  }, [toast])
+  useEffect(() => { carregar() }, [carregar])
+
+  if (d === null || cot === null) return <section className="adm-sec"><div className="adm-vazio">Carregando…</div></section>
+  if (d === false) return <section className="adm-sec"><div className="adm-vazio">Não consegui carregar.</div></section>
+
+  const fixosUsdEmBrl = Math.round((d.fixos_usd_centavos || 0) * cot.valor)      // US$¢ × R$/US$ = R$¢
+  const saidaTotal = (d.ia_custo_centavos || 0) + (d.fixos_brl_centavos || 0) + fixosUsdEmBrl
+  const resultado = (d.mrr_centavos || 0) - saidaTotal
+  const positivo = resultado >= 0
+
+  return (
+    <>
+      <div className="adm-cards">
+        <div className="adm-card">
+          <div className="k"><TrendingUp size={14} color="var(--accent)" /> Receita (MRR)</div>
+          <div className="v">{reais(d.mrr_centavos)}</div>
+          <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{d.assinantes_ativos} assinante(s)</p>
+        </div>
+        <div className="adm-card">
+          <div className="k"><TrendingDown size={14} color="var(--red)" /> Saída no mês</div>
+          <div className="v">{reais(saidaTotal)}</div>
+          <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>IA + ferramentas</p>
+        </div>
+        <div className="adm-card" style={{ borderColor: positivo ? 'var(--accent)' : 'var(--red)' }}>
+          <div className="k"><Wallet size={14} color={positivo ? 'var(--accent)' : 'var(--red)'} /> Resultado</div>
+          <div className="v" style={{ color: positivo ? 'var(--accent)' : 'var(--red)' }}>{reais(resultado)}</div>
+          <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{positivo ? 'no azul' : 'no vermelho'}</p>
+        </div>
+      </div>
+
+      <section className="adm-sec">
+        <h2><Wallet size={16} color="var(--accent)" /> De onde vem e pra onde vai (mês)</h2>
+        <Linha rotulo="Receita recorrente (MRR)" valor={reais(d.mrr_centavos)} forte cor="var(--accent)" />
+        <Linha rotulo={`Custo de IA · ${d.ia_billable} cobráveis (acima de ${d.ia_gratis_mes})`} valor={'− ' + reais(d.ia_custo_centavos)} />
+        <Linha rotulo="Ferramentas em R$" valor={'− ' + reais(d.fixos_brl_centavos)} />
+        <Linha rotulo={`Ferramentas em US$ · ${dolares(d.fixos_usd_centavos)} × ${cot.valor.toFixed(2)}`} valor={'− ' + reais(fixosUsdEmBrl)} />
+        <div style={{ borderTop: '2px solid var(--border2, var(--border))', marginTop: 6 }}>
+          <Linha rotulo="Resultado" valor={reais(resultado)} forte cor={positivo ? 'var(--accent)' : 'var(--red)'} />
+        </div>
+        <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 10, lineHeight: 1.5 }}>
+          O custo de IA é <strong>estimativa</strong> (nº de respostas acima do limite grátis × tarifa do painel), não o gasto real por chamada da Anthropic.
+          A cotação {cot.real ? `veio da AwesomeAPI (US$ 1 = ${reais(Math.round(cot.valor * 100))})` : `é um valor de reserva (rede indisponível): US$ 1 ≈ R$ ${cot.valor.toFixed(2)}`}.
+        </p>
+      </section>
+
+      {(d.alertas_saldo?.length > 0 || d.renova_30d?.length > 0) && (
+        <section className="adm-sec">
+          <h2><Bell size={16} color="var(--amber)" /> Avisos</h2>
+          {d.alertas_saldo?.map((a, i) => (
+            <div key={'s' + i} style={{ fontSize: 13, padding: '6px 0', borderTop: i ? '1px solid var(--border)' : 'none', color: 'var(--red)' }}>
+              <AlertTriangle size={13} style={{ verticalAlign: -2, marginRight: 6 }} />
+              Saldo baixo em <strong>{a.nome}</strong>: {a.moeda === 'USD' ? dolares(a.saldo_centavos) : reais(a.saldo_centavos)}
+            </div>
+          ))}
+          {d.renova_30d?.map((r, i) => (
+            <div key={'r' + i} style={{ fontSize: 13, padding: '6px 0', borderTop: '1px solid var(--border)', color: 'var(--text2)' }}>
+              <Clock size={13} style={{ verticalAlign: -2, marginRight: 6 }} />
+              <strong>{r.nome}</strong> renova em {dataCurta(r.renova_em)} · {r.moeda === 'USD' ? dolares(r.custo_mensal_centavos) : reais(r.custo_mensal_centavos)}
+            </div>
+          ))}
+        </section>
+      )}
+    </>
+  )
+}
+
+function Linha({ rotulo, valor, forte, cor }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '9px 0', borderTop: '1px solid var(--border)', fontSize: 14 }}>
+      <span style={{ color: forte ? 'var(--text)' : 'var(--text2)', fontWeight: forte ? 600 : 400 }}>{rotulo}</span>
+      <strong style={{ color: cor || 'var(--text)', whiteSpace: 'nowrap', fontWeight: forte ? 700 : 600 }}>{valor}</strong>
+    </div>
+  )
+}
+
+/* ============================ SERVIÇOS & CRÉDITOS ============================ */
+export function Servicos() {
+  const { toast } = useToast()
+  const [lista, setLista] = useState(null)
+  const [edit, setEdit] = useState(null)   // objeto do serviço, ou {} pra novo
+  const cot = useCotacaoUsd()
+  const carregar = useCallback(() => {
+    supabase.rpc('admin_servicos').then(({ data, error }) => {
+      if (error) { toast('Falhou ao carregar.', 'erro'); setLista([]) } else setLista(data || [])
+    })
+  }, [toast])
+  useEffect(() => { carregar() }, [carregar])
+
+  async function remover(s) {
+    const { error } = await supabase.rpc('admin_remover_servico', { p_id: s.id })
+    if (error) return toast('Falhou ao remover.', 'erro')
+    toast('Serviço removido.', 'ok'); carregar()
+  }
+
+  return (
+    <section className="adm-sec">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <h2 style={{ margin: 0 }}><Package size={16} color="var(--purple)" /> Serviços & créditos</h2>
+        <button className="btn-ghost" style={{ padding: '6px 12px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setEdit({})}><Plus size={15} /> Novo</button>
+      </div>
+      <p style={{ fontSize: 12.5, color: 'var(--text3)', marginBottom: 14 }}>
+        Cadastre o custo de cada ferramenta. Entra direto na conta de Custos. Valores em US$ são convertidos pela cotação do dia.
+      </p>
+      {lista === null ? <div className="adm-vazio">Carregando…</div> : lista.length === 0 ? <p style={{ fontSize: 13, color: 'var(--text3)' }}>Nenhum serviço.</p> : lista.map(s => {
+        const emBrl = s.moeda === 'USD' && cot ? Math.round(s.custo_mensal_centavos * cot.valor) : null
+        const saldoBaixo = s.saldo_centavos != null && s.alerta_saldo_centavos != null && s.saldo_centavos <= s.alerta_saldo_centavos
+        return (
+          <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 14, fontWeight: 600 }}>
+                {s.nome}
+                {s.plano && <span style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 400, marginLeft: 8 }}>{s.plano}</span>}
+                {s.link && <a href={s.link} target="_blank" rel="noreferrer" style={{ marginLeft: 6, color: 'var(--text3)' }}><ExternalLink size={12} style={{ verticalAlign: -1 }} /></a>}
+              </p>
+              <p style={{ fontSize: 12.5, color: 'var(--text2)' }}>
+                {s.moeda === 'USD' ? dolares(s.custo_mensal_centavos) : reais(s.custo_mensal_centavos)}/mês
+                {emBrl != null && <span style={{ color: 'var(--text3)' }}> (≈ {reais(emBrl)})</span>}
+                {s.renova_em && <span style={{ color: 'var(--text3)' }}> · renova {dataCurta(s.renova_em)}</span>}
+              </p>
+              {s.saldo_centavos != null && (
+                <p style={{ fontSize: 11.5, color: saldoBaixo ? 'var(--red)' : 'var(--text3)' }}>
+                  Saldo: {s.moeda === 'USD' ? dolares(s.saldo_centavos) : reais(s.saldo_centavos)}{saldoBaixo && ' · baixo'}
+                </p>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+              <button className="adm-icbtn" aria-label="Editar" onClick={() => setEdit(s)}><Pencil size={15} /></button>
+              <button className="adm-icbtn" aria-label="Remover" style={{ color: 'var(--red)' }} onClick={() => remover(s)}><Trash2 size={15} /></button>
+            </div>
+          </div>
+        )
+      })}
+      {edit && <ModalServico servico={edit} onFechar={() => setEdit(null)} onFeito={() => { setEdit(null); carregar() }} />}
+    </section>
+  )
+}
+
+function ModalServico({ servico, onFechar, onFeito }) {
+  const { toast } = useToast()
+  const ehNovo = !servico.id
+  const emReais = (c) => c == null ? '' : (c / 100).toString()
+  const [f, setF] = useState({
+    nome: servico.nome || '', plano: servico.plano || '', moeda: servico.moeda || 'BRL',
+    custo: emReais(servico.custo_mensal_centavos), renova_em: servico.renova_em || '',
+    saldo: emReais(servico.saldo_centavos), alerta: emReais(servico.alerta_saldo_centavos),
+    link: servico.link || '', obs: servico.obs || '',
+  })
+  const [salvando, setSalvando] = useState(false)
+  const set = (k, v) => setF(p => ({ ...p, [k]: v }))
+  const paraCent = (s) => s === '' || s == null ? null : Math.round(Number(String(s).replace(',', '.')) * 100)
+
+  async function salvar() {
+    if (!f.nome.trim()) return toast('Informe o nome.', 'erro')
+    setSalvando(true)
+    const { error } = await supabase.rpc('admin_salvar_servico', {
+      p_id: servico.id || null, p_nome: f.nome.trim(), p_plano: f.plano.trim() || null,
+      p_custo_mensal_centavos: paraCent(f.custo) || 0, p_moeda: f.moeda,
+      p_renova_em: f.renova_em || null, p_saldo_centavos: paraCent(f.saldo),
+      p_alerta_saldo_centavos: paraCent(f.alerta), p_link: f.link.trim() || null,
+      p_obs: f.obs.trim() || null, p_ordem: servico.ordem || 0,
+    })
+    setSalvando(false)
+    if (error) return toast(error.message || 'Falhou.', 'erro')
+    toast('Serviço salvo.', 'ok'); onFeito()
+  }
+  return (
+    <div className="modal-overlay" onClick={onFechar}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <h2 style={{ fontSize: 17 }}>{ehNovo ? 'Novo serviço' : 'Editar serviço'}</h2>
+          <button onClick={onFechar} aria-label="Fechar"><X size={20} color="var(--text2)" /></button>
+        </div>
+        <div className="form-row">
+          <div className="form-group" style={{ flex: 2 }}><label>Nome</label><input value={f.nome} onChange={e => set('nome', e.target.value)} placeholder="Supabase" autoFocus /></div>
+          <div className="form-group"><label>Plano</label><input value={f.plano} onChange={e => set('plano', e.target.value)} placeholder="Free" /></div>
+        </div>
+        <div className="form-row">
+          <div className="form-group"><label>Custo mensal</label><input inputMode="decimal" value={f.custo} onChange={e => set('custo', e.target.value)} placeholder="0,00" /></div>
+          <div className="form-group"><label>Moeda</label>
+            <select value={f.moeda} onChange={e => set('moeda', e.target.value)}><option value="BRL">R$ (BRL)</option><option value="USD">US$ (USD)</option></select>
+          </div>
+          <div className="form-group"><label>Renova em</label><input type="date" value={f.renova_em} onChange={e => set('renova_em', e.target.value)} /></div>
+        </div>
+        <div className="form-row">
+          <div className="form-group"><label>Saldo (opcional)</label><input inputMode="decimal" value={f.saldo} onChange={e => set('saldo', e.target.value)} placeholder="crédito pré-pago" /></div>
+          <div className="form-group"><label>Avisar se saldo ≤</label><input inputMode="decimal" value={f.alerta} onChange={e => set('alerta', e.target.value)} placeholder="opcional" /></div>
+        </div>
+        <div className="form-group"><label>Link do painel (opcional)</label><input value={f.link} onChange={e => set('link', e.target.value)} placeholder="https://…" /></div>
+        <button className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={salvar} disabled={salvando}>
+          {salvando ? <><Loader size={18} className="spin" /> Salvando…</> : <><Check size={18} /> Salvar</>}
+        </button>
+      </div>
+    </div>
   )
 }
 
