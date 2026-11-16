@@ -85,3 +85,86 @@ Decisão pendente: manter o sticker do Joca na conexão? (hoje é opcional, só 
 - **Custo da transcrição no /admin:** hoje o `consumo_ia` registra 1 por
   lançamento (interpretação). O Whisper é um custo extra não contabilizado —
   decidir se soma como consumo separado pra o /admin ficar exato.
+
+---
+
+# Ideias de uso da ferramenta de WhatsApp — custos e encaixe no preço
+
+> Mapa para quando a gente for **evoluir** o WhatsApp (não implementar sem ok).
+> Cada ideia tem uma estimativa de custo e se cabe no nosso preço. **Os números
+> são ordem de grandeza** (câmbio ~R$ 6/US$; conferir sempre a tarifa real no
+> painel da Meta, no faturamento da Anthropic e da OpenAI antes de decidir).
+
+## Como o custo funciona (a base de tudo)
+
+Três fontes de custo, e a diferença entre elas é o que decide se uma ideia é barata ou cara:
+
+1. **WhatsApp Cloud API (Meta).** Resposta **dentro da janela de 24h** depois que a
+   pessoa te manda mensagem = **conversa de serviço = grátis**. É o nosso caso hoje
+   (a pessoa manda o lançamento, a gente responde na hora). **Mensagem proativa**
+   (a gente inicia, fora da janela: lembrete, resumo, alerta) usa **template pago** —
+   no Brasil, ordem de **~R$ 0,05 (utility)** a **~R$ 0,35 (marketing)** por mensagem.
+   **Essa é a divisa principal:** reagir é grátis, "cutucar" custa.
+2. **Interpretação (Claude Haiku).** ~**fração de centavo a ~R$ 0,01** por lançamento
+   de texto (o `consumo_ia` já conta isso; a planilha usa ~R$ 0,001/msg).
+3. **Transcrição de áudio (OpenAI Whisper).** US$ 0,006/min → com o teto de 60s,
+   **no máximo ~R$ 0,035 por áudio**. É o **maior custo por lançamento** hoje (~3–4×
+   um texto) e **ainda não entra no `consumo_ia`**.
+
+**Custo por interação, hoje:**
+
+| Interação | IA | WhatsApp | Total aprox. |
+|---|---|---|---|
+| Lançar por **texto** | ~R$ 0,005–0,01 | grátis (janela) | **~1 centavo** |
+| Lançar por **áudio** | + Whisper ~R$ 0,035 | grátis (janela) | **~4 centavos** |
+| Mensagem **proativa** (resumo/lembrete) | 0 a ~R$ 0,01 | template ~R$ 0,05 | **~5–6 centavos** |
+
+**Encaixe no preço (Família R$ 24,90/mês), com os tetos atuais (50 trial / 100 cortesia / 200 assinante):**
+- Assinante, **pior caso 200 lançamentos/mês todos em áudio**: 200 × R$ 0,04 ≈ **R$ 8/mês**.
+  Ainda cabe nos R$ 24,90 (e o real é bem menos — mistura texto/áudio fica ~R$ 2–4).
+- Trial (50) no pior caso ≈ **R$ 2/mês**; cortesia (100) ≈ **R$ 4/mês** (a gente absorve).
+- **Conclusão:** enquanto for **reativo** (a pessoa manda, a gente responde) + teto
+  mensal, **cabe folgado**. O que precisa de cuidado é **mensagem proativa em escala**.
+
+## Ideias — reativas (a pessoa manda primeiro → WhatsApp grátis)
+
+| # | Ideia | O que é | Custo extra | Cabe no preço? |
+|---|---|---|---|---|
+| R1 | **Lançar por texto** ✅ feito | "mercado 120" → salva | ~1¢ | Sim, folgado |
+| R2 | **Lançar por áudio** ✅ feito | manda áudio → Whisper → salva | ~4¢ | Sim; vigiar teto |
+| R3 | **Comando `ajuda`/`?`** | devolve mini-guia de uso | ~0 (texto fixo) | Sim |
+| R4 | **Comando `saldo`/`resumo`** | total do mês, por categoria, quanto falta do orçamento | ~1¢ (1 consulta, IA curta) | Sim |
+| R5 | **`apagar último`/`corrigir`** | desfaz ou edita o último lançamento | ~0–1¢ | Sim |
+| R6 | **Confirmar baixa confiança** | IA incerta → "entendi X, tá certo?" antes de salvar | +1¢ (fica na janela) | Sim |
+| R7 | **Foto de cupom/nota (visão)** | manda foto → IA lê valor/estabelecimento → salva | ~R$ 0,02–0,05/imagem (Claude visão) | Sim, mas limitar; **alto valor percebido** |
+| R8 | **Pergunta em linguagem natural** | "quanto gastei com uber esse mês?" | ~1–2¢/pergunta | Sim; candidato a **gancho premium** (custo cresce com uso → proteger com teto) |
+| R9 | **Fechamento/PNG do mês sob demanda** | pede "resumo" → manda imagem do fechamento | grátis (mídia na janela) | Sim |
+
+## Ideias — proativas (a gente inicia → template pago ~R$ 0,05/msg)
+
+| # | Ideia | O que é | Custo | Encaixe |
+|---|---|---|---|---|
+| P1 | **Lembrete de conta a vencer** | "sua fatura vence amanhã" | ~R$ 0,05 × envios | Alto valor. Limitar a 1–2/semana por pessoa; cabe se controlado |
+| P2 | **Resumo semanal** | toda sexta: "gastou X essa semana" | ~R$ 0,05 × 4/mês/pessoa | Cabe por pessoa (~R$ 0,20/mês); **cuidado em escala** (1.000 pessoas ≈ R$ 200/mês) |
+| P3 | **Alerta de orçamento estourado** | "passou do orçamento de Alimentação" | ~R$ 0,05 cada | Alto valor; limitar por categoria/mês |
+| P4 | **Fim de trial / cobrança** | avisos de conversão | ~R$ 0,05 cada | Baixo volume, alto retorno — vale |
+
+**Regra de ouro das proativas:** cada uma é dinheiro saindo toda vez. Antes de ligar,
+definir **frequência máxima por pessoa** e, idealmente, deixar a pessoa **optar**
+(on/off nas Configurações). Boa candidata a **recurso premium** ou a só-cortesia.
+
+## Guardrails que já temos (e o que falta)
+
+- **Já protege:** teto mensal por grupo (`wa_pode_grupo`: 50/100/200), áudio limitado
+  a 60s, interpretação barata (Haiku). O paywall por status também vale no WhatsApp.
+- **Falta pra ficar exato:** somar o **Whisper** ao `consumo_ia` (hoje conta só a
+  interpretação) — senão o /admin subestima o custo de quem usa muito áudio.
+
+## Ordem sugerida pra atacar depois (quick wins primeiro)
+
+1. **R3 `ajuda` + R4 `saldo` + R5 `apagar último`** — quase sem custo, muito úteis, fáceis.
+2. **R6 confirmação de baixa confiança** — melhora precisão, custo ~zero.
+3. **R7 foto de cupom** — "uau" grande; custo baixo e controlável.
+4. **Contabilizar Whisper no /admin** — pra enxergar o custo real antes de escalar.
+5. **P1/P3 lembretes e alertas (opt-in)** — só depois de definir frequência e custo em escala.
+6. **R8 perguntas em linguagem natural** — potencial gancho premium; exige teto firme.
