@@ -174,16 +174,37 @@ async function interpretar(grupoId: string, texto: string) {
 
   const idsCartao = new Set((cartoes || []).map((c: any) => c.id))
   const valor = Number(dados.valor)
+  const cartaoId = idsCartao.has(dados.cartao_id) ? dados.cartao_id : null
+  const cartaoNome = cartaoId ? ((cartoes || []).find((c: any) => c.id === cartaoId)?.nome?.trim() || null) : null
   return {
     tipo: dados.tipo === 'entrada' ? 'entrada' : 'gasto',
     valor: Number.isFinite(valor) && valor > 0 ? Math.round(valor * 100) / 100 : null,
     descricao: String(dados.descricao || texto).slice(0, 120),
     categoria: nomesCategorias.includes(dados.categoria) ? dados.categoria : 'outros',
-    cartao_id: idsCartao.has(dados.cartao_id) ? dados.cartao_id : null,
+    cartao_id: cartaoId,
+    cartao_nome: cartaoNome,
     data: /^\d{4}-\d{2}-\d{2}$/.test(dados.data) ? dados.data : hoje,
     parcelas: Number.isInteger(dados.parcelas) && dados.parcelas > 1 ? dados.parcelas : 1,
     confianca: Number.isFinite(Number(dados.confianca)) ? Number(dados.confianca) : 0.5,
   }
+}
+
+// Monta a confirmação de lançamento (mostra só as linhas que existem).
+function confirmacaoLancamento(dados: any): string {
+  const verbo = dados.tipo === 'entrada' ? 'Entrada' : 'Gasto'
+  const emParcelas = dados.parcelas > 1 ? ` em ${dados.parcelas}x` : ''
+  const linhas = [
+    `✅ ${verbo} lançad${dados.tipo === 'entrada' ? 'a' : 'o'}${emParcelas}`,
+    `${brl(dados.valor)} · ${dados.descricao}`,
+    `🏷️ ${dados.categoria}`,
+  ]
+  if (dados.cartao_nome) linhas.push(`💳 ${dados.cartao_nome}`)
+  const hoje = hojeSP().iso
+  if (dados.data && dados.data !== hoje) {
+    const [a, m, d] = String(dados.data).split('-')
+    if (a && m && d) linhas.push(`📅 ${d}/${m}`)
+  }
+  return linhas.join('\n')
 }
 
 Deno.serve(async (req) => {
@@ -233,7 +254,7 @@ Deno.serve(async (req) => {
         // Pausa global do /admin.
         const { data: cfg } = await admin.from('admin_config').select('whatsapp_pausado').eq('id', 1).maybeSingle()
         if (cfg?.whatsapp_pausado) {
-          await enviarTexto(from, 'O lançamento por WhatsApp está temporariamente pausado. Tente de novo mais tarde 🙏')
+          await enviarTexto(from, 'O lançamento por WhatsApp está pausado no momento. Tenta de novo mais tarde 🙏')
           await logMsg({ telefone: from, direcao: 'saida', tipo: 'bloqueado', texto: 'pausado' })
           continue
         }
@@ -245,7 +266,7 @@ Deno.serve(async (req) => {
             texto = await transcreverAudio(m?.audio?.id)
           } catch (e) {
             console.error('[whatsapp] transcrever', (e as Error).message)
-            await enviarTexto(from, 'Não consegui ouvir seu áudio agora 😅. Pode mandar por texto, por favor?')
+            await enviarTexto(from, 'Não consegui entender seu áudio 😅. Pode repetir falando devagar, ou mandar por texto?')
             await logMsg({ telefone: from, direcao: 'saida', tipo: 'erro', texto: 'falha transcrição' })
             continue
           }
@@ -253,9 +274,7 @@ Deno.serve(async (req) => {
           texto = String(m?.text?.body || '').trim()
         }
         if (!texto) {
-          await enviarTexto(from, tipoMsg === 'audio'
-            ? 'Seu áudio chegou sem fala que eu entendesse 🤔. Tenta de novo, ex.: "mercado cento e vinte".'
-            : 'Não entendi 🤔. Me manda o gasto, ex.: "mercado 120".')
+          await enviarTexto(from, 'Não peguei nenhum lançamento aí 🤔. Ex.: *mercado 120* ou *recebi 2000 de salário*.')
           await logMsg({ telefone: from, direcao: 'saida', tipo: 'erro', texto: 'sem texto' })
           continue
         }
@@ -296,7 +315,7 @@ Deno.serve(async (req) => {
         // 4) Número já verificado? Então é lançamento.
         const { data: u } = await admin.rpc('wa_usuario', { p_telefone: from })
         if (!u?.ok) {
-          await enviarTexto(from, 'Oi! Para lançar seus gastos por aqui, abra o HopeFin, vá em Configurações → "Conectar meu WhatsApp" e me mande o código que aparecer. 😊')
+          await enviarTexto(from, 'Oi! Pra lançar por aqui, abra o HopeFin → Configurações → *Conectar meu WhatsApp* e me mande o código que aparecer. 😊')
           await logMsg({ telefone: from, direcao: 'saida', tipo: 'desconhecido', texto: 'orientou a conectar' })
           continue
         }
@@ -305,8 +324,8 @@ Deno.serve(async (req) => {
         const { data: pode } = await admin.rpc('wa_pode_grupo', { p_grupo: u.grupo_id })
         if (!pode?.pode) {
           const msg = pode?.motivo === 'limite'
-            ? 'Você atingiu o limite de mensagens do seu plano neste mês. Ele renova no início do próximo mês. 🗓️'
-            : 'Sua assinatura do HopeFin está inativa. Reative no app para voltar a lançar por aqui. 💙'
+            ? 'Você bateu o limite de lançamentos por WhatsApp deste mês. Ele renova no dia 1º. Pelo app segue normal. 🗓️'
+            : 'Sua assinatura está inativa — reative no app pra voltar a lançar por aqui. 💙'
           await enviarTexto(from, msg)
           await logMsg({ telefone: from, direcao: 'saida', usuario_id: u.usuario_id, grupo_id: u.grupo_id, tipo: 'bloqueado', texto: pode?.motivo || 'bloqueado' })
           continue
@@ -318,25 +337,25 @@ Deno.serve(async (req) => {
           dados = await interpretar(u.grupo_id, texto)
         } catch (e) {
           console.error('[whatsapp] interpretar', (e as Error).message)
-          await enviarTexto(from, 'Não consegui entender agora 😅. Tente algo como "uber 23,50" ou lance pelo app.')
+          await enviarTexto(from, 'Não entendi esse 😅. Tenta assim: *farmácia 48,90* ou *uber 23,50 ontem*.')
           await logMsg({ telefone: from, direcao: 'saida', usuario_id: u.usuario_id, grupo_id: u.grupo_id, tipo: 'erro', texto: 'falha IA' })
           continue
         }
         if (!dados.valor) {
-          await enviarTexto(from, 'Não achei o valor 🤔. Tente incluir quanto foi, ex.: "farmácia 48,90".')
+          await enviarTexto(from, 'Faltou o valor 🤔. Ex.: *farmácia 48,90*.')
           await logMsg({ telefone: from, direcao: 'saida', usuario_id: u.usuario_id, grupo_id: u.grupo_id, tipo: 'erro', texto: 'sem valor' })
           continue
         }
 
         const { data: salvo } = await admin.rpc('wa_salvar_lancamento', { p_grupo: u.grupo_id, p_usuario: u.usuario_id, p_dados: dados })
         if (salvo?.ok) {
-          const verbo = dados.tipo === 'entrada' ? 'Entrada' : 'Gasto'
-          const extra = dados.parcelas > 1 ? ` em ${dados.parcelas}x` : ''
-          await enviarTexto(from, `✅ ${verbo} de ${brl(dados.valor)}${extra} — "${dados.descricao}" (${dados.categoria}) lançado!`)
+          await enviarTexto(from, confirmacaoLancamento(dados))
           await logMsg({ telefone: from, direcao: 'saida', usuario_id: u.usuario_id, grupo_id: u.grupo_id, tipo: 'lancamento', texto: `${dados.tipo} ${dados.valor}` })
         } else {
-          const motivo = salvo?.motivo === 'limite' ? 'Você atingiu o limite do mês.' : 'Não consegui salvar agora.'
-          await enviarTexto(from, `${motivo} Tente pelo app, por favor. 🙏`)
+          const motivo = salvo?.motivo === 'limite'
+            ? 'Você bateu o limite de lançamentos por WhatsApp deste mês. Ele renova no dia 1º. Pelo app segue normal. 🗓️'
+            : 'Não consegui salvar agora 😕. Tenta de novo ou lança pelo app, por favor.'
+          await enviarTexto(from, motivo)
           await logMsg({ telefone: from, direcao: 'saida', usuario_id: u.usuario_id, grupo_id: u.grupo_id, tipo: 'erro', texto: salvo?.motivo || 'falha salvar' })
         }
       }
