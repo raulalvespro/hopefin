@@ -572,5 +572,23 @@ alter table public.whatsapp_mensagens enable row level security;  -- sem policy:
 --   admin NUNCA vê o texto financeiro — só contagens e número mascarado.
 
 -- ============================================================
+-- Onda 0 (0059, 16/11/2026): saída do grupo, push e diagnóstico de aparelho
+-- ============================================================
+-- remover_membro(): além de zerar grupo_id, desconecta o WhatsApp e apaga as
+--   inscrições de push de quem sai. wa_usuario() devolve motivo 'sem_grupo';
+--   wa_conectar()/gerar_codigo_whatsapp() exigem grupo.
+-- registrar_push(endpoint, p256dh, auth, ua): grava/reatribui a inscrição do aparelho.
+create table if not exists public.app_diagnostico (   -- erros de aparelho, sem dado financeiro
+  id uuid primary key default gen_random_uuid(),
+  usuario_id uuid default auth.uid() references auth.users(id) on delete cascade,
+  grupo_id uuid,
+  tipo text not null check (tipo in ('push', 'instalar')),
+  detalhe text check (char_length(detalhe) <= 600),
+  user_agent text check (char_length(user_agent) <= 300),
+  criado_em timestamptz not null default now()
+);
+alter table public.app_diagnostico enable row level security;  -- insert só da própria linha; leitura só service_role
+
+-- ============================================================
 -- FIM
 -- ============================================================

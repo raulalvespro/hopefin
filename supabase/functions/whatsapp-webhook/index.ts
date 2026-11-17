@@ -315,6 +315,12 @@ Deno.serve(async (req) => {
         // 4) Número já verificado? Então é lançamento.
         const { data: u } = await admin.rpc('wa_usuario', { p_telefone: from })
         if (!u?.ok) {
+          if (u?.motivo === 'sem_grupo') {
+            // Saiu (ou foi removido) do grupo: o número foi desconectado e nada é lançado.
+            await enviarTexto(from, 'No momento você não faz parte de nenhum grupo no HopeFin, então não consigo lançar nada por aqui. Pra voltar, entre ou crie um grupo no app e conecte o WhatsApp de novo em Configurações. 💙')
+            await logMsg({ telefone: from, direcao: 'saida', tipo: 'bloqueado', texto: 'sem grupo' })
+            continue
+          }
           await enviarTexto(from, 'Oi! Pra lançar por aqui, abra o HopeFin → Configurações → *Conectar meu WhatsApp* e me mande o código que aparecer. 😊')
           await logMsg({ telefone: from, direcao: 'saida', tipo: 'desconhecido', texto: 'orientou a conectar' })
           continue

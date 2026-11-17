@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useDb } from '../hooks/useDb'
@@ -68,6 +68,16 @@ export default function Importar() {
   const [catPadrao, setCatPadrao] = useState('outros')
   const [overrides, setOverrides] = useState({})  // idx -> { incluir?, categoria? }
   const [importando, setImportando] = useState(false)
+  // Como os gastos importados foram pagos: 'pix' | 'dinheiro' | id de um cartão.
+  // (Antes tudo entrava como "cartão" sem dizer qual — e o app tratava como pago na hora.)
+  const [pagoCom, setPagoCom] = useState('pix')
+  const [cartoes, setCartoes] = useState([])
+
+  useEffect(() => {
+    if (!perfil?.grupo_id) return
+    supabase.from('cartoes').select('id, nome').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('nome')
+      .then(({ data }) => setCartoes(data || []))
+  }, [perfil?.grupo_id])
 
   function escolherArquivo() { inputRef.current?.click() }
 
@@ -158,9 +168,12 @@ export default function Importar() {
     if (!selecionadas.length) { toast('Nada selecionado para importar.', 'erro'); return }
     setImportando(true)
     const gid = perfil.grupo_id
+    const ehDinheiro = pagoCom === 'pix' || pagoCom === 'dinheiro'
     const gastos = selecionadas.filter(l => l.tipo === 'gasto').map(l => ({
       grupo_id: gid, usuario_id: perfil.id, descricao: l.descricao,
-      valor: Math.abs(l.valorNum), categoria: l.categoria, tipo_pagamento: 'cartao', data: l.data,
+      valor: Math.abs(l.valorNum), categoria: l.categoria, data: l.data,
+      tipo_pagamento: ehDinheiro ? pagoCom : 'cartao',
+      cartao_id: ehDinheiro ? null : pagoCom,
     }))
     const entradas = selecionadas.filter(l => l.tipo === 'entrada').map(l => ({
       grupo_id: gid, usuario_id: perfil.id, descricao: l.descricao,
@@ -245,11 +258,22 @@ export default function Importar() {
               <input type="checkbox" checked={temCabecalho} onChange={e => setTemCabecalho(e.target.checked)} style={{ width: 'auto' }} />
               A primeira linha é cabeçalho
             </label>
-            <div className="form-group" style={{ marginBottom: 0 }}>
+            <div className="form-group">
               <label>Categoria padrão dos gastos</label>
               <select value={catPadrao} onChange={e => setCatPadrao(e.target.value)}>
                 {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
               </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Os gastos foram pagos com</label>
+              <select value={pagoCom} onChange={e => setPagoCom(e.target.value)}>
+                <option value="pix">PIX / débito / transferência</option>
+                <option value="dinheiro">Dinheiro</option>
+                {cartoes.map(c => <option key={c.id} value={c.id}>Cartão · {c.nome}</option>)}
+              </select>
+              <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
+                Escolhendo um cartão, cada gasto cai na fatura certa pela data da compra.
+              </span>
             </div>
           </div>
 

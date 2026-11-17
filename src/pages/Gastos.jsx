@@ -33,6 +33,7 @@ export default function Gastos() {
   const [form, setForm] = useState(novoForm())
   const [salvando, setSalvando] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [faltaCartao, setFaltaCartao] = useState(false) // tentou salvar "Cartão" sem escolher qual
 
   useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes(); carregarPessoas() } }, [perfil, mes])
 
@@ -53,7 +54,9 @@ export default function Gastos() {
       descricao: g.descricao, valor: Number(g.valor), categoria: g.categoria, data: g.data, criado: g.criado_em || '',
       observacao: g.observacao || '',
       tipo_pagamento: g.tipo_pagamento, cartao_id: g.cartao_id,
-      origem: g.cartoes?.nome || g.tipo_pagamento, pessoa: g.usuarios?.nome?.split(' ')[0],
+      // "Cartão" salvo sem dizer qual (antes da trava de 16/11): pede pra escolher.
+      semCartao: g.tipo_pagamento === 'cartao' && !g.cartao_id,
+      origem: g.cartoes?.nome || (g.tipo_pagamento === 'cartao' ? 'cartão?' : g.tipo_pagamento), pessoa: g.usuarios?.nome?.split(' ')[0],
       pessoa_id: g.pessoa_id, terceiro: g.pessoa_id ? (g.pessoas?.nome || 'alguém') : null, reembolso_status: g.reembolso_status,
     }))
     const parcelasItens = (parcelas || []).map(p => ({
@@ -79,12 +82,26 @@ export default function Gastos() {
     setPessoas(data || [])
   }
 
+  // Novo gasto: sem cartão cadastrado já começa em PIX; com um cartão só, ele vem escolhido.
   function abrirNovo() {
-    setEditando(null); setForm(novoForm()); setModal(true)
+    const f = novoForm()
+    if (cartoes.length === 0) f.tipo_pagamento = 'pix'
+    else if (cartoes.length === 1) f.cartao_id = cartoes[0].id
+    setEditando(null); setFaltaCartao(false); setForm(f); setModal(true)
+  }
+
+  // Ao trocar a forma de pagamento para Cartão com um cartão só, já escolhe ele.
+  function mudarPagamento(tipo) {
+    setFaltaCartao(false)
+    setForm(p => ({
+      ...p, tipo_pagamento: tipo,
+      cartao_id: tipo === 'cartao' ? (p.cartao_id || (cartoes.length === 1 ? cartoes[0].id : '')) : '',
+    }))
   }
 
   function editarGasto(it) {
     setEditando(it.rawId)
+    setFaltaCartao(false)
     setForm({
       descricao: it.descricao, valor: String(it.valor), categoria: it.categoria,
       tipo_pagamento: it.tipo_pagamento || 'cartao', cartao_id: it.cartao_id || '',
@@ -119,6 +136,12 @@ export default function Gastos() {
     if (!form.descricao || !form.valor) { toast('Preencha descrição e valor.', 'erro'); return }
     const valor = parseFloat(form.valor)
     if (!(valor > 0)) { toast('Informe um valor válido.', 'erro'); return }
+    // "Cartão" sem dizer qual virava pagamento à vista (saía do caixa na hora). Agora é obrigatório.
+    if (form.tipo_pagamento === 'cartao' && !form.cartao_id) {
+      setFaltaCartao(true)
+      toast(cartoes.length ? 'Escolha qual cartão — ou mude o pagamento para PIX ou Dinheiro.' : 'Você ainda não tem cartão cadastrado. Mude o pagamento para PIX ou Dinheiro, ou cadastre o cartão em Cartões.', 'erro')
+      return
+    }
     setSalvando(true)
 
     // Nova assinatura mensal (repete todo mês) — cria em `assinaturas`, não em `gastos`.
@@ -258,6 +281,12 @@ export default function Gastos() {
                     {it.reembolso_status === 'quitado' ? 'recebido' : 'a receber'} · {it.terceiro}
                   </span>
                 )}
+                {it.semCartao && (
+                  <button onClick={e => { e.stopPropagation(); editarGasto(it) }} title="Toque pra escolher o cartão"
+                    style={{ fontSize: 10, fontWeight: 700, background: 'var(--red-dim)', color: 'var(--red-text)', padding: '1px 7px', borderRadius: 10, border: 'none' }}>
+                    escolha o cartão
+                  </button>
+                )}
               </p>
               <p style={{ fontSize: 11, color: 'var(--text3)' }}>
                 {fmtData(it.data, 'dd/MM')} · {it.origem} · {it.pessoa}
@@ -311,7 +340,7 @@ export default function Gastos() {
               </div>
               <div className="form-group">
                 <label>Pagamento</label>
-                <select value={form.tipo_pagamento} onChange={e => setForm(p => ({ ...p, tipo_pagamento: e.target.value }))}>
+                <select value={form.tipo_pagamento} onChange={e => mudarPagamento(e.target.value)}>
                   <option value="cartao">Cartão</option>
                   <option value="pix">PIX</option>
                   <option value="dinheiro">Dinheiro</option>
@@ -322,10 +351,16 @@ export default function Gastos() {
             {ehCartao && (
               <div className="form-group">
                 <label>Cartão</label>
-                <select value={form.cartao_id} onChange={e => setForm(p => ({ ...p, cartao_id: e.target.value }))}>
-                  <option value="">Selecione</option>
+                <select value={form.cartao_id} onChange={e => { setFaltaCartao(false); setForm(p => ({ ...p, cartao_id: e.target.value })) }}
+                  style={faltaCartao ? { borderColor: 'var(--red)', boxShadow: '0 0 0 2px var(--red-dim)' } : undefined}>
+                  <option value="">Escolha o cartão</option>
                   {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
+                {faltaCartao && (
+                  <span style={{ fontSize: 11.5, color: 'var(--red-text)', marginTop: 4, display: 'block' }}>
+                    {cartoes.length ? 'Escolha qual cartão foi usado.' : 'Nenhum cartão cadastrado — use PIX ou Dinheiro.'}
+                  </span>
+                )}
               </div>
             )}
 

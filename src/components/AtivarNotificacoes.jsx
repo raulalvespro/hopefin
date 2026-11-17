@@ -3,7 +3,7 @@ import { Bell, X, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { statusPush, ativarPush, pushSuportado } from '../lib/push'
-import { estaInstalado, ehIOS } from './InstalarApp'
+import { estaInstalado, ehIOS } from '../lib/instalacao'
 import { copy } from '../copy/pt-BR'
 
 const t = copy.avisos

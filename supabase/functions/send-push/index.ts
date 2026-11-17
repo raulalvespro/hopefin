@@ -66,10 +66,19 @@ async function rodarDigest() {
   let enviados = 0
   const grupos = resumos || []
   for (const g of grupos) {
+    // Só quem está no grupo AGORA recebe. A inscrição guarda o grupo da época em
+    // que foi feita — sem esse filtro, quem saiu do grupo continuava recebendo.
+    const { data: membros } = await admin.from('usuarios').select('id').eq('grupo_id', g.grupo_id)
+    const ids = (membros || []).map((m: { id: string }) => m.id)
+    if (!ids.length) continue
+    // Faxina: inscrições deste grupo de quem não é mais membro.
+    await admin.from('push_subscriptions').delete()
+      .eq('grupo_id', g.grupo_id).not('usuario_id', 'in', `(${ids.join(',')})`)
     const { data: subs } = await admin
       .from('push_subscriptions')
       .select('endpoint, p256dh, auth')
       .eq('grupo_id', g.grupo_id)
+      .in('usuario_id', ids)
     if (!subs?.length) continue
     const r = await enviar(subs, {
       title: g.titulo || 'HopeFin',
