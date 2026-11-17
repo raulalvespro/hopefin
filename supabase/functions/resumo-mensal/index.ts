@@ -76,43 +76,102 @@ function corpoResumo(g: Grupo, mes: string): string {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${cats}</table>` : '')
 }
 
+// O dono também pode chamar pelo painel (JWT de um admin) pra enviar os retidos.
+async function ehAdmin(req: Request): Promise<boolean> {
+  const jwt = (req.headers.get('Authorization') || '').replace('Bearer ', '')
+  if (!jwt) return false
+  const { data: u } = await admin.auth.getUser(jwt)
+  if (!u?.user) return false
+  const { data: p } = await admin.from('usuarios').select('is_admin').eq('id', u.user.id).maybeSingle()
+  return !!p?.is_admin
+}
+
+function montarEmail(g: Grupo, comp: string) {
+  const mes = nomeMes(comp)
+  const assunto = `Seu resumo de ${mes} chegou`
+  const ola = g.nome ? `Oi, ${esc(String(g.nome).split(' ')[0])}! ` : 'Oi! '
+  const saldoPos = Number(g.saldo) >= 0
+  const html = layoutEmail({
+    titulo: assunto,
+    corpoHtml: ola + corpoResumo(g, mes),
+    preheader: `${saldoPos ? 'Sobrou' : 'Faltou'} ${brl(Math.abs(Number(g.saldo)))} em ${mes}`,
+    cta: { texto: 'Ver o mês no HopeFin', url: 'https://app.hopefin.com.br/fechamento' },
+  })
+  return { assunto, html }
+}
+
+async function gruposDoMes(comp: string): Promise<Grupo[]> {
+  const { data, error } = await admin.rpc('resumo_mensal', { p_comp: comp })
+  if (error) throw new Error(error.message)
+  return (data || []) as Grupo[]
+}
+
+// Envia os resumos que ficaram RETIDOS (pausa ligada). Chamado pelo painel.
+async function enviarRetidos(soGrupo: string | null) {
+  let q = admin.from('email_log').select('id, grupo_id, ref').eq('tipo', 'resumo_mensal').eq('status', 'retido')
+  if (soGrupo) q = q.eq('grupo_id', soGrupo)
+  const { data: retidos, error } = await q
+  if (error) return { erro: error.message }
+  const out = { enviados: 0, sem_atividade: 0, erros: 0, detalhes: [] as unknown[] }
+  const cache: Record<string, Grupo[]> = {}
+  for (const r of retidos || []) {
+    const comp = r.ref as string
+    cache[comp] ||= await gruposDoMes(comp)
+    const g = cache[comp].find((x) => x.grupo_id === r.grupo_id)
+    if (!g || !g.email) {
+      await admin.from('email_log').update({ status: 'pulado', erro: g ? 'sem e-mail' : 'sem atividade no mês' }).eq('id', r.id)
+      out.sem_atividade++; continue
+    }
+    const { assunto, html } = montarEmail(g, comp)
+    await admin.from('email_log').update({ status: 'enviando', destino: g.email, assunto }).eq('id', r.id)
+    const env = await enviarEmail({ para: g.email, assunto, html })
+    if (env.ok) {
+      await admin.from('email_log').update({ status: 'enviado', resend_id: env.id, erro: null }).eq('id', r.id)
+      out.enviados++; out.detalhes.push({ grupo: g.grupo_id, comp })
+    } else {
+      await admin.from('email_log').update({ status: 'retido', erro: String(env.erro || 'falha no envio') }).eq('id', r.id)
+      out.erros++; out.detalhes.push({ grupo: g.grupo_id, erro: env.erro })
+    }
+  }
+  return out
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return json({ erro: 'método não permitido' }, 405)
-  if (!CRON_SECRET || req.headers.get('x-cron-secret') !== CRON_SECRET) {
-    return json({ erro: 'não autorizado' }, 401)
-  }
+  const viaCron = !!CRON_SECRET && req.headers.get('x-cron-secret') === CRON_SECRET
+  const viaAdmin = !viaCron && await ehAdmin(req)
+  if (!viaCron && !viaAdmin) return json({ erro: 'não autorizado' }, 401)
 
   const body = await req.json().catch(() => ({}))
-  const comp = /^\d{4}-\d{2}$/.test(body?.comp || '') ? body.comp : mesAnterior()
   const soGrupo = typeof body?.so_grupo === 'string' ? body.so_grupo : null
-  const mes = nomeMes(comp)
 
-  const { data: grupos, error } = await admin.rpc('resumo_mensal', { p_comp: comp })
-  if (error) return json({ erro: error.message }, 500)
+  if (body?.acao === 'enviar_retidos') return json(await enviarRetidos(soGrupo))
 
-  const lista = ((grupos || []) as Grupo[]).filter((g) => !soGrupo || g.grupo_id === soGrupo)
-  const out = { comp, verificados: lista.length, enviados: 0, pulados: 0, erros: 0, detalhes: [] as unknown[] }
+  const comp = /^\d{4}-\d{2}$/.test(body?.comp || '') ? body.comp : mesAnterior()
+
+  // Pausa (A1.9): enquanto ligada, registra o envio como RETIDO e não manda nada.
+  const { data: cfg } = await admin.from('admin_config').select('resumo_mensal_pausado').eq('id', 1).maybeSingle()
+  const pausado = !!cfg?.resumo_mensal_pausado
+
+  let grupos: Grupo[]
+  try { grupos = await gruposDoMes(comp) } catch (e) { return json({ erro: (e as Error).message }, 500) }
+
+  const lista = grupos.filter((g) => !soGrupo || g.grupo_id === soGrupo)
+  const out = { comp, pausado, verificados: lista.length, enviados: 0, retidos: 0, pulados: 0, erros: 0, detalhes: [] as unknown[] }
 
   for (const g of lista) {
     if (!g.email) { out.erros++; out.detalhes.push({ grupo: g.grupo_id, erro: 'sem e-mail' }); continue }
-    const assunto = `Seu resumo de ${mes} chegou`
+    const { assunto, html } = montarEmail(g, comp)
     const ins = await admin.from('email_log')
-      .insert({ grupo_id: g.grupo_id, titular_id: g.titular_id, tipo: 'resumo_mensal', ref: comp, destino: g.email, assunto, status: 'enviando' })
+      .insert({ grupo_id: g.grupo_id, titular_id: g.titular_id, tipo: 'resumo_mensal', ref: comp, destino: g.email, assunto, status: pausado ? 'retido' : 'enviando' })
       .select('id').maybeSingle()
     if (ins.error) {
       if ((ins.error as { code?: string }).code === '23505') { out.pulados++; continue }
       out.erros++; out.detalhes.push({ grupo: g.grupo_id, erro: ins.error.message }); continue
     }
+    if (pausado) { out.retidos++; continue }
 
-    const ola = g.nome ? `Oi, ${esc(String(g.nome).split(' ')[0])}! ` : 'Oi! '
-    const saldoPos = Number(g.saldo) >= 0
-    const html = layoutEmail({
-      titulo: assunto,
-      corpoHtml: ola + corpoResumo(g, mes),
-      preheader: `${saldoPos ? 'Sobrou' : 'Faltou'} ${brl(Math.abs(Number(g.saldo)))} em ${mes}`,
-      cta: { texto: 'Ver o mês no HopeFin', url: 'https://app.hopefin.com.br/fechamento' },
-    })
     const env = await enviarEmail({ para: g.email, assunto, html })
     if (env.ok) {
       await admin.from('email_log').update({ status: 'enviado', resend_id: env.id }).eq('id', ins.data!.id)

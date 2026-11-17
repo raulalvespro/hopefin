@@ -89,6 +89,7 @@ export function VisaoGeral({ metr, consumo, recarregar, ir }) {
     at.suporte_novos > 0 && { k: 'su', txt: `${at.suporte_novos} e-mail(s) de suporte sem ler`, aba: 'suporte', cor: 'var(--blue)' },
     at.servicos_saldo_baixo?.length > 0 && { k: 'sv', txt: `${at.servicos_saldo_baixo.length} serviço(s) com saldo baixo`, aba: 'servicos', cor: 'var(--amber)' },
     at.ia_falhas_24h > 0 && { k: 'ia', txt: `${at.ia_falhas_24h} falha(s) de IA nas últimas 24h`, aba: 'custos', cor: 'var(--red)' },
+    at.resumos_retidos > 0 && { k: 'rr', txt: `${at.resumos_retidos} resumo(s) do mês retido(s) — enviar em Clientes`, aba: 'grupos', cor: 'var(--amber)' },
   ].filter(Boolean) : []
 
   const cards = metr ? [
@@ -215,6 +216,32 @@ export function Grupos() {
   }, [toast])
   useEffect(() => { carregar() }, [carregar])
 
+  // E-mail "resumo do mês" retido (pausa ligada até a Onda 1): aviso em cada cliente + enviar daqui.
+  const [retidos, setRetidos] = useState({ pausado: false, itens: [] })
+  const [enviandoResumo, setEnviandoResumo] = useState(null)
+  const carregarRetidos = useCallback(() => {
+    supabase.rpc('admin_resumos_retidos').then(({ data }) => { if (data) setRetidos(data) })
+  }, [])
+  useEffect(() => { carregarRetidos() }, [carregarRetidos])
+  const retidoPorGrupo = Object.fromEntries((retidos.itens || []).map(r => [r.grupo_id, r]))
+
+  async function enviarResumo(grupoId) {
+    const n = (retidos.itens || []).length
+    if (!confirm(grupoId ? 'Enviar agora o resumo do mês retido deste cliente?' : `Enviar agora os ${n} resumos do mês retidos?`)) return
+    setEnviandoResumo(grupoId || 'todos')
+    const { data, error } = await supabase.functions.invoke('resumo-mensal', { body: { acao: 'enviar_retidos', so_grupo: grupoId || null } })
+    setEnviandoResumo(null)
+    if (error) { toast('Falhou ao enviar o resumo.', 'erro'); return }
+    toast(`${data?.enviados || 0} enviado(s)${data?.erros ? ` · ${data.erros} com erro` : ''}`, data?.erros ? 'erro' : 'ok')
+    carregarRetidos()
+  }
+  async function alternarPausaResumo() {
+    const { error } = await supabase.rpc('admin_set_resumo_pausado', { p_pausado: !retidos.pausado })
+    if (error) { toast('Falhou.', 'erro'); return }
+    toast(retidos.pausado ? 'Resumo do mês volta a sair sozinho no dia 1º' : 'Resumo do mês pausado', 'ok')
+    carregarRetidos()
+  }
+
   // Contagem por status (+ cortesia e sem plano) para os chips.
   const conta = (grupos || []).reduce((a, g) => {
     const k = g.is_cortesia ? 'cortesia' : (g.status || 'sem')
@@ -251,6 +278,24 @@ export function Grupos() {
           <button className="btn-ghost" style={{ padding: '0 12px', fontSize: 12, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={exportarCsv} disabled={!visiveis.length}><ExternalLink size={14} /> CSV</button>
         </div>
       </div>
+      {(retidos.pausado || (retidos.itens || []).length > 0) && (
+        <div style={{ border: '1px solid var(--amber)', borderRadius: 10, padding: '10px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, lineHeight: 1.45 }}>
+            <strong>E-mail "resumo do mês" {retidos.pausado ? 'pausado' : ''}</strong> · {(retidos.itens || []).length} retido(s)
+            {retidos.pausado && <span style={{ color: 'var(--text2)' }}> — o envio do dia 1º fica guardado aqui até você mandar.</span>}
+          </span>
+          <span style={{ display: 'flex', gap: 6 }}>
+            {(retidos.itens || []).length > 0 && (
+              <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => enviarResumo(null)} disabled={!!enviandoResumo}>
+                {enviandoResumo === 'todos' ? 'Enviando…' : 'Enviar todos'}
+              </button>
+            )}
+            <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={alternarPausaResumo}>
+              {retidos.pausado ? 'Desligar pausa' : 'Pausar de novo'}
+            </button>
+          </span>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
         {chips.map(([rot, st]) => {
           const n = st === null ? (grupos || []).length : (st === 'sem' ? (conta.sem || 0) : (conta[st] || 0))
@@ -276,6 +321,12 @@ export function Grupos() {
                     <button onClick={() => setFicha(g)} style={{ color: 'var(--accent)', fontWeight: 600, textAlign: 'left' }}>{g.nome}</button>
                     {g.is_cortesia && <span className="tag tag-green" style={{ marginLeft: 6 }}>cortesia</span>}
                     {g.is_lancamento && <span className="tag tag-blue" style={{ marginLeft: 6 }}>lançamento</span>}
+                    {retidoPorGrupo[g.id] && (
+                      <button onClick={() => enviarResumo(g.id)} disabled={!!enviandoResumo} className="tag tag-amber" title="Resumo do mês retido — toque pra enviar agora"
+                        style={{ marginLeft: 6, cursor: 'pointer', border: 'none' }}>
+                        {enviandoResumo === g.id ? 'enviando…' : `resumo ${retidoPorGrupo[g.id].ref} retido · enviar`}
+                      </button>
+                    )}
                   </td>
                   <td>{g.membros}</td>
                   <td><span className={`tag ${cls}`}>{rot}</span></td>
