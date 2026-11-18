@@ -12,60 +12,37 @@ import CasinhaDoMes from '../components/CasinhaDoMes'
 import { Button } from '../components/ui'
 import { useToast } from '../contexts/ToastContext'
 import { compartilharImagem } from '../lib/compartilharImagem'
+import { carregarMotor, resumoMes, hojeBRT, compDe } from '../lib/motor'
 
 const t = copy.resumoMes
 
 const ehMesCorrente = d => format(d, 'yyyy-MM') === format(new Date(), 'yyyy-MM')
 
-// Calcula o resumo fechado de uma competência 'yyyy-MM'.
-async function resumoDoMes(gid, ym) {
-  const [ano, mes] = ym.split('-').map(Number)
-  const ini = `${ym}-01`
-  const ultimo = new Date(ano, mes, 0).getDate()
-  const fim = `${ym}-${String(ultimo).padStart(2, '0')}`
+// Resumo fechado de uma competência 'yyyy-MM' — pelo MOTOR ÚNICO (mesma conta do Início):
+// entrou × saiu pelo vencimento (faturas no mês em que vencem), "para onde foi" = meu gasto
+// por categoria (sem compras de outras pessoas).
+function resumoDoMes(dados, ym) {
+  const r = resumoMes(ym, dados, { hoje: hojeBRT() })
+  const somaTipo = tipo => r.meuGasto.itens.filter(i => i.tipo === tipo).reduce((s, i) => s + Number(i.valor), 0)
+  const gastosMes = (dados.gastos || []).filter(g => !g.pessoa_id && compDe(g.data) === ym)
 
-  const [ent, gas, fix, lanc, parc, ass, tr] = await Promise.all([
-    supabase.from('entradas').select('valor').eq('grupo_id', gid).gte('data', ini).lte('data', fim),
-    supabase.from('gastos').select('valor, categoria, origem').eq('grupo_id', gid).is('pessoa_id', null).gte('data', ini).lte('data', fim),
-    supabase.from('contas_fixas').select('id, valor, categoria').eq('grupo_id', gid).eq('ativo', true),
-    supabase.from('fixas_lancamentos').select('conta_fixa_id, valor_real, pago').eq('grupo_id', gid).eq('competencia', ym),
-    supabase.from('parcelas').select('valor, parcelamentos(categoria)').eq('grupo_id', gid).gte('data_vencimento', ini).lte('data_vencimento', fim),
-    supabase.from('assinaturas').select('valor').eq('grupo_id', gid).eq('ativo', true),
-    supabase.from('transferencias').select('valor').eq('grupo_id', gid).gte('data', ini).lte('data', fim),
-  ])
+  const fixasTotal = r.fixas.length
+  const fixasPagas = r.fixas.filter(f => f.paga).length
+  const nGastos = gastosMes.length
+  const vozPct = nGastos > 0 ? Math.round((gastosMes.filter(g => g.origem === 'voz').length / nGastos) * 100) : null
 
-  const realPorConta = {}
-  ;(lanc.data || []).forEach(l => { if (l.valor_real != null) realPorConta[l.conta_fixa_id] = Number(l.valor_real) })
-
-  // Indicadores do cartão de resumo: contas fixas pagas e % dos gastos lançados por voz.
-  const fixasTotal = (fix.data || []).length
-  const fixasPagas = (lanc.data || []).filter(l => l.pago).length
-  const nGastos = (gas.data || []).length
-  const vozPct = nGastos > 0 ? Math.round(((gas.data || []).filter(g => g.origem === 'voz').length / nGastos) * 100) : null
-
-  const receitas = (ent.data || []).reduce((s, e) => s + Number(e.valor), 0)
-  const gastosVar = (gas.data || []).reduce((s, g) => s + Number(g.valor), 0)
-  const parcelas = (parc.data || []).reduce((s, p) => s + Number(p.valor), 0)
-  const assinaturas = (ass.data || []).reduce((s, a) => s + Number(a.valor), 0)
-
-  const fixasPrevisto = (fix.data || []).reduce((s, f) => s + Number(f.valor), 0)
-  const fixas = (fix.data || []).reduce((s, f) => s + (f.id in realPorConta ? realPorConta[f.id] : Number(f.valor)), 0)
-
-  const despesas = gastosVar + fixas + parcelas + assinaturas
-  const resultado = receitas - despesas
-  const guardado = (tr.data || []).reduce((s, t) => s + (Number(t.valor) > 0 ? Number(t.valor) : 0), 0)
+  const receitas = r.entradasPrevistas
+  const despesas = r.totalSaidas
+  const resultado = r.sobraDoMes
+  const guardado = r.cofrinhos.reduce((s, t) => s + (Number(t.valor) > 0 ? Number(t.valor) : 0), 0)
   const poupanca = receitas > 0 ? guardado / receitas : null
 
-  // Gastos por categoria (unificado: variável + fixa real + parcela + assinaturas)
-  const porCat = {}
-  const add = (cat, v) => { const k = cat || 'outros'; porCat[k] = (porCat[k] || 0) + v }
-  ;(gas.data || []).forEach(g => add(g.categoria, Number(g.valor)))
-  ;(fix.data || []).forEach(f => add(f.categoria, f.id in realPorConta ? realPorConta[f.id] : Number(f.valor)))
-  ;(parc.data || []).forEach(p => add(p.parcelamentos?.categoria, Number(p.valor)))
-  if (assinaturas > 0) add('assinaturas', assinaturas)
-  const categorias = Object.entries(porCat).sort((a, b) => b[1] - a[1])
-
-  return { fixasTotal, fixasPagas, nGastos, vozPct, receitas, despesas, resultado, gastosVar, fixas, fixasPrevisto, parcelas, assinaturas, guardado, poupanca, categorias }
+  const categorias = Object.entries(r.meuGasto.porCategoria).map(([c, o]) => [c, o.total]).sort((a, b) => b[1] - a[1])
+  return {
+    fixasTotal, fixasPagas, nGastos, vozPct, receitas, despesas, resultado,
+    gastosVar: somaTipo('gasto'), fixas: r.fixas.reduce((s, f) => s + f.valor, 0), fixasPrevisto: r.fixas.reduce((s, f) => s + f.previsto, 0),
+    parcelas: somaTipo('parcela'), assinaturas: somaTipo('assinatura'), guardado, poupanca, categorias,
+  }
 }
 
 function Delta({ atual, anterior, invertido = false }) {
@@ -103,11 +80,13 @@ export default function Fechamento() {
   async function carregar() {
     setLoading(true)
     const gid = perfil.grupo_id
-    const [a, b, cof] = await Promise.all([
-      resumoDoMes(gid, ym),
-      resumoDoMes(gid, format(subMonths(mes, 1), 'yyyy-MM')),
+    const ymAnt = format(subMonths(mes, 1), 'yyyy-MM')
+    const [dados, cof] = await Promise.all([
+      carregarMotor(gid, { compIni: ymAnt, compFim: ym }),
       supabase.from('cofrinhos').select('id, nome, meta, transferencias(valor)').eq('grupo_id', gid),
     ])
+    const a = resumoDoMes(dados, ym)
+    const b = resumoDoMes(dados, ymAnt)
     setAtual(a); setAnterior(b)
     // Saldo = soma das transferências (mesma regra da tela de Cofrinhos).
     const comMeta = (cof.data || []).filter(c => Number(c.meta) > 0).map(c => {

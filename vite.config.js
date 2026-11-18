@@ -1,8 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
+  // @motor = motor único de cálculo (o MESMO arquivo que as Edge Functions usam).
+  resolve: {
+    alias: { '@motor': fileURLToPath(new URL('./supabase/functions/_shared', import.meta.url)) },
+  },
   plugins: [
     react(),
     VitePWA({

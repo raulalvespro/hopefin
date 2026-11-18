@@ -95,12 +95,18 @@ export default function Entradas() {
       fecharModal(); carregar(); return
     }
 
+    // Recorrente vira uma SÉRIE: o app já lança os próximos meses (pendentes até marcar recebido).
     const { error } = await run(
-      supabase.from('entradas').insert({ descricao: form.descricao, valor, tipo: form.tipo, recorrente: form.recorrente, data: form.data, recebido: form.data <= hojeISO(), grupo_id: perfil.grupo_id, usuario_id: perfil.id }),
-      { ok: 'Entrada adicionada' }
+      supabase.from('entradas').insert({
+        descricao: form.descricao, valor, tipo: form.tipo, recorrente: form.recorrente, data: form.data,
+        recebido: form.data <= hojeISO(), grupo_id: perfil.grupo_id, usuario_id: perfil.id,
+        serie_id: form.recorrente ? crypto.randomUUID() : null, origem: form.recorrente ? 'recorrente' : 'manual',
+      }),
+      { ok: form.recorrente ? 'Entrada adicionada — os próximos meses já ficam lançados' : 'Entrada adicionada' }
     )
     setSalvando(false)
     if (error) return
+    if (form.recorrente) await supabase.rpc('garantir_series')
     fecharModal(); carregar()
   }
 

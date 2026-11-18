@@ -25,7 +25,7 @@ export async function carregarDadosMotor(cliente, grupoId, { compIni, compFim, p
 
   const [cartoes, gastos, parcelas, assinaturas, fixas, fixasLanc, entradas, contasPagas, transferencias, orcamentos, grupo] = await Promise.all([
     cliente.from('cartoes').select('id, nome, bandeira, cor, dia_fechamento, dia_vencimento, limite, alerta_dias, ativo, compra_no_fechamento').eq('grupo_id', grupoId),
-    cliente.from('gastos').select('id, descricao, valor, data, cartao_id, tipo_pagamento, pessoa_id, fatura_ajuste, categoria, reembolso_status, observacao, usuario_id, criado_em, pessoas(nome)')
+    cliente.from('gastos').select('id, descricao, valor, data, cartao_id, tipo_pagamento, pessoa_id, fatura_ajuste, categoria, reembolso_status, observacao, usuario_id, origem, criado_em, pessoas(nome)')
       .eq('grupo_id', grupoId).gte('data', gIni).lte('data', gFim),
     cliente.from('parcelas').select('id, numero, valor, data_vencimento, paga, recebido, parcelamento_id, parcelamentos(descricao, num_parcelas, cartao_id, pessoa_id, categoria, pessoas(nome))')
       .eq('grupo_id', grupoId).gte('data_vencimento', pIni).lte('data_vencimento', pFim),

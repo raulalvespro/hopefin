@@ -11,7 +11,7 @@ function Inicio() {
   return (
     <div style={cx}>
       <div style={{ background: 'var(--panel-ink)', color: '#fff', borderRadius: 'var(--radius-lg)', padding: 16 }}>
-        <p style={{ fontSize: 12, color: '#94a3b8' }}>Saldo em caixa</p>
+        <p style={{ fontSize: 12, color: '#94a3b8' }}>Saldo do mês</p>
         <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 28, color: '#34d399' }}>R$ 1.240,00</p>
         <p style={{ fontSize: 12, color: '#e2e8f0' }}>projeção fim do mês R$ 2.100,00</p>
         <svg width="100%" height="34" viewBox="0 0 200 34" aria-hidden="true" style={{ marginTop: 8 }}>

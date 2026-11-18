@@ -228,7 +228,7 @@ export function resumoMes(comp, dados, opcoes = {}) {
       return {
         tipo: 'fixa', id: f.id, descricao: f.nome, categoria: f.categoria,
         valor: l?.valor_real != null ? num(l.valor_real) : num(f.valor), paga: !!l?.pago,
-        data: f.dia_vencimento ? dataNoMes(comp, f.dia_vencimento) : null, previsto: num(f.valor),
+        data: f.dia_vencimento ? dataNoMes(comp, f.dia_vencimento) : null, previsto: num(f.valor), temReal: l?.valor_real != null,
       }
     })
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { format, startOfMonth, endOfMonth, subMonths, addMonths, isSameMonth } from 'date-fns'
+import { format, subMonths, addMonths, isSameMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, TrendingUp, PieChart as PieIcon, Target, Wallet, CalendarClock } from 'lucide-react'
 import {
@@ -11,9 +11,12 @@ import {
 } from 'recharts'
 import BotaoVoz from '../components/BotaoVoz'
 import Onboarding from '../components/Onboarding'
+import Explicacao from '../components/Explicacao'
+import ViradaMes from '../components/ViradaMes'
 import { useCategorias } from '../hooks/useCategorias'
 import { InfoDica } from '../components/ui'
 import { copy } from '../copy/pt-BR'
+import { carregarMotor, garantirSeries, resumoMes, addMeses, compsEntre, nomeMesCurto, hojeBRT, compDe } from '../lib/motor'
 
 const t = copy.inicio
 const fmt = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -32,23 +35,30 @@ const AVCOR = [
   { bg: 'var(--amber-dim)', fg: 'var(--amber-text)' },
 ]
 
+// Itens -> linhas da explicação
+const linhas = (lista, detalhe) => lista.map(x => ({ descricao: x.descricao, valor: x.valor, data: x.data, detalhe: detalhe ? detalhe(x) : null }))
+const somaLista = lista => Math.round(lista.reduce((s, x) => s + Number(x.valor || 0), 0) * 100) / 100
+
 export default function Dashboard() {
   const { perfil } = useAuth()
   const { emojiDe } = useCategorias()
   const [mes, setMes] = useState(new Date())
-  const [dados, setDados] = useState(null)
-  const [dadosAnt, setDadosAnt] = useState(null)
+  const [r, setR] = useState(null)            // resumoMes do mês na tela
+  const [rAnt, setRAnt] = useState(null)      // mês anterior (comparativo)
   const [historico, setHistorico] = useState([])
-  const [grupo, setGrupo] = useState(null)      // { nome }
-  const [membros, setMembros] = useState([])    // [{ id, nome }]
+  const [porUsuario, setPorUsuario] = useState({})
+  const [grupo, setGrupo] = useState(null)
+  const [membros, setMembros] = useState([])
+  const [virada, setVirada] = useState(null)  // { comp, resumo, cofrinhos }
+  const [explica, setExplica] = useState(null) // 'saldo' | 'sobra'
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
 
   const ehMesAtual = isSameMonth(mes, new Date())
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil, mes])
   useEffect(() => { if (perfil?.grupo_id) carregarGrupo() }, [perfil?.grupo_id])
 
-  // Nome do grupo + membros (cabeçalho do Início). Carrega uma vez.
   async function carregarGrupo() {
     const gid = perfil.grupo_id
     const [{ data: g }, { data: ms }] = await Promise.all([
@@ -59,178 +69,56 @@ export default function Dashboard() {
     setMembros(ms || [])
   }
 
-  // Tendência dos últimos 6 meses (entradas, saídas, saldo)
-  async function carregarHistorico() {
-    const gid = perfil.grupo_id
-    const inicioJanela = format(startOfMonth(subMonths(mes, 5)), 'yyyy-MM-dd')
-    const fimJanela = format(endOfMonth(mes), 'yyyy-MM-dd')
-
-    const [{ data: gastos }, { data: entradas }, { data: parcelas }, { data: fixas }, { data: assinaturas }] = await Promise.all([
-      supabase.from('gastos').select('valor, data').eq('grupo_id', gid).is('pessoa_id', null).gte('data', inicioJanela).lte('data', fimJanela),
-      supabase.from('entradas').select('valor, data').eq('grupo_id', gid).gte('data', inicioJanela).lte('data', fimJanela),
-      supabase.from('parcelas').select('valor, data_vencimento').eq('grupo_id', gid).gte('data_vencimento', inicioJanela).lte('data_vencimento', fimJanela),
-      supabase.from('contas_fixas').select('valor').eq('grupo_id', gid).eq('ativo', true),
-      supabase.from('assinaturas').select('valor').eq('grupo_id', gid).eq('ativo', true),
-    ])
-    const fixoMensal = (fixas || []).reduce((s, f) => s + Number(f.valor), 0) + (assinaturas || []).reduce((s, a) => s + Number(a.valor), 0)
-
-    const buckets = {}
-    for (let i = 5; i >= 0; i--) {
-      const m = subMonths(mes, i)
-      const key = format(m, 'yyyy-MM')
-      buckets[key] = { key, label: format(m, 'MMM', { locale: ptBR }).replace('.', ''), entradas: 0, saidas: fixoMensal }
-    }
-    ;(entradas || []).forEach(e => { const k = e.data.slice(0, 7); if (buckets[k]) buckets[k].entradas += Number(e.valor) })
-    ;(gastos || []).forEach(g => { const k = g.data.slice(0, 7); if (buckets[k]) buckets[k].saidas += Number(g.valor) })
-    ;(parcelas || []).forEach(p => { const k = p.data_vencimento.slice(0, 7); if (buckets[k]) buckets[k].saidas += Number(p.valor) })
-
-    return Object.values(buckets).map(b => ({ ...b, saldo: b.entradas - b.saidas }))
-  }
-
-  async function carregarMes(data) {
-    const inicio = format(startOfMonth(data), 'yyyy-MM-dd')
-    const fim = format(endOfMonth(data), 'yyyy-MM-dd')
-    const gid = perfil.grupo_id
-
-    const competencia = format(data, 'yyyy-MM')
-
-    const [{ data: gastos }, { data: entradas }, { data: fixas }, { data: parcelas }, { data: assinaturas }, { data: lancFixas }, { data: contasPagas }, { data: orcamentos }, { data: cartoes }] = await Promise.all([
-      supabase.from('gastos').select('id, descricao, valor, categoria, data, cartao_id, usuarios(nome)').eq('grupo_id', gid).is('pessoa_id', null).gte('data', inicio).lte('data', fim),
-      supabase.from('entradas').select('valor, recebido').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
-      supabase.from('contas_fixas').select('id, valor, categoria').eq('grupo_id', gid).eq('ativo', true),
-      supabase.from('parcelas').select('valor, paga, parcelamentos(categoria, cartao_id)').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
-      supabase.from('assinaturas').select('id, valor, cartao_id').eq('grupo_id', gid).eq('ativo', true),
-      supabase.from('fixas_lancamentos').select('conta_fixa_id, valor_real, pago').eq('grupo_id', gid).eq('competencia', competencia),
-      supabase.from('contas_pagas').select('tipo, referencia_id, pago').eq('grupo_id', gid).eq('competencia', competencia),
-      supabase.from('orcamentos').select('categoria, valor').eq('grupo_id', gid),
-      supabase.from('cartoes').select('id, nome').eq('grupo_id', gid).eq('ativo', true),
-    ])
-
-    // valor efetivo de cada conta fixa = real lançado no mês (se houver) senão o previsto
-    const realPorConta = {}
-    ;(lancFixas || []).forEach(l => { if (l.valor_real != null) realPorConta[l.conta_fixa_id] = Number(l.valor_real) })
-    const valorFixa = f => (f.id in realPorConta ? realPorConta[f.id] : Number(f.valor))
-
-    const totalEntradas = (entradas || []).reduce((s, e) => s + Number(e.valor), 0)
-    const totalGastos = (gastos || []).reduce((s, g) => s + Number(g.valor), 0)
-    const totalFixas = (fixas || []).reduce((s, f) => s + valorFixa(f), 0)
-    const totalParcelas = (parcelas || []).reduce((s, p) => s + Number(p.valor), 0)
-    const totalAssint = (assinaturas || []).reduce((s, a) => s + Number(a.valor), 0)
-    const totalSaidas = totalGastos + totalFixas + totalParcelas + totalAssint
-    const saldo = totalEntradas - totalSaidas
-
-    // --- Realizado (fluxo de caixa): o que de fato já entrou e já saiu ---
-    // Os estados de "pago" vêm das mesmas fontes que o usuário controla no hub Contas do mês.
-    const faturaPaga = {}       // cartao_id -> fatura do mês quitada
-    const assinaturaPaga = {}   // assinatura_id -> assinatura avulsa quitada
-    ;(contasPagas || []).forEach(r => {
-      if (!r.pago) return
-      if (r.tipo === 'fatura') faturaPaga[r.referencia_id] = true
-      else if (r.tipo === 'assinatura') assinaturaPaga[r.referencia_id] = true
-    })
-    const fixaPaga = {}
-    ;(lancFixas || []).forEach(l => { if (l.pago) fixaPaga[l.conta_fixa_id] = true })
-
-    // Entradas: realizado = marcadas como recebidas
-    const recebidoEntradas = (entradas || []).filter(e => e.recebido).reduce((s, e) => s + Number(e.valor), 0)
-    const aReceber = totalEntradas - recebidoEntradas
-
-    // Saídas: dinheiro que já saiu da conta
-    let saiuSaidas = 0
-    ;(gastos || []).forEach(g => {
-      const v = Number(g.valor)
-      if (!g.cartao_id) saiuSaidas += v                  // pix/dinheiro/débito: saiu na hora
-      else if (faturaPaga[g.cartao_id]) saiuSaidas += v   // gasto no cartão: saiu quando a fatura foi paga
-    })
-    ;(fixas || []).forEach(f => { if (fixaPaga[f.id]) saiuSaidas += valorFixa(f) })
-    ;(parcelas || []).forEach(p => {
-      const cid = p.parcelamentos?.cartao_id
-      if (cid ? faturaPaga[cid] : p.paga) saiuSaidas += Number(p.valor)
-    })
-    ;(assinaturas || []).forEach(a => {
-      if (a.cartao_id ? faturaPaga[a.cartao_id] : assinaturaPaga[a.id]) saiuSaidas += Number(a.valor)
-    })
-    const saldoCaixa = recebidoEntradas - saiuSaidas
-
-    // --- Atalhos do Início ---
-    // Fatura (aprox. do mês) por cartão: gastos + parcelas + assinaturas no cartão.
-    const fatPorCartao = {}
-    const addFat = (cid, v) => { if (cid) fatPorCartao[cid] = (fatPorCartao[cid] || 0) + v }
-    ;(gastos || []).forEach(g => addFat(g.cartao_id, Number(g.valor)))
-    ;(parcelas || []).forEach(p => addFat(p.parcelamentos?.cartao_id, Number(p.valor)))
-    ;(assinaturas || []).forEach(a => addFat(a.cartao_id, Number(a.valor)))
-    // Faturas: soma de TODOS os cartões com fatura em aberto (um card só, resumo).
-    let faturasTotal = 0, faturasCount = 0
-    ;(cartoes || []).forEach(c => {
-      const v = fatPorCartao[c.id] || 0
-      if (v > 0 && !faturaPaga[c.id]) { faturasTotal += v; faturasCount++ }
-    })
-    // Contas a vencer = contas fixas + parcelas avulsas + assinaturas avulsas ainda não
-    // pagas. As faturas NÃO entram aqui (ficam no card de Faturas, pra não contar 2x).
-    let aVencerCount = 0, aVencerTotal = 0
-    ;(fixas || []).forEach(f => { if (!fixaPaga[f.id]) { aVencerCount++; aVencerTotal += valorFixa(f) } })
-    ;(parcelas || []).forEach(p => { if (!p.parcelamentos?.cartao_id && !p.paga) { aVencerCount++; aVencerTotal += Number(p.valor) } })
-    ;(assinaturas || []).forEach(a => { if (!a.cartao_id && !assinaturaPaga[a.id]) { aVencerCount++; aVencerTotal += Number(a.valor) } })
-
-    // Visão por NATUREZA: categorias só dos gastos variáveis
-    const porCategoria = {}
-    ;(gastos || []).forEach(g => { porCategoria[g.categoria] = (porCategoria[g.categoria] || 0) + Number(g.valor) })
-
-    // Visão por CATEGORIA: soma gasto variável + conta fixa + parcela (+ assinatura) na mesma categoria
-    const porCategoriaUni = {}
-    const addCat = (cat, campo, v) => {
-      const c = cat || 'outros'
-      if (!porCategoriaUni[c]) porCategoriaUni[c] = { total: 0, gasto: 0, fixa: 0, parcela: 0, assinatura: 0 }
-      porCategoriaUni[c][campo] += v
-      porCategoriaUni[c].total += v
-    }
-    ;(gastos || []).forEach(g => addCat(g.categoria, 'gasto', Number(g.valor)))
-    ;(fixas || []).forEach(f => addCat(f.categoria, 'fixa', valorFixa(f)))
-    ;(parcelas || []).forEach(p => addCat(p.parcelamentos?.categoria, 'parcela', Number(p.valor)))
-    ;(assinaturas || []).forEach(a => addCat('assinaturas', 'assinatura', Number(a.valor)))
-
-    // --- Previsto do mês = teto do orçamento (planejado pelo usuário) ---
-    // Para cada categoria: o maior entre o já realizado e o teto definido.
-    // Assim o previsto projeta o fim do mês em vez de "crescer" conforme se gasta.
-    const tetos = Object.fromEntries((orcamentos || []).map(o => [o.categoria, Number(o.valor)]))
-    const catsPrev = new Set([...Object.keys(porCategoriaUni), ...Object.keys(tetos)])
-    let previstoSaidas = 0
-    catsPrev.forEach(c => {
-      if (c === 'assinaturas') { previstoSaidas += porCategoriaUni[c]?.total || 0; return } // assinaturas não têm teto
-      previstoSaidas += Math.max(porCategoriaUni[c]?.total || 0, tetos[c] || 0)
-    })
-    const saldoPrevisto = totalEntradas - previstoSaidas
-    const aPagar = Math.max(0, previstoSaidas - saiuSaidas)
-
-    // Orçamento × realizado (só categorias com teto), ordenado por % de uso
-    const orcamentoCats = Object.keys(tetos).map(c => ({
-      categoria: c,
-      teto: tetos[c],
-      realizado: porCategoriaUni[c]?.total || 0,
-    })).sort((a, b) => (b.realizado / b.teto) - (a.realizado / a.teto))
-
-    const porPessoa = {}
-    ;(gastos || []).forEach(g => {
-      const nome = g.usuarios?.nome?.split(' ')[0] || 'Desconhecido'
-      porPessoa[nome] = (porPessoa[nome] || 0) + Number(g.valor)
-    })
-
-    return { totalEntradas, recebidoEntradas, aReceber, totalGastos, totalFixas, totalParcelas, totalAssint, totalSaidas, saiuSaidas, aPagar, saldo, saldoCaixa, previstoSaidas, saldoPrevisto, orcamentoCats, porCategoria, porCategoriaUni, porPessoa, gastos: gastos || [], faturasTotal, faturasCount, aVencerCount, aVencerTotal }
-  }
-
   async function carregar() {
-    setLoading(true)
-    const [d, dAnt, hist] = await Promise.all([
-      carregarMes(mes),
-      carregarMes(subMonths(mes, 1)),
-      carregarHistorico(),
-    ])
-    setDados(d); setDadosAnt(dAnt); setHistorico(hist)
+    setLoading(true); setErro(null)
+    try {
+      await garantirSeries()
+      const gid = perfil.grupo_id
+      const hoje = hojeBRT()
+      const comp = format(mes, 'yyyy-MM')
+      const compIni = addMeses(comp, -5)
+      const dados = await carregarMotor(gid, { compIni, compFim: addMeses(comp, 1) })
+      const res = resumoMes(comp, dados, { hoje })
+      setR(res)
+      setRAnt(resumoMes(addMeses(comp, -1), dados, { hoje }))
+
+      // Tendência: só a partir de quando o grupo começou a usar o app
+      const piso = dados.inicioComp && dados.inicioComp > compIni ? dados.inicioComp : compIni
+      setHistorico(compsEntre(piso, comp).map(c => {
+        const x = resumoMes(c, dados, { hoje })
+        return { key: c, label: nomeMesCurto(c), entradas: x.entradasPrevistas, saidas: x.totalSaidas, saldo: x.sobraDoMes }
+      }))
+
+      // Gastos por pessoa (quem lançou), só o que é seu — o nome entra na hora de mostrar
+      const pu = {}
+      for (const g of dados.gastos) {
+        if (g.pessoa_id || compDe(g.data) !== comp) continue
+        pu[g.usuario_id || '?'] = (pu[g.usuario_id || '?'] || 0) + Number(g.valor)
+      }
+      setPorUsuario(pu)
+
+      // Virada do mês: o mês anterior fechou e ninguém decidiu ainda?
+      setVirada(null)
+      const compAnt = addMeses(compDe(hoje), -1)
+      if (comp === compDe(hoje) && (!dados.inicioComp || dados.inicioComp <= compAnt)) {
+        const { data: dec } = await supabase.from('viradas_mes').select('id').eq('grupo_id', gid).eq('competencia', compAnt).maybeSingle()
+        if (!dec) {
+          const resAnt = resumoMes(compAnt, dados, { hoje })
+          if (Math.abs(resAnt.saldoDoMes) > 0.004) {
+            const { data: cofs } = await supabase.from('cofrinhos').select('id, nome').eq('grupo_id', gid).order('nome')
+            setVirada({ comp: compAnt, resumo: resAnt, cofrinhos: cofs || [] })
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[inicio]', e)
+      setErro('Não foi possível carregar suas contas agora. Puxe pra atualizar ou tente de novo.')
+    }
     setLoading(false)
   }
 
   // Carregando: esqueleto com brilho (referência estados.html)
-  if (loading) return (
+  if (loading && !r) return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -248,38 +136,71 @@ export default function Dashboard() {
       <p style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 13, marginTop: 16 }}>{t.carregando}</p>
     </div>
   )
+  if (!r) return <p style={{ textAlign: 'center', color: 'var(--text2)', padding: 24 }}>{erro || t.carregando}</p>
 
-  const pessoaEntries = Object.entries(dados.porPessoa).sort((a, b) => b[1] - a[1])
-  const totalPessoas = pessoaEntries.reduce((s, [, v]) => s + v, 0)
+  // ---------- derivados pra tela ----------
+  const azul = r.saldoDoMes >= 0
+  const barMax = Math.max(1, ...historico.map(h => Math.abs(h.saldo)))
+  const pctEntrou = r.entradasPrevistas > 0 ? Math.min(100, (r.entradasRecebidas / r.entradasPrevistas) * 100) : 0
+  const pctSaiu = r.totalSaidas > 0 ? Math.min(100, (r.pago / r.totalSaidas) * 100) : 0
 
-  // Visão por categoria (tudo somado): [cat, { total, gasto, fixa, parcela, assinatura }]
-  const catUniEntries = Object.entries(dados.porCategoriaUni).sort((a, b) => b[1].total - a[1].total)
+  // Contas a vencer: tudo que vence no mês e ainda não foi pago
+  const aVencerItens = [...r.faturas, ...r.fixas, ...r.parcelasAvulsas, ...r.assinaturasAvulsas].filter(x => !x.paga)
+  const vencerCount = aVencerItens.length
+  const vencerTotal = somaLista(aVencerItens)
 
+  // Categorias (meu gasto, sem compras de outras pessoas)
+  const catUniEntries = Object.entries(r.meuGasto.porCategoria).sort((a, b) => b[1].total - a[1].total)
   const emojiPara = cat => cat === 'assinaturas' ? '📺' : emojiDe(cat)
   const nomeCategoria = cat => cat === 'assinaturas' ? 'Assinaturas' : cat
-
-  // Distribuição da renda: quanto de tudo que entrou vai para cada categoria
-  const baseRenda = Math.max(dados.totalEntradas, dados.totalSaidas, 1)
-  const sobra = dados.totalEntradas - dados.totalSaidas
+  const baseRenda = Math.max(r.entradasPrevistas, r.meuGasto.total, 1)
+  const sobraRenda = r.entradasPrevistas - r.meuGasto.total
   const distribuicao = catUniEntries.map(([cat, o]) => ({ nome: cat, valor: o.total, rotulo: `${emojiPara(cat)} ${nomeCategoria(cat)}` }))
-  if (sobra > 0) distribuicao.push({ nome: 'Disponível', valor: sobra, rotulo: '✅ Disponível', sobra: true })
+  if (sobraRenda > 0) distribuicao.push({ nome: 'Disponível', valor: sobraRenda, rotulo: '✅ Disponível', sobra: true })
 
-  // "Quanto posso gastar" (só no mês corrente): renda − compromissos − já gasto variável
-  const diasNoMes = endOfMonth(mes).getDate()
-  const diasRestantes = Math.max(1, diasNoMes - new Date().getDate() + 1)
-  const compromissos = dados.totalFixas + dados.totalParcelas + dados.totalAssint
-  const livreMes = dados.totalEntradas - compromissos - dados.totalGastos
-  const porDia = Math.max(0, livreMes) / diasRestantes
+  const orcamentoCats = r.orcamento.filter(o => o.teto > 0).sort((a, b) => (b.realizado / b.teto) - (a.realizado / a.teto))
+  const nomesMembros = Object.fromEntries(membros.map(m => [m.id, m.nome?.split(' ')[0] || 'Alguém']))
+  const porPessoaObj = {}
+  for (const [uid, v] of Object.entries(porUsuario)) {
+    const nome = nomesMembros[uid] || 'Alguém'
+    porPessoaObj[nome] = (porPessoaObj[nome] || 0) + v
+  }
+  const porPessoaMes = Object.entries(porPessoaObj).sort((a, b) => b[1] - a[1])
+  const totalPessoas = porPessoaMes.reduce((s, [, v]) => s + v, 0)
 
-  // Hero: saldo previsto no azul/vermelho + mini-barras com o saldo dos últimos meses
-  const azul = dados.saldoPrevisto >= 0
-  const barMax = Math.max(1, ...historico.map(h => Math.abs(h.saldo)))
-  // Bloco "O mês até agora": progresso do realizado sobre o previsto
-  const pctEntrou = dados.totalEntradas > 0 ? Math.min(100, (dados.recebidoEntradas / dados.totalEntradas) * 100) : 0
-  const pctSaiu = dados.previstoSaidas > 0 ? Math.min(100, (dados.saiuSaidas / dados.previstoSaidas) * 100) : 0
-  // Atalho único: tudo que falta pagar no mês = contas + parcelas + faturas em aberto
-  const vencerCount = dados.aVencerCount + dados.faturasCount
-  const vencerTotal = dados.aVencerTotal + dados.faturasTotal
+  const composicao = [
+    ['Faturas de cartão', somaLista(r.faturas), 'var(--red)'],
+    ['Contas fixas', somaLista(r.fixas), 'var(--blue)'],
+    ['Assinaturas sem cartão', somaLista(r.assinaturasAvulsas), 'var(--purple)'],
+    ['Parcelas sem cartão', somaLista(r.parcelasAvulsas), 'var(--amber)'],
+    ['À vista (pix, débito, dinheiro)', somaLista(r.aVista), 'var(--accent)'],
+    ['Guardado em cofrinho', somaLista(r.cofrinhos), 'var(--text3)'],
+  ]
+
+  // ---------- "de onde vem esse número?" ----------
+  const blocosSaidas = (soPago) => {
+    const f = l => (soPago ? l.filter(x => x.paga) : l)
+    return [
+      { titulo: soPago ? t.blocoFaturasPagas : t.blocoFaturas, sinal: '−', itens: linhas(f(r.faturas), x => x.paga ? 'paga' : x.status === 'aberta' ? 'aberta' : 'a pagar'), total: somaLista(f(r.faturas)) },
+      { titulo: t.blocoFixas, sinal: '−', itens: linhas(f(r.fixas), x => x.paga ? 'paga' : 'a pagar'), total: somaLista(f(r.fixas)) },
+      { titulo: t.blocoParcelas, sinal: '−', itens: linhas(f(r.parcelasAvulsas), x => `${x.numero}/${x.total}${x.paga ? ' · paga' : ''}`), total: somaLista(f(r.parcelasAvulsas)) },
+      { titulo: t.blocoAssinaturas, sinal: '−', itens: linhas(f(r.assinaturasAvulsas)), total: somaLista(f(r.assinaturasAvulsas)) },
+      { titulo: t.blocoAVista, sinal: '−', itens: linhas(f(r.aVista), x => x.semCartao ? 'cartão não informado' : null), total: somaLista(f(r.aVista)) },
+      { titulo: t.blocoCofrinhos, sinal: '−', itens: linhas(f(r.cofrinhos)), total: somaLista(f(r.cofrinhos)) },
+    ]
+  }
+  const explicacoes = {
+    saldo: {
+      titulo: t.resultadoSaldo, subtitulo: t.explicaSaldoSub,
+      blocos: [{ titulo: t.blocoEntrou, sinal: '+', itens: linhas(r.entradas.filter(e => e.recebida)), total: r.entradasRecebidas }, ...blocosSaidas(true)],
+      resultado: { rotulo: t.resultadoSaldo, valor: r.saldoDoMes },
+    },
+    sobra: {
+      titulo: t.resultadoSobra, subtitulo: t.explicaSobraSub,
+      blocos: [{ titulo: t.blocoEntradas, sinal: '+', itens: linhas(r.entradas, e => e.recebida ? 'recebida' : 'a receber'), total: r.entradasPrevistas }, ...blocosSaidas(false)],
+      resultado: { rotulo: t.resultadoSobra, valor: r.sobraDoMes },
+    },
+  }
 
   return (
     <div>
@@ -302,6 +223,8 @@ export default function Dashboard() {
 
       <Onboarding />
 
+      {virada && <ViradaMes comp={virada.comp} resumo={virada.resumo} cofrinhos={virada.cofrinhos} onDecidido={() => { setVirada(null); carregar() }} />}
+
       {/* Navegação de mês */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <button onClick={() => setMes(m => subMonths(m, 1))}><ChevronLeft size={20} color="var(--text2)" /></button>
@@ -309,7 +232,7 @@ export default function Dashboard() {
         <button onClick={() => setMes(m => addMonths(m, 1))}><ChevronRight size={20} color="var(--text2)" /></button>
       </div>
 
-      {/* Card principal: saldo em caixa (número principal) + projeção do mês abaixo */}
+      {/* Card principal: saldo do mês (o que entrou − o que foi pago) + o que vai sobrar */}
       <section style={{ background: 'var(--panel-ink)', color: '#fff', borderRadius: 'var(--radius-lg)', padding: 20, marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#94a3b8' }}>
@@ -319,9 +242,13 @@ export default function Dashboard() {
           <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 20, background: azul ? 'rgba(16,185,129,.2)' : 'rgba(239,68,68,.2)', color: azul ? '#34d399' : '#fca5a5' }}>{azul ? t.noAzul : t.noVermelho}</span>
         </div>
         <div>
-          <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 36, lineHeight: '40px', color: dados.saldoCaixa >= 0 ? '#fff' : '#fca5a5' }}>{fmt(dados.saldoCaixa)}</span>
+          <button onClick={() => setExplica('saldo')} title={t.deOndeVem} style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 36, lineHeight: '40px', color: azul ? '#fff' : '#fca5a5', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}>
+            {fmt(r.saldoDoMes)}
+          </button>
           <p style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', fontSize: 13, color: '#94a3b8', marginTop: 6 }}>
-            <span>{t.projecaoMes} <strong style={{ color: azul ? '#34d399' : '#fca5a5' }}>{fmt(dados.saldoPrevisto)}</strong></span>
+            <button onClick={() => setExplica('sobra')} style={{ background: 'none', border: 'none', padding: 0, color: '#94a3b8', fontSize: 13, textAlign: 'left' }}>
+              {t.projecaoMes} <strong style={{ color: r.sobraDoMes >= 0 ? '#34d399' : '#fca5a5' }}>{fmt(r.sobraDoMes)}</strong>
+            </button>
             <InfoDica titulo={t.dicaProjecaoTitulo} texto={t.dicaProjecao} cor="#cbd5e1" alinhar="right" tamanho={14} />
           </p>
         </div>
@@ -338,8 +265,7 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* Atalho único: tudo que falta pagar no mês (contas + parcelas + faturas).
-          Detalhe item a item, com vencimentos, abre na tela Contas do mês. */}
+      {/* Atalho único: tudo que falta pagar no mês (faturas + contas + parcelas + assinaturas) */}
       <Link to="/contas-do-mes" className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, textDecoration: 'none', color: 'var(--text)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 500, color: vencerCount > 0 ? 'var(--amber-text)' : 'var(--accent-text)' }}>
@@ -353,13 +279,13 @@ export default function Dashboard() {
         </div>
       </Link>
 
-      {/* O mês até agora: realizado × previsto em barras (menos número solto) */}
+      {/* O mês até agora: realizado × total do mês */}
       <section className="card" style={{ marginBottom: 20 }}>
         <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>{t.mesAteAgora}</p>
         <div style={{ marginBottom: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, fontSize: 13, marginBottom: 6 }}>
-            <span>{t.entrou} <strong style={{ fontFamily: 'Syne' }}>{fmt(dados.recebidoEntradas)}</strong> <span style={{ color: 'var(--text3)', fontSize: 12 }}>{t.de(fmt(dados.totalEntradas))}</span></span>
-            {dados.aReceber > 0.005 && <span style={{ color: 'var(--text3)', fontSize: 12, whiteSpace: 'nowrap' }}>{t.aReceberLabel} {fmt(dados.aReceber)}</span>}
+            <span>{t.entrou} <strong style={{ fontFamily: 'Syne' }}>{fmt(r.entradasRecebidas)}</strong> <span style={{ color: 'var(--text3)', fontSize: 12 }}>{t.de(fmt(r.entradasPrevistas))}</span></span>
+            {r.aReceber > 0.005 && <span style={{ color: 'var(--text3)', fontSize: 12, whiteSpace: 'nowrap' }}>{t.aReceberLabel} {fmt(r.aReceber)}</span>}
           </div>
           <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
             <div style={{ width: `${pctEntrou}%`, height: '100%', background: 'var(--accent)', borderRadius: 4, transition: 'width 0.4s' }} />
@@ -367,8 +293,8 @@ export default function Dashboard() {
         </div>
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, fontSize: 13, marginBottom: 6 }}>
-            <span>{t.saiu} <strong style={{ fontFamily: 'Syne' }}>{fmt(dados.saiuSaidas)}</strong> <span style={{ color: 'var(--text3)', fontSize: 12 }}>{t.de(fmt(dados.previstoSaidas))}</span></span>
-            {dados.aPagar > 0.005 && <span style={{ color: 'var(--text3)', fontSize: 12, whiteSpace: 'nowrap' }}>{t.aPagarLabel} {fmt(dados.aPagar)}</span>}
+            <span>{t.saiu} <strong style={{ fontFamily: 'Syne' }}>{fmt(r.pago)}</strong> <span style={{ color: 'var(--text3)', fontSize: 12 }}>{t.de(fmt(r.totalSaidas))}</span></span>
+            {r.aPagar > 0.005 && <span style={{ color: 'var(--text3)', fontSize: 12, whiteSpace: 'nowrap' }}>{t.aPagarLabel} {fmt(r.aPagar)}</span>}
           </div>
           <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
             <div style={{ width: `${pctSaiu}%`, height: '100%', background: 'var(--red)', borderRadius: 4, transition: 'width 0.4s' }} />
@@ -376,29 +302,40 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Quanto posso gastar (mês corrente) */}
+      {/* Quanto posso gastar (mês corrente) = o que vai sobrar com tudo que já está lançado */}
       {ehMesAtual && (
-        <div className="card" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Wallet size={22} color="var(--accent)" />
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 12, color: 'var(--text2)' }}>Quanto posso gastar</p>
-            <p style={{ fontSize: 22, fontFamily: 'Syne', fontWeight: 700, color: livreMes >= 0 ? 'var(--accent)' : 'var(--red)' }}>
-              {fmt(Math.max(0, livreMes))}
-              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text2)' }}> livres no mês</span>
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
-              {livreMes > 0
-                ? `cerca de ${fmt(porDia)} por dia nos próximos ${diasRestantes} dias`
-                : 'Renda já comprometida com contas e gastos do mês'}
-            </p>
-          </div>
+        <div className="card" style={{ marginBottom: 20 }}>
+          <button onClick={() => setExplica('sobra')} style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, color: 'var(--text)' }}>
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Wallet size={22} color="var(--accent)" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 12, color: 'var(--text2)' }}>{t.possoGastar}</p>
+              <p style={{ fontSize: 22, fontFamily: 'Syne', fontWeight: 700, color: r.sobraDoMes >= 0 ? 'var(--accent)' : 'var(--red)' }}>
+                {fmt(r.sobraDoMes)}
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text2)' }}>{t.possoGastarLivres}</span>
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+                {r.sobraDoMes > 0 ? t.possoGastarPorDia(fmt(r.porDia), r.diasRestantes) : t.possoGastarNegativo}
+              </p>
+            </div>
+            <ChevronRight size={18} color="var(--text3)" />
+          </button>
+          {(r.reservaAvista > 0 || r.faturaMesQueVem > 0) && (
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text2)' }}>
+              {r.reservaAvista > 0 && <span>{t.separandoOrcamento(fmt(r.livreSeparandoOrcamento))}</span>}
+              {r.faturaMesQueVem > 0 && (
+                <span>{r.faturaMesQueVemEstimada > r.faturaMesQueVem + 0.5
+                  ? t.faturaMesQueVemEstimada(fmt(r.faturaMesQueVem), fmt(r.faturaMesQueVemEstimada))
+                  : t.faturaMesQueVem(fmt(r.faturaMesQueVem))}</span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Orçamento × realizado */}
-      {dados.orcamentoCats.length > 0 && (
+      {/* Orçamento × realizado (meu gasto, sem compras de outras pessoas) */}
+      {orcamentoCats.length > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -407,7 +344,7 @@ export default function Dashboard() {
             </div>
             <Link to="/orcamento" style={{ fontSize: 12, color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 600 }}>Ver tudo</Link>
           </div>
-          {dados.orcamentoCats.slice(0, 5).map(({ categoria, teto, realizado }) => {
+          {orcamentoCats.slice(0, 5).map(({ categoria, teto, realizado }) => {
             const pct = teto > 0 ? Math.round((realizado / teto) * 100) : 0
             return (
               <div key={categoria} style={{ marginBottom: 12 }}>
@@ -424,7 +361,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Pizza: para onde vai a renda */}
+      {/* Pizza: para onde vai a renda (meu gasto por categoria) */}
       {distribuicao.length > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -432,7 +369,7 @@ export default function Dashboard() {
             <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Para onde vai a renda</p>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
-            Tudo somado por categoria (gasto, conta fixa, parcela e assinatura juntos)
+            O que é seu, por categoria (gasto, conta fixa, parcela e assinatura juntos — sem o que é de outras pessoas)
           </p>
           <ResponsiveContainer width="100%" height={210}>
             <PieChart>
@@ -464,12 +401,12 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Tendência dos últimos 6 meses */}
-      {historico.length > 0 && (
+      {/* Tendência dos últimos meses (mesma regra: caixa pelo vencimento) */}
+      {historico.length > 1 && (
         <div className="card" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
             <TrendingUp size={18} color="var(--accent)" />
-            <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Tendência (6 meses)</p>
+            <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Tendência ({historico.length} meses)</p>
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={historico} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
@@ -499,16 +436,11 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Composição das saídas */}
+      {/* Composição das saídas do mês (o que sai da conta) */}
       <div className="card" style={{ marginBottom: 20 }}>
         <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Composição das saídas</p>
-        {[
-          ['Gastos variáveis', dados.totalGastos, 'var(--red)'],
-          ['Contas fixas', dados.totalFixas, 'var(--blue)'],
-          ['Assinaturas', dados.totalAssint, 'var(--purple)'],
-          ['Parcelas', dados.totalParcelas, 'var(--amber)'],
-        ].map(([label, valor, cor]) => {
-          const pct = dados.totalSaidas > 0 ? Math.round((valor / dados.totalSaidas) * 100) : 0
+        {composicao.map(([label, valor, cor]) => {
+          const pct = r.totalSaidas > 0 ? Math.round((valor / r.totalSaidas) * 100) : 0
           return valor > 0 ? (
             <div key={label} style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
@@ -523,11 +455,11 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Gastos por pessoa */}
-      {pessoaEntries.length > 0 && (
+      {/* Gastos por pessoa (quem lançou) */}
+      {porPessoaMes.length > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
           <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Gastos por pessoa</p>
-          {pessoaEntries.map(([nome, valor], i) => {
+          {porPessoaMes.map(([nome, valor], i) => {
             const pct = totalPessoas > 0 ? Math.round((valor / totalPessoas) * 100) : 0
             return (
               <div key={nome} style={{ marginBottom: 12 }}>
@@ -550,14 +482,14 @@ export default function Dashboard() {
       )}
 
       {/* Comparativo vs mês anterior */}
-      {dadosAnt && (
+      {rAnt && (
         <div className="card" style={{ marginBottom: 20 }}>
           <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>Comparativo com mês anterior</p>
           {[
-            ['Entradas', dados.totalEntradas, dadosAnt.totalEntradas, true],
-            ['Gastos variáveis', dados.totalGastos, dadosAnt.totalGastos, false],
-            ['Total saídas', dados.totalSaidas, dadosAnt.totalSaidas, false],
-            ['Saldo do mês', dados.saldo, dadosAnt.saldo, true],
+            ['Entradas', r.entradasPrevistas, rAnt.entradasPrevistas, true],
+            ['Meu gasto', r.meuGasto.total, rAnt.meuGasto.total, false],
+            ['Total que sai da conta', r.totalSaidas, rAnt.totalSaidas, false],
+            ['Sobra do mês', r.sobraDoMes, rAnt.sobraDoMes, true],
           ].map(([label, atual, anterior, maiorEBom]) => {
             const diff = atual - anterior
             const bom = maiorEBom ? diff >= 0 : diff <= 0
@@ -566,7 +498,7 @@ export default function Dashboard() {
                 <span style={{ fontSize: 13, color: 'var(--text2)' }}>{label}</span>
                 <div style={{ textAlign: 'right' }}>
                   <p style={{ fontSize: 14, fontWeight: 500, fontFamily: 'Syne' }}>{fmt(atual)}</p>
-                  {diff !== 0 && (
+                  {Math.abs(diff) > 0.004 && (
                     <p style={{ fontSize: 11, color: bom ? 'var(--accent)' : 'var(--red)' }}>
                       {diff > 0 ? '+' : ''}{fmt(diff)} vs ant.
                     </p>
@@ -577,6 +509,8 @@ export default function Dashboard() {
           })}
         </div>
       )}
+
+      {explica && <Explicacao {...explicacoes[explica]} onFechar={() => setExplica(null)} />}
 
       {/* Botão de voz flutuante */}
       <BotaoVoz onSalvo={carregar} />

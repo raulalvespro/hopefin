@@ -11,22 +11,12 @@ import { fmt, hojeISO, parseDataLocal } from '../lib/format'
 import { Tag, Meter, IconeCategoria, EmptyState } from '../components/ui'
 import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
+import { carregarMotor, faturaDoCartao, cobrancaNoMes, hojeBRT } from '../lib/motor'
 
 const t = copy.contasMes
 
 const clampDay = (y, m, d) => Math.min(d, getDaysInMonth(new Date(y, m, 1)))
 
-// Ciclo da fatura de um cartão que VENCE no mês (ano, mesIdx 0-based).
-function cicloFatura(card, ano, mesIdx) {
-  const diaF = card.dia_fechamento || 1
-  const diaV = card.dia_vencimento || 10
-  const vencDia = clampDay(ano, mesIdx, diaV)
-  const venc = new Date(ano, mesIdx, vencDia)
-  const fIdx = diaV <= diaF ? mesIdx - 1 : mesIdx
-  const fecha = new Date(ano, fIdx, clampDay(ano, fIdx, diaF))
-  const abre = new Date(ano, fIdx - 1, clampDay(ano, fIdx - 1, diaF))
-  return { abre, fecha, venc, vencDia }
-}
 
 // Dias entre hoje e o vencimento (negativo = já venceu). Só o calendário, sem hora.
 function diasAte(ano, mesIdx, vencDia) {
@@ -66,14 +56,15 @@ export default function ContasDoMes() {
     const ini = format(startOfMonth(mes), 'yyyy-MM-dd')
     const fim = format(endOfMonth(mes), 'yyyy-MM-dd')
 
-    const [cf, lanc, cartoes, gastos, parcelas, assinaturas, pagas] = await Promise.all([
+    const [cf, lanc, cartoes, gastos, parcelas, assinaturas, pagas, motor] = await Promise.all([
       supabase.from('contas_fixas').select('id, nome, valor, categoria, dia_vencimento').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('fixas_lancamentos').select('*').eq('grupo_id', gid).eq('competencia', competencia),
-      supabase.from('cartoes').select('id, nome, bandeira, dia_fechamento, dia_vencimento').eq('grupo_id', gid).eq('ativo', true),
-      supabase.from('gastos').select('valor, data, cartao_id').eq('grupo_id', gid).not('cartao_id', 'is', null),
+      supabase.from('cartoes').select('id, nome, bandeira, dia_fechamento, dia_vencimento, compra_no_fechamento').eq('grupo_id', gid).eq('ativo', true),
+      Promise.resolve({ data: [] }), // faturas agora vêm do motor único (abaixo)
       supabase.from('parcelas').select('valor, data_vencimento, numero, paga, id, parcelamentos!inner(descricao, categoria, num_parcelas, cartao_id)').eq('grupo_id', gid).gte('data_vencimento', ini).lte('data_vencimento', fim),
-      supabase.from('assinaturas').select('id, nome, valor, dia_cobranca, cartao_id').eq('grupo_id', gid).eq('ativo', true),
+      supabase.from('assinaturas').select('id, nome, valor, dia_cobranca, cartao_id, cobrada_desde, criado_em').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('contas_pagas').select('*').eq('grupo_id', gid).eq('competencia', competencia),
+      carregarMotor(gid, { compIni: competencia, compFim: competencia }).catch(e => { console.error('[contas do mês] motor', e); return null }),
     ])
 
     const lancMap = {}
@@ -89,6 +80,7 @@ export default function ContasDoMes() {
       contas: cf.data || [], lancMap,
       cartoes: cartoes.data || [], gastos: gastos.data || [],
       parcelas: parcelas.data || [], assinaturas: assinaturas.data || [], pagasMap,
+      motor,
     })
     setLoading(false)
   }
@@ -179,7 +171,6 @@ export default function ContasDoMes() {
   function montarLinhas() {
     if (!dados) return []
     const linhas = []
-    const inCycle = (d, abre, fecha) => d > abre && d <= fecha
 
     // 1) Contas fixas
     dados.contas.forEach(c => {
@@ -194,13 +185,13 @@ export default function ContasDoMes() {
       })
     })
 
-    // 2) Faturas de cartão (gastos do ciclo + parcelas do mês no cartão + assinaturas vinculadas)
+    // 2) Faturas de cartão que VENCEM no mês — motor único (mesma conta do Início e de Cartões:
+    //    compra × fechamento, dia do fechamento vai pra próxima, compra movida, assinatura no mês certo)
     dados.cartoes.forEach(card => {
-      const { abre, fecha, vencDia } = cicloFatura(card, ano, mesIdx)
-      const gCiclo = dados.gastos.filter(g => g.cartao_id === card.id && inCycle(parseDataLocal(g.data), abre, fecha)).reduce((s, g) => s + Number(g.valor), 0)
-      const pCartao = dados.parcelas.filter(p => p.parcelamentos?.cartao_id === card.id).reduce((s, p) => s + Number(p.valor), 0)
-      const aCartao = dados.assinaturas.filter(a => a.cartao_id === card.id).reduce((s, a) => s + Number(a.valor), 0)
-      const valor = gCiclo + pCartao + aCartao
+      if (!dados.motor) return
+      const f = faturaDoCartao(card, competencia, dados.motor, hojeBRT())
+      const valor = f.total
+      const vencDia = Number(f.vencimento.slice(8, 10))
       if (valor <= 0) return
       const pg = dados.pagasMap[`fatura|${card.id}`]
       linhas.push({
@@ -222,8 +213,8 @@ export default function ContasDoMes() {
       })
     })
 
-    // 4) Assinaturas SEM cartão
-    dados.assinaturas.filter(a => !a.cartao_id).forEach(a => {
+    // 4) Assinaturas SEM cartão (só a partir de quando passaram a ser cobradas)
+    dados.assinaturas.filter(a => !a.cartao_id && cobrancaNoMes(a, competencia)).forEach(a => {
       const pg = dados.pagasMap[`assinatura|${a.id}`]
       linhas.push({
         key: 'assin-' + a.id, tipo: 'assinatura', nome: a.nome,

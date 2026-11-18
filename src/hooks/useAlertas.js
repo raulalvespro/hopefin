@@ -5,20 +5,10 @@ import { format, startOfMonth, endOfMonth, addMonths, getDaysInMonth } from 'dat
 import { useCategorias } from './useCategorias'
 import { fmt, parseDataLocal } from '../lib/format'
 import { estadoAssinatura } from '../lib/assinatura'
+import { carregarMotor, resumoMes, faturasDoCartaoAgora, hojeBRT } from '../lib/motor'
 
 const clampDay = (y, m, d) => Math.min(d, getDaysInMonth(new Date(y, m, 1)))
 const diasEntre = (a, b) => Math.round((a - b) / 86400000)
-
-// Ciclo da fatura de um cartão que VENCE no mês (ano, mesIdx 0-based).
-function cicloFatura(card, ano, mesIdx) {
-  const diaF = card.dia_fechamento || 1
-  const diaV = card.dia_vencimento || 10
-  const vencDia = clampDay(ano, mesIdx, diaV)
-  const fIdx = diaV <= diaF ? mesIdx - 1 : mesIdx
-  const fecha = new Date(ano, fIdx, clampDay(ano, fIdx, diaF))
-  const abre = new Date(ano, fIdx - 1, clampDay(ano, fIdx - 1, diaF))
-  return { abre, fecha, vencDia }
-}
 
 const FECHA_JANELA = 3    // dias p/ avisar que a fatura do cartão vai fechar
 const META_JANELA = 30    // dias p/ avisar que o prazo de uma meta está chegando
@@ -48,16 +38,9 @@ export function useAlertas() {
     const fimAtual = format(endOfMonth(mesAtual), 'yyyy-MM-dd')
     const fimProx = format(endOfMonth(prox), 'yyyy-MM-dd')
 
-    const [cf, cartoes, gastos, parcelas, assinaturas, lanc, pagas, orc, entradas, cofrinhos, supr, pref, subAssin] = await Promise.all([
-      supabase.from('contas_fixas').select('id, nome, valor, categoria, dia_vencimento, alerta_dias').eq('grupo_id', gid).eq('ativo', true),
-      supabase.from('cartoes').select('id, nome, dia_fechamento, dia_vencimento, alerta_dias').eq('grupo_id', gid).eq('ativo', true),
-      supabase.from('gastos').select('valor, data, cartao_id, categoria').eq('grupo_id', gid),
-      supabase.from('parcelas').select('valor, data_vencimento, paga, parcelamentos(descricao, categoria, cartao_id)').eq('grupo_id', gid).gte('data_vencimento', iniAtual).lte('data_vencimento', fimProx),
-      supabase.from('assinaturas').select('id, nome, valor, dia_cobranca, cartao_id').eq('grupo_id', gid).eq('ativo', true),
-      supabase.from('fixas_lancamentos').select('conta_fixa_id, competencia, valor_real, pago').eq('grupo_id', gid).in('competencia', [compAtual, compProx]),
-      supabase.from('contas_pagas').select('tipo, referencia_id, competencia, pago').eq('grupo_id', gid).in('competencia', [compAtual, compProx]),
-      supabase.from('orcamentos').select('categoria, valor').eq('grupo_id', gid),
-      supabase.from('entradas').select('valor').eq('grupo_id', gid).gte('data', iniAtual).lte('data', fimAtual),
+    // Contas, faturas e orçamento vêm do MOTOR ÚNICO (mesma conta do Início e de Contas do mês).
+    const [motor, cofrinhos, supr, pref, subAssin] = await Promise.all([
+      carregarMotor(gid, { compIni: compAtual, compFim: compProx }).catch(e => { console.error('[alertas] motor', e); return null }),
       supabase.from('cofrinhos').select('id, nome, meta, meta_data, saldo_atual').eq('grupo_id', gid),
       supabase.from('alertas_dispensados').select('alerta_id, lembrar_em').eq('grupo_id', gid),
       supabase.from('preferencias_notificacao').select('*').eq('grupo_id', gid).maybeSingle(),
@@ -76,41 +59,25 @@ export function useAlertas() {
     // Suprimidos = dispensados de vez (lembrar_em null) ou em soneca ainda ativa (lembrar_em > hoje)
     suprimidosRef.current = new Set((supr.data || []).filter(d => !d.lembrar_em || d.lembrar_em > hojeStr).map(d => d.alerta_id))
 
-    const lancMap = {}
-    ;(lanc.data || []).forEach(l => { lancMap[`${l.competencia}|${l.conta_fixa_id}`] = l })
-    const pagasMap = {}
-    ;(pagas.data || []).forEach(p => { pagasMap[`${p.competencia}|${p.tipo}|${p.referencia_id}`] = p })
-    const mesDe = d => d.slice(0, 7)
-    const inCycle = (d, abre, fecha) => d > abre && d <= fecha
+    const hojeISOStr = hojeBRT()
+    const cartoesAtivos = (motor?.cartoes || []).filter(c => c.ativo !== false)
+    const fixasPorId = Object.fromEntries((motor?.fixas || []).map(f => [f.id, f]))
+    const cartaoPorId = Object.fromEntries(cartoesAtivos.map(c => [c.id, c]))
 
-    // Contas a pagar de um mês (data + janela de alerta por item).
+    // Contas a pagar de um mês (data + janela de alerta por item) — pelo motor.
     function linhasDoMes(dataMes) {
+      if (!motor) return []
       const ano = dataMes.getFullYear(); const mesIdx = dataMes.getMonth(); const comp = format(dataMes, 'yyyy-MM')
+      const r = resumoMes(comp, motor, { hoje: hojeISOStr })
+      const dia = iso => (iso ? Number(iso.slice(8, 10)) : 99)
       const linhas = []
-      ;(cf.data || []).forEach(c => {
-        const l = lancMap[`${comp}|${c.id}`]
-        const valor = l?.valor_real != null ? Number(l.valor_real) : Number(c.valor)
-        linhas.push({ tipo: 'fixa', nome: c.nome, emoji: emojiDe(c.categoria), vencDia: c.dia_vencimento || 99, valor, pago: l?.pago ?? false, alertaDias: c.alerta_dias ?? 3 })
-      })
-      ;(cartoes.data || []).forEach(card => {
-        const { abre, fecha, vencDia } = cicloFatura(card, ano, mesIdx)
-        const gCiclo = (gastos.data || []).filter(g => g.cartao_id === card.id && inCycle(parseDataLocal(g.data), abre, fecha)).reduce((s, g) => s + Number(g.valor), 0)
-        const pCartao = (parcelas.data || []).filter(p => p.parcelamentos?.cartao_id === card.id && mesDe(p.data_vencimento) === comp).reduce((s, p) => s + Number(p.valor), 0)
-        const aCartao = (assinaturas.data || []).filter(a => a.cartao_id === card.id).reduce((s, a) => s + Number(a.valor), 0)
-        const valor = gCiclo + pCartao + aCartao
-        if (valor <= 0) return
-        const pg = pagasMap[`${comp}|fatura|${card.id}`]
-        linhas.push({ tipo: 'fatura', nome: `Fatura ${card.nome}`, emoji: '💳', vencDia, valor, pago: pg?.pago ?? false, alertaDias: card.alerta_dias ?? 3 })
-      })
-      ;(parcelas.data || []).filter(p => !p.parcelamentos?.cartao_id && mesDe(p.data_vencimento) === comp).forEach(p => {
-        linhas.push({ tipo: 'parcela', nome: p.parcelamentos?.descricao || 'Parcela', emoji: emojiDe(p.parcelamentos?.categoria), vencDia: parseDataLocal(p.data_vencimento).getDate(), valor: Number(p.valor), pago: p.paga, alertaDias: DIAS_PADRAO })
-      })
-      ;(assinaturas.data || []).filter(a => !a.cartao_id).forEach(a => {
-        const pg = pagasMap[`${comp}|assinatura|${a.id}`]
-        linhas.push({ tipo: 'assinatura', nome: a.nome, emoji: '📺', vencDia: a.dia_cobranca || 99, valor: Number(a.valor), pago: pg?.pago ?? false, alertaDias: DIAS_PADRAO })
-      })
+      r.fixas.forEach(f => linhas.push({ tipo: 'fixa', nome: f.descricao, emoji: emojiDe(f.categoria), vencDia: dia(f.data), valor: f.valor, pago: f.paga, alertaDias: fixasPorId[f.id]?.alerta_dias ?? 3 }))
+      r.faturas.filter(f => cartaoPorId[f.cartaoId]).forEach(f => linhas.push({ tipo: 'fatura', nome: `Fatura ${f.cartaoNome}`, emoji: '💳', vencDia: dia(f.vencimento), valor: f.total, pago: f.paga, alertaDias: cartaoPorId[f.cartaoId]?.alerta_dias ?? 3 }))
+      r.parcelasAvulsas.forEach(p => linhas.push({ tipo: 'parcela', nome: p.descricao || 'Parcela', emoji: emojiDe(p.categoria), vencDia: dia(p.data), valor: p.valor, pago: p.paga, alertaDias: DIAS_PADRAO }))
+      r.assinaturasAvulsas.forEach(a => linhas.push({ tipo: 'assinatura', nome: a.descricao, emoji: '📺', vencDia: dia(a.data), valor: a.valor, pago: a.paga, alertaDias: DIAS_PADRAO }))
       return linhas.map(l => ({ ...l, ano, mesIdx }))
     }
+    const resumoAtual = motor ? resumoMes(compAtual, motor, { hoje: hojeISOStr }) : null
 
     const out = []
 
@@ -129,48 +96,32 @@ export function useAlertas() {
       }
     })
 
-    // 2) Fatura do cartão fechando em breve (hora de revisar os gastos)
-    if (ligado.fatura) (cartoes.data || []).forEach(card => {
-      const diaF = card.dia_fechamento
-      if (!diaF) return
-      let fecha = new Date(hoje.getFullYear(), hoje.getMonth(), clampDay(hoje.getFullYear(), hoje.getMonth(), diaF))
-      if (fecha < hoje) fecha = new Date(hoje.getFullYear(), hoje.getMonth() + 1, clampDay(hoje.getFullYear(), hoje.getMonth() + 1, diaF))
+    // 2) Fatura do cartão fechando em breve (hora de revisar os gastos) — a fatura ABERTA
+    if (ligado.fatura && motor) cartoesAtivos.forEach(card => {
+      const { aberta } = faturasDoCartaoAgora(card, motor, hojeISOStr)
+      const fecha = parseDataLocal(aberta.fechamento); fecha.setHours(0, 0, 0, 0)
       const diasF = diasEntre(fecha, hoje)
-      if (diasF < 0 || diasF > FECHA_JANELA) return
-      const abre = new Date(fecha.getFullYear(), fecha.getMonth() - 1, clampDay(fecha.getFullYear(), fecha.getMonth() - 1, diaF))
-      const spend = (gastos.data || []).filter(g => g.cartao_id === card.id && parseDataLocal(g.data) > abre && parseDataLocal(g.data) <= fecha).reduce((s, g) => s + Number(g.valor), 0)
-      if (spend <= 0) return
+      if (diasF < 0 || diasF > FECHA_JANELA || aberta.total <= 0) return
       const quando = diasF === 0 ? 'Fecha hoje' : diasF === 1 ? 'Fecha amanhã' : `Fecha em ${diasF} dias (${format(fecha, 'dd/MM')})`
-      out.push({ id: `fecha-${format(fecha, 'yyyy-MM-dd')}-${card.id}`, severidade: 'info', emoji: '💳', titulo: `Fatura ${card.nome} fechando`, descricao: `${quando} · ${fmt(spend)} até agora`, valor: spend, destino: '/cartoes', ord: 1.2 })
+      out.push({ id: `fecha-${aberta.fechamento}-${card.id}`, severidade: 'info', emoji: '💳', titulo: `Fatura ${card.nome} fechando`, descricao: `${quando} · ${fmt(aberta.total)} até agora`, valor: aberta.total, destino: '/cartoes', ord: 1.2 })
     })
 
-    // 3) Orçamento: realizado unificado por categoria (gasto + fixa + parcela), mês atual
-    const tetos = Object.fromEntries((orc.data || []).map(o => [o.categoria, Number(o.valor)]))
-    const real = {}
-    const addReal = (cat, v) => { const c = cat || 'outros'; real[c] = (real[c] || 0) + v }
-    ;(gastos.data || []).filter(g => mesDe(g.data) === compAtual).forEach(g => addReal(g.categoria, Number(g.valor)))
-    ;(cf.data || []).forEach(c => { const l = lancMap[`${compAtual}|${c.id}`]; addReal(c.categoria, l?.valor_real != null ? Number(l.valor_real) : Number(c.valor)) })
-    ;(parcelas.data || []).filter(p => mesDe(p.data_vencimento) === compAtual).forEach(p => addReal(p.parcelamentos?.categoria, Number(p.valor)))
-    if (ligado.orcamento) Object.entries(tetos).forEach(([cat, teto]) => {
+    // 3) Orçamento: meu gasto do mês por categoria (compra + fixa + parcela + assinatura, sem terceiros)
+    if (ligado.orcamento && resumoAtual) resumoAtual.orcamento.forEach(o => {
+      const teto = o.teto
       if (!teto || teto <= 0) return
-      const r = real[cat] || 0
+      const r = o.realizado
       const pct = Math.round((r / teto) * 100)
       if (r >= teto) {
-        out.push({ id: `orc-${compAtual}-${cat}-estourou`, severidade: 'estourou', emoji: emojiDe(cat), titulo: `Orçamento de ${cat}`, descricao: `Estourou — ${fmt(r)} de ${fmt(teto)} (${pct}%)`, destino: '/orcamento', ord: 0.6 })
+        out.push({ id: `orc-${compAtual}-${o.categoria}-estourou`, severidade: 'estourou', emoji: emojiDe(o.categoria), titulo: `Orçamento de ${o.categoria}`, descricao: `Estourou — ${fmt(r)} de ${fmt(teto)} (${pct}%)`, destino: '/orcamento', ord: 0.6 })
       } else if (pct >= 80) {
-        out.push({ id: `orc-${compAtual}-${cat}-quase`, severidade: 'quase', emoji: emojiDe(cat), titulo: `Orçamento de ${cat}`, descricao: `No limite — ${fmt(r)} de ${fmt(teto)} (${pct}%)`, destino: '/orcamento', ord: 1.5 })
+        out.push({ id: `orc-${compAtual}-${o.categoria}-quase`, severidade: 'quase', emoji: emojiDe(o.categoria), titulo: `Orçamento de ${o.categoria}`, descricao: `No limite — ${fmt(r)} de ${fmt(teto)} (${pct}%)`, destino: '/orcamento', ord: 1.5 })
       }
     })
 
-    // 4) Projeção do mês no vermelho (entradas do mês − previsto por teto)
-    const catsPrev = new Set([...Object.keys(real), ...Object.keys(tetos)])
-    let previsto = 0
-    catsPrev.forEach(c => { previsto += Math.max(real[c] || 0, tetos[c] || 0) })
-    previsto += (assinaturas.data || []).reduce((s, a) => s + Number(a.valor), 0)
-    const totalEnt = (entradas.data || []).reduce((s, e) => s + Number(e.valor), 0)
-    const projecao = totalEnt - previsto
-    if (ligado.projecao && projecao < 0) {
-      out.push({ id: `proj-neg-${compAtual}`, severidade: 'estourou', emoji: '📉', titulo: 'Mês pode fechar no vermelho', descricao: `Projeção de ${fmt(projecao)} — previsto ${fmt(previsto)} e entradas ${fmt(totalEnt)}`, destino: '/projecao', ord: 0.2 })
+    // 4) Mês no vermelho: tudo que vence no mês passa do que entra (mesma conta do Início)
+    if (ligado.projecao && resumoAtual && resumoAtual.sobraDoMes < 0) {
+      out.push({ id: `proj-neg-${compAtual}`, severidade: 'estourou', emoji: '📉', titulo: 'Mês pode fechar no vermelho', descricao: `Vai faltar ${fmt(Math.abs(resumoAtual.sobraDoMes))} — entram ${fmt(resumoAtual.entradasPrevistas)} e vencem ${fmt(resumoAtual.totalSaidas)}`, destino: '/', ord: 0.2 })
     }
 
     // 5) Metas de cofrinho: atingida 🎉 ou prazo chegando

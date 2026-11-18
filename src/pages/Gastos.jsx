@@ -46,7 +46,7 @@ export default function Gastos() {
 
     const [{ data: gastos }, { data: parcelas }] = await Promise.all([
       supabase.from('gastos').select('*, cartoes(nome), usuarios(nome), pessoas(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
-      supabase.from('parcelas').select('*, parcelamentos(descricao, categoria, num_parcelas, cartoes(nome), usuarios(nome))').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
+      supabase.from('parcelas').select('*, parcelamentos(descricao, categoria, num_parcelas, pessoa_id, cartoes(nome), usuarios(nome), pessoas(nome))').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
     ])
 
     const gastosItens = (gastos || []).map(g => ({
@@ -64,6 +64,9 @@ export default function Gastos() {
       descricao: p.parcelamentos?.descricao, valor: Number(p.valor), categoria: p.parcelamentos?.categoria, data: p.data_vencimento,
       origem: p.parcelamentos?.cartoes?.nome || 'Parcelado', pessoa: p.parcelamentos?.usuarios?.nome?.split(' ')[0],
       numero: p.numero, totalParcelas: p.parcelamentos?.num_parcelas, criado: p.criado_em || '',
+      // Parcela de compra de outra pessoa: fica em "A receber" e não entra no total do mês
+      terceiro: p.parcelamentos?.pessoa_id ? (p.parcelamentos?.pessoas?.nome || 'alguém') : null,
+      reembolso_status: p.recebido ? 'quitado' : 'pendente',
     }))
 
     // Os ÚLTIMOS LANÇADOS aparecem primeiro (pelo momento em que foram lançados). A data do gasto continua
