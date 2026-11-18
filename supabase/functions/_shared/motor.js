@@ -334,3 +334,34 @@ export function meuGastoDoMes(comp, dados) {
   }
   return { porCategoria, itens, total: soma(itens) }
 }
+
+// ---------------------------------------------------------------- contas a vencer
+// O que vence entre `ini` e `fim` (datas 'YYYY-MM-DD', inclusive) e ainda não foi pago:
+// faturas dos cartões ativos, contas fixas, parcelas sem cartão e assinaturas sem
+// cartão — a mesma lista de "contas a vencer" do Início e dos alertas do app. Base dos
+// avisos de vencimento por e-mail e push (A2.10). Vale pra janela que cruza o mês
+// (ex.: hoje 30/11, amanhã 01/12).
+export function contasAVencer(dados, ini, fim, opcoes = {}) {
+  const hoje = opcoes.hoje || hojeBRT()
+  const ativo = new Set((dados.cartoes || []).filter((c) => c.ativo !== false).map((c) => c.id))
+  const out = []
+  for (const comp of compsEntre(compDe(ini), compDe(fim))) {
+    const r = resumoMes(comp, dados, { hoje })
+    for (const f of r.faturas) {
+      if (!ativo.has(f.cartaoId)) continue
+      out.push({ tipo: 'fatura', id: f.cartaoId, nome: `Fatura ${f.cartaoNome}`, valor: f.total, venc: f.vencimento, paga: f.paga, status: f.status })
+    }
+    for (const x of r.fixas) {
+      if (x.data) out.push({ tipo: 'conta_fixa', id: x.id, nome: x.descricao, valor: x.valor, venc: x.data, paga: x.paga })
+    }
+    for (const x of r.parcelasAvulsas) {
+      out.push({ tipo: 'parcela', id: x.id, nome: x.descricao || 'Parcela', valor: x.valor, venc: x.data, paga: x.paga, numero: x.numero, deTotal: x.total })
+    }
+    for (const x of r.assinaturasAvulsas) {
+      out.push({ tipo: 'assinatura', id: x.id, nome: x.descricao, valor: x.valor, venc: x.data, paga: x.paga })
+    }
+  }
+  return out
+    .filter((i) => !i.paga && i.valor > 0.004 && i.venc >= ini && i.venc <= fim)
+    .sort((a, b) => a.venc.localeCompare(b.venc) || String(a.nome).localeCompare(String(b.nome)))
+}

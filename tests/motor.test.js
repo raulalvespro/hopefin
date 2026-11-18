@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   compDaCompra, cobrancaNoMes, faturaDoCartao, faturasDoCartaoAgora, limiteComprometido,
-  resumoMes, meuGastoDoMes, addMeses, dataNoMes, pagoComResolvido,
+  resumoMes, meuGastoDoMes, addMeses, dataNoMes, pagoComResolvido, contasAVencer,
 } from '../supabase/functions/_shared/motor.js'
 
 const HOJE = '2026-11-16'
@@ -148,6 +148,34 @@ describe('resumo do mês (caixa pelo vencimento)', () => {
     const mg = meuGastoDoMes('2026-11', dados())
     expect(mg.total).toBe(1791)
     expect(mg.porCategoria.saude.total).toBe(300) // só o plano; as 2 compras de outra pessoa não entram
+  })
+})
+
+describe('contas a vencer (avisos por e-mail e push)', () => {
+  const resumo = (l) => l.map((i) => [i.tipo, i.nome, i.venc, i.valor])
+
+  it('entra a fatura do cartão que vence na janela; o que já foi pago fica de fora', () => {
+    // Itaú (A): fatura de nov paga · Aluguel: pago · Seguro app (sem cartão): pago em nov
+    expect(resumo(contasAVencer(dados(), '2026-11-01', '2026-11-30', { hoje: HOJE }))).toEqual([
+      ['parcela', 'Parcela', '2026-11-20', 291],
+      ['fatura', 'Fatura Nubank', '2026-11-25', 90],
+      ['conta_fixa', 'Plano de saúde', '2026-11-30', 300],
+    ])
+  })
+  it('janela que cruza o mês (30/11 a 09/12)', () => {
+    expect(resumo(contasAVencer(dados(), '2026-11-30', '2026-12-09', { hoje: '2026-11-30' }))).toEqual([
+      ['conta_fixa', 'Plano de saúde', '2026-11-30', 300],
+      ['assinatura', 'Seguro app', '2026-12-03', 15],
+      ['fatura', 'Fatura Itaú', '2026-12-09', 195],
+    ])
+  })
+  it('fatura marcada como paga não gera aviso', () => {
+    expect(contasAVencer(dados(), '2026-11-09', '2026-11-10', { hoje: '2026-11-09' })).toEqual([])
+  })
+  it('cartão desativado não gera aviso de fatura', () => {
+    const d = dados()
+    d.cartoes = [A, { ...B, ativo: false }]
+    expect(contasAVencer(d, '2026-11-01', '2026-11-30', { hoje: HOJE }).map((i) => i.tipo)).toEqual(['parcela', 'conta_fixa'])
   })
 })
 
