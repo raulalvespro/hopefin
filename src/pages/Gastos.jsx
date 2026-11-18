@@ -14,8 +14,10 @@ import { fmt, fmtData, hojeISO } from '../lib/format'
 import { EmptyState } from '../components/ui'
 import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
+import { assinaturaParecida } from '../lib/assinaturaParecida'
 
 const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO(), de_terceiro: false, pessoa_nome: '', reembolso_status: null, observacao: '', assinatura: false })
+const tg = copy.gastos
 
 export default function Gastos() {
   const { perfil } = useAuth()
@@ -34,8 +36,10 @@ export default function Gastos() {
   const [salvando, setSalvando] = useState(false)
   const [loading, setLoading] = useState(true)
   const [faltaCartao, setFaltaCartao] = useState(false) // tentou salvar "Cartão" sem escolher qual
+  const [assinaturas, setAssinaturas] = useState([])     // as cadastradas (aviso de compra repetida)
+  const [avisoDispensado, setAvisoDispensado] = useState(null) // "É outra compra"
 
-  useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes(); carregarPessoas() } }, [perfil, mes])
+  useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes(); carregarPessoas(); carregarAssinaturas() } }, [perfil, mes])
 
   async function carregar() {
     setLoading(true)
@@ -85,12 +89,17 @@ export default function Gastos() {
     setPessoas(data || [])
   }
 
+  async function carregarAssinaturas() {
+    const { data } = await supabase.from('assinaturas').select('id, nome, valor, dia_cobranca, cartao_id').eq('grupo_id', perfil.grupo_id).eq('ativo', true)
+    setAssinaturas(data || [])
+  }
+
   // Novo gasto: sem cartão cadastrado já começa em PIX; com um cartão só, ele vem escolhido.
   function abrirNovo() {
     const f = novoForm()
     if (cartoes.length === 0) f.tipo_pagamento = 'pix'
     else if (cartoes.length === 1) f.cartao_id = cartoes[0].id
-    setEditando(null); setFaltaCartao(false); setForm(f); setModal(true)
+    setEditando(null); setFaltaCartao(false); setAvisoDispensado(null); setForm(f); setModal(true)
   }
 
   // Ao trocar a forma de pagamento para Cartão com um cartão só, já escolhe ele.
@@ -148,18 +157,20 @@ export default function Gastos() {
     setSalvando(true)
 
     // Nova assinatura mensal (repete todo mês) — cria em `assinaturas`, não em `gastos`.
+    // Conta a partir do mês desta data (a cobrança que está sendo lançada agora já entra).
     if (!editando && form.assinatura && !form.parcelado) {
       const dia = form.data ? Number(form.data.split('-')[2]) : null
       const { error } = await run(
         supabase.from('assinaturas').insert({
           grupo_id: perfil.grupo_id, nome: form.descricao, valor,
           dia_cobranca: dia || null, cartao_id: form.cartao_id || null, categoria: form.categoria,
+          ...(form.data ? { cobrada_desde: `${form.data.slice(0, 7)}-01` } : {}),
         }),
         { ok: 'Assinatura criada' }
       )
       setSalvando(false)
       if (error) return
-      fecharModal(); carregar(); return
+      fecharModal(); carregar(); carregarAssinaturas(); return
     }
 
     // Edição: só gastos à vista
@@ -240,6 +251,12 @@ export default function Gastos() {
   const total = itens.reduce((s, it) => s + (it.terceiro ? 0 : it.valor), 0)
   const nParcelas = parseInt(form.num_parcelas)
   const ehCartao = form.tipo_pagamento === 'cartao'
+
+  // Aviso: a compra nova parece uma assinatura que já entra sozinha todo mês.
+  const parecida = modal && !editando && !form.parcelado && !form.assinatura && !form.de_terceiro
+    ? assinaturaParecida(form, assinaturas) : null
+  const aviso = parecida && parecida.id !== avisoDispensado ? parecida : null
+  const avisoCartao = aviso?.cartao_id ? cartoes.find(c => c.id === aviso.cartao_id)?.nome : null
 
   return (
     <div>
@@ -367,6 +384,23 @@ export default function Gastos() {
               </div>
             )}
 
+            {/* Compra que parece uma assinatura já cadastrada: não contar 2x */}
+            {aviso && (
+              <div role="status" style={{ background: 'var(--amber-dim)', border: '1px solid var(--amber)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginBottom: 14 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--amber-text)' }}>{tg.pareceAssinatura(aviso.nome)}</p>
+                <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 }}>
+                  {tg.pareceAssinaturaTexto(
+                    [fmt(aviso.valor), aviso.dia_cobranca ? `todo dia ${aviso.dia_cobranca}` : null, avisoCartao].filter(Boolean).join(' · '),
+                    avisoCartao ? tg.naFatura(avisoCartao) : tg.nasContas,
+                  )}
+                </p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button type="button" className="btn-ghost" onClick={fecharModal} style={{ flex: 1, padding: '8px 10px', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{tg.naoLancar}</button>
+                  <button type="button" className="btn-ghost" onClick={() => setAvisoDispensado(aviso.id)} style={{ flex: 1, padding: '8px 10px', fontSize: 13 }}>{tg.eOutraCompra}</button>
+                </div>
+              </div>
+            )}
+
             {/* Assinatura: repete todo mês (cria em Assinaturas, não um gasto único) */}
             {!editando && !form.parcelado && (
               <div style={{ marginBottom: form.assinatura ? 10 : 16 }}>
@@ -376,7 +410,7 @@ export default function Gastos() {
                 </label>
                 {form.assinatura && (
                   <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
-                    Vai pra tela de Assinaturas e, se tiver cartão, entra sozinha na fatura todo mês — não precisa lançar de novo.
+                    Vai pra tela de Assinaturas e, a partir do mês desta data, entra sozinha todo mês (na fatura, se for no cartão) — não precisa lançar de novo.
                   </span>
                 )}
               </div>

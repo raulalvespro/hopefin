@@ -198,6 +198,47 @@ export const copy = {
     desfazerOutroMes: 'Volte para o mês da conta para desfazer.',
   },
 
+  // Tela Entradas — entrada que repete todo mês (série: os próximos meses já ficam lançados)
+  entradas: {
+    aplicarEm: 'Aplicar a mudança em',
+    soEsta: 'Só esta',
+    estaEProximas: 'Esta e as próximas',
+    dicaSoEsta: 'Muda só este mês. Os outros meses continuam como estão.',
+    dicaProximas: 'Muda este mês e os próximos: descrição, valor, tipo e dia.',
+    repeteTodoMes: 'Repete todo mês',
+    dicaParar: 'Para parar de repetir, apague “esta e as próximas”.',
+    apagarTitulo: 'Apagar entrada que repete',
+    apagarTexto: (desc, mes) => `“${desc}” de ${mes} repete todo mês. O que você quer apagar?`,
+    apagarSoEsta: 'Só esta',
+    apagarSoEstaDica: 'Os outros meses continuam lançados.',
+    apagarProximas: (n) => (n > 1 ? `Esta e as próximas (${n} meses)` : 'Esta e as próximas'),
+    apagarProximasDica: 'Para de repetir a partir deste mês. Os meses anteriores ficam.',
+    cancelar: 'Cancelar',
+    okAtualizada: 'Entrada atualizada',
+    okProximas: (n) => (n > 1 ? `Atualizada neste mês e nos próximos (${n} meses)` : 'Entrada atualizada'),
+    okVirouSerie: 'Entrada atualizada — os próximos meses já ficam lançados',
+    okApagada: 'Entrada excluída',
+    okApagadaProximas: (n) => (n > 1 ? `${n} meses excluídos — não repete mais` : 'Entrada excluída — não repete mais'),
+    erroDatas: 'Algumas datas não mudaram. Tente de novo.',
+  },
+
+  // Tela Assinaturas (as da casa: Netflix, Spotify…) — "cobrada desde" (A0.7)
+  assinaturasCasa: {
+    cobradaDesde: 'Cobrada desde',
+    dicaCobradaDesde: 'Ela entra nas faturas e nas contas a partir desta data. Já era cobrada antes e você não lançou à mão? Coloque a data da 1ª cobrança.',
+    desde: (mesAno) => `desde ${mesAno}`,
+  },
+
+  // Novo gasto — aviso de compra que parece uma assinatura já cadastrada (A0.7)
+  gastos: {
+    pareceAssinatura: (nome) => `Parece a assinatura “${nome}”`,
+    pareceAssinaturaTexto: (detalhe, onde) => `${detalhe}. Ela já entra sozinha ${onde} todo mês — se for ela, não precisa lançar de novo (senão conta 2x).`,
+    naFatura: (cartao) => `na fatura do ${cartao}`,
+    nasContas: 'nas contas do mês',
+    naoLancar: 'Não lançar',
+    eOutraCompra: 'É outra compra',
+  },
+
   voz: {
     titulo: 'Lançar rápido',
     fechar: 'Fechar',

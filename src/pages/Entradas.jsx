@@ -10,7 +10,9 @@ import { fmt, fmtData, hojeISO } from '../lib/format'
 import { EmptyState } from '../components/ui'
 import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
+import { dataNoMes, nomeMes } from '../lib/motor'
 
+const t = copy.entradas
 const novoForm = () => ({ descricao: '', valor: '', tipo: 'avulso', recorrente: false, data: hojeISO() })
 
 export default function Entradas() {
@@ -22,7 +24,9 @@ export default function Entradas() {
   const [pendentes, setPendentes] = useState([])
   const [lancando, setLancando] = useState(false)
   const [modal, setModal] = useState(false)
-  const [editando, setEditando] = useState(null)
+  const [editando, setEditando] = useState(null)     // a entrada que está sendo editada
+  const [escopo, setEscopo] = useState('esta')        // entrada que repete: 'esta' | 'proximas'
+  const [apagando, setApagando] = useState(null)      // { entrada, proximas } — pergunta "só esta" × "esta e as próximas"
   const [form, setForm] = useState(novoForm())
   const [salvando, setSalvando] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -37,9 +41,11 @@ export default function Entradas() {
     const iniAnt = format(startOfMonth(subMonths(mes, 1)), 'yyyy-MM-dd')
     const fimAnt = format(endOfMonth(subMonths(mes, 1)), 'yyyy-MM-dd')
 
+    // Banner "Lançar em <mês>": só as recorrentes ANTIGAS (sem série). As que têm série já
+    // ficam lançadas nos próximos meses — e um mês apagado de propósito não deve voltar.
     const [{ data }, { data: recAnt }] = await Promise.all([
       supabase.from('entradas').select('*, usuarios(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim).order('data', { ascending: false }),
-      supabase.from('entradas').select('*').eq('grupo_id', gid).eq('recorrente', true).gte('data', iniAnt).lte('data', fimAnt),
+      supabase.from('entradas').select('*').eq('grupo_id', gid).eq('recorrente', true).is('serie_id', null).gte('data', iniAnt).lte('data', fimAnt),
     ])
     setEntradas(data || [])
 
@@ -66,17 +72,63 @@ export default function Entradas() {
   }
 
   function abrirNovo() {
-    setEditando(null); setForm(novoForm()); setModal(true)
+    setEditando(null); setEscopo('esta'); setForm(novoForm()); setModal(true)
   }
 
   function editar(e) {
-    setEditando(e.id)
+    setEditando(e); setEscopo('esta')
     setForm({ descricao: e.descricao, valor: String(e.valor), tipo: e.tipo, recorrente: e.recorrente, data: e.data })
     setModal(true)
   }
 
   function fecharModal() {
-    setModal(false); setEditando(null); setForm(novoForm())
+    setModal(false); setEditando(null); setEscopo('esta'); setForm(novoForm())
+  }
+
+  // Entrada avulsa (sem série). Marcou "Recorrente"? Vira uma série: os próximos meses já ficam lançados.
+  async function salvarAvulsa(valor) {
+    const patch = { descricao: form.descricao, valor, tipo: form.tipo, recorrente: form.recorrente, data: form.data }
+    const viraSerie = form.recorrente
+    if (viraSerie) {
+      patch.serie_id = crypto.randomUUID()
+      if ((editando.origem || 'manual') === 'manual') patch.origem = 'recorrente'
+    }
+    const { error } = await run(supabase.from('entradas').update(patch).eq('id', editando.id), { ok: viraSerie ? t.okVirouSerie : t.okAtualizada })
+    if (error) return false
+    if (viraSerie) await supabase.rpc('garantir_series')
+    return true
+  }
+
+  // Entrada que repete (série): "só esta" ou "esta e as próximas".
+  async function salvarSerie(valor) {
+    const e = editando
+    if (escopo === 'esta') {
+      const { error } = await run(
+        supabase.from('entradas').update({ descricao: form.descricao, valor, tipo: form.tipo, data: form.data }).eq('id', e.id),
+        { ok: t.okAtualizada }
+      )
+      return !error
+    }
+    // Esta e as próximas: mesma descrição, valor e tipo daqui pra frente (é daí que o app
+    // tira os meses novos); o dia novo vale pra todas, cada uma no seu mês.
+    const { data: lista, error: errLista } = await run(
+      supabase.from('entradas').select('id, data').eq('serie_id', e.serie_id).gte('data', e.data)
+    )
+    if (errLista) return false
+    const { error } = await run(
+      supabase.from('entradas').update({ descricao: form.descricao, valor, tipo: form.tipo }).eq('serie_id', e.serie_id).gte('data', e.data)
+    )
+    if (error) return false
+    if (form.data !== e.data) {
+      const dia = Number(form.data.slice(8, 10))
+      const mudar = (lista || [])
+        .map(x => ({ id: x.id, de: x.data, para: x.id === e.id ? form.data : dataNoMes(x.data.slice(0, 7), dia) }))
+        .filter(x => x.para !== x.de)
+      const res = await Promise.all(mudar.map(x => supabase.from('entradas').update({ data: x.para }).eq('id', x.id)))
+      if (res.some(r => r.error)) { toast(t.erroDatas, 'erro'); return false }
+    }
+    toast(t.okProximas((lista || []).length), 'ok')
+    return true
   }
 
   async function salvar() {
@@ -86,12 +138,9 @@ export default function Entradas() {
     setSalvando(true)
 
     if (editando) {
-      const { error } = await run(
-        supabase.from('entradas').update({ descricao: form.descricao, valor, tipo: form.tipo, recorrente: form.recorrente, data: form.data }).eq('id', editando),
-        { ok: 'Entrada atualizada' }
-      )
+      const ok = editando.serie_id ? await salvarSerie(valor) : await salvarAvulsa(valor)
       setSalvando(false)
-      if (error) return
+      if (!ok) return
       fecharModal(); carregar(); return
     }
 
@@ -119,10 +168,43 @@ export default function Entradas() {
     if (!error) setEntradas(list => list.map(x => x.id === e.id ? { ...x, recebido: novo } : x))
   }
 
-  async function excluir(id) {
+  async function excluir(e) {
+    // Entrada que repete: pergunta se é só esta ou esta e as próximas.
+    if (e.serie_id) {
+      const { count } = await supabase.from('entradas').select('id', { count: 'exact', head: true }).eq('serie_id', e.serie_id).gte('data', e.data)
+      setApagando({ entrada: e, proximas: count || 1 })
+      return
+    }
     if (!confirm('Excluir esta entrada?')) return
-    const { error } = await run(supabase.from('entradas').delete().eq('id', id), { ok: 'Entrada excluída' })
+    const { error } = await run(supabase.from('entradas').delete().eq('id', e.id), { ok: t.okApagada })
     if (!error) carregar()
+  }
+
+  async function apagarSerie(qual) {
+    const { entrada: e, proximas } = apagando
+    setSalvando(true)
+    if (qual === 'esta') {
+      const { error } = await run(supabase.from('entradas').delete().eq('id', e.id), { ok: t.okApagada })
+      setSalvando(false)
+      if (error) return
+    } else {
+      // A última que fica (antes desta) deixa de repetir — senão o app recriaria os próximos meses.
+      const { data: antes, error: errAntes } = await run(
+        supabase.from('entradas').select('id').eq('serie_id', e.serie_id).lt('data', e.data).order('data', { ascending: false }).limit(1)
+      )
+      if (errAntes) { setSalvando(false); return }
+      if (antes?.length) {
+        const { error } = await run(supabase.from('entradas').update({ recorrente: false }).eq('id', antes[0].id))
+        if (error) { setSalvando(false); return }
+      }
+      const { error } = await run(
+        supabase.from('entradas').delete().eq('serie_id', e.serie_id).gte('data', e.data),
+        { ok: t.okApagadaProximas(proximas) }
+      )
+      setSalvando(false)
+      if (error) return
+    }
+    setApagando(null); carregar()
   }
 
   const total = entradas.reduce((s, e) => s + e.valor, 0)
@@ -192,7 +274,7 @@ export default function Entradas() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <span style={{ color: e.recebido ? 'var(--accent)' : 'var(--amber)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(e.valor)}</span>
             <button onClick={() => editar(e)}><Pencil size={14} color="var(--text3)" /></button>
-            <button onClick={() => excluir(e.id)}><Trash2 size={15} color="var(--text3)" /></button>
+            <button onClick={() => excluir(e)}><Trash2 size={15} color="var(--text3)" /></button>
           </div>
         </div>
       ))}
@@ -219,16 +301,66 @@ export default function Entradas() {
                 </select>
               </div>
               <div className="form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingBottom: 10 }}>
-                  <input type="checkbox" checked={form.recorrente} onChange={e => setForm(p => ({ ...p, recorrente: e.target.checked }))} style={{ width: 'auto' }} />
-                  Recorrente
-                </label>
+                {editando?.serie_id ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 10, fontSize: 13, color: 'var(--text2)' }}>
+                    <RefreshCw size={13} /> {t.repeteTodoMes}
+                  </span>
+                ) : (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingBottom: 10 }}>
+                    <input type="checkbox" checked={form.recorrente} onChange={e => setForm(p => ({ ...p, recorrente: e.target.checked }))} style={{ width: 'auto' }} />
+                    Recorrente
+                  </label>
+                )}
               </div>
             </div>
+            {editando?.serie_id && (
+              <div className="form-group">
+                <label>{t.aplicarEm}</label>
+                <div role="radiogroup" aria-label={t.aplicarEm} style={{ display: 'flex', gap: 8 }}>
+                  {[['esta', t.soEsta], ['proximas', t.estaEProximas]].map(([v, label]) => (
+                    <button key={v} type="button" role="radio" aria-checked={escopo === v} onClick={() => setEscopo(v)}
+                      style={{ flex: 1, padding: '9px', borderRadius: 'var(--radius-sm)', border: `1px solid ${escopo === v ? 'var(--accent)' : 'var(--border)'}`, background: escopo === v ? 'var(--accent-dim)' : 'transparent', color: escopo === v ? 'var(--accent2)' : 'var(--text2)', fontSize: 13, fontWeight: 600 }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <span style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6, display: 'block', lineHeight: 1.4 }}>
+                  {escopo === 'proximas' ? t.dicaProximas : t.dicaSoEsta} {t.dicaParar}
+                </span>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharModal}>Cancelar</button>
               <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} onClick={salvar} disabled={salvando}>
                 {salvando ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Apagar entrada que repete: só esta × esta e as próximas */}
+      {apagando && (
+        <div className="modal-overlay" onClick={() => !salvando && setApagando(null)}>
+          <div className="modal" role="dialog" aria-label={t.apagarTitulo} onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: 18, marginBottom: 10 }}>{t.apagarTitulo}</h2>
+            <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.5, marginBottom: 18 }}>
+              {t.apagarTexto(apagando.entrada.descricao, `${nomeMes(apagando.entrada.data.slice(0, 7))} de ${apagando.entrada.data.slice(0, 4)}`)}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button className="btn-ghost" onClick={() => apagarSerie('esta')} disabled={salvando}
+                style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 2, opacity: salvando ? 0.6 : 1 }}>
+                <span style={{ fontWeight: 600, color: 'var(--text)' }}>{t.apagarSoEsta}</span>
+                <span style={{ fontSize: 12, color: 'var(--text3)' }}>{t.apagarSoEstaDica}</span>
+              </button>
+              <button className="btn-ghost" onClick={() => apagarSerie('proximas')} disabled={salvando}
+                style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 2, opacity: salvando ? 0.6 : 1 }}>
+                <span style={{ fontWeight: 600, color: 'var(--red-text)' }}>{t.apagarProximas(apagando.proximas)}</span>
+                <span style={{ fontSize: 12, color: 'var(--text3)' }}>{t.apagarProximasDica}</span>
+              </button>
+              <button onClick={() => setApagando(null)} disabled={salvando}
+                style={{ padding: '10px', fontSize: 14, color: 'var(--text2)', minHeight: 44 }}>
+                {t.cancelar}
               </button>
             </div>
           </div>

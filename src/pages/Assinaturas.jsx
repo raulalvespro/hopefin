@@ -6,9 +6,13 @@ import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { useCategorias } from '../hooks/useCategorias'
 import SwipeRow from '../components/SwipeRow'
-import { fmt } from '../lib/format'
+import { fmt, fmtData, hojeISO } from '../lib/format'
+import { copy } from '../copy/pt-BR'
 
-const novoForm = () => ({ nome: '', valor: '', dia_cobranca: '', cartao_id: '', categoria: 'outros' })
+const t = copy.assinaturasCasa
+// "Cobrada desde": padrão = 1º dia do mês do cadastro (a assinatura entra nas faturas a partir daí).
+const inicioDoMes = (iso) => `${String(iso || hojeISO()).slice(0, 7)}-01`
+const novoForm = () => ({ nome: '', valor: '', dia_cobranca: '', cartao_id: '', categoria: 'outros', cobrada_desde: inicioDoMes() })
 
 export default function Assinaturas() {
   const { perfil } = useAuth()
@@ -39,7 +43,10 @@ export default function Assinaturas() {
   function abrirNovo() { setEditando(null); setForm(novoForm()); setModal(true) }
   function editar(a) {
     setEditando(a.id)
-    setForm({ nome: a.nome, valor: String(a.valor), dia_cobranca: String(a.dia_cobranca ?? ''), cartao_id: a.cartao_id || '', categoria: a.categoria || 'outros' })
+    setForm({
+      nome: a.nome, valor: String(a.valor), dia_cobranca: String(a.dia_cobranca ?? ''), cartao_id: a.cartao_id || '', categoria: a.categoria || 'outros',
+      cobrada_desde: a.cobrada_desde || inicioDoMes(a.criado_em),
+    })
     setModal(true)
   }
   function fecharModal() { setModal(false); setEditando(null); setForm(novoForm()) }
@@ -52,6 +59,7 @@ export default function Assinaturas() {
       dia_cobranca: form.dia_cobranca ? parseInt(form.dia_cobranca) : null,
       cartao_id: form.cartao_id || null,
       categoria: form.categoria || 'outros',
+      cobrada_desde: form.cobrada_desde || null, // vazio = a partir do mês do cadastro
     }
     setSalvando(true)
     const op = editando
@@ -120,6 +128,7 @@ export default function Assinaturas() {
                 <p style={{ fontSize: 12, color: 'var(--text2)' }}>
                   {a.dia_cobranca ? `Cobra dia ${a.dia_cobranca}` : 'Sem dia definido'}
                   {a.cartoes?.nome && ` · ${a.cartoes.nome}`}
+                  {a.cobrada_desde && ` · ${t.desde(fmtData(a.cobrada_desde, 'MMM/yyyy'))}`}
                 </p>
               </div>
             </div>
@@ -135,7 +144,12 @@ export default function Assinaturas() {
             <div className="form-group"><label>Nome</label><input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Netflix, Spotify..." /></div>
             <div className="form-row">
               <div className="form-group"><label>Valor mensal</label><input type="number" inputMode="decimal" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
-              <div className="form-group"><label>Dia da cobrança</label><input type="number" inputMode="decimal" min="1" max="31" value={form.dia_cobranca} onChange={e => setForm(p => ({ ...p, dia_cobranca: e.target.value }))} placeholder="Opcional" /></div>
+              <div className="form-group"><label>Dia da cobrança</label><input type="number" inputMode="numeric" pattern="[0-9]*" min="1" max="31" value={form.dia_cobranca} onChange={e => setForm(p => ({ ...p, dia_cobranca: e.target.value }))} placeholder="Opcional" /></div>
+            </div>
+            <div className="form-group">
+              <label>{t.cobradaDesde}</label>
+              <input type="date" value={form.cobrada_desde} onChange={e => setForm(p => ({ ...p, cobrada_desde: e.target.value }))} />
+              <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6, lineHeight: 1.4 }}>{t.dicaCobradaDesde}</p>
             </div>
             <div className="form-group">
               <label>Categoria</label>
