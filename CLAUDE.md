@@ -8,6 +8,24 @@ depois), **planejado × praticado** nas contas recorrentes, grupo compartilhado 
 > **código** (`src/`), em **`docs/`** (ROADMAP + LGPD), em **`supabase/`** (schema.sql +
 > migrations 0001–00NN + README) e no **git log**. Nada se perdeu — só faltava este índice.
 
+## 🔁 Começo e fim de cada conversa (desde 18/11/2026)
+
+- **Uma tarefa por conversa**, sempre aberta na pasta `C:\Users\TCORP\sandbox\hopefin` (é aqui que carregam as
+  skills, os agentes e a trava do Supabase).
+- **Começo:** `/hopefin-retomar` — lê `Estado atual.md` no Obsidian
+  (`C:\Users\TCORP\Desktop\Raul\Segundo Cérebro Raul\Segundo Cérebro Raul\Projetos\HopeFin\`), a fila da planilha e o
+  git; mostra o plano e espera o ok.
+- **Fim:** `/hopefin-fechar-sessao` — planilha + Obsidian (Estado atual, Conversas, Decisões) + memória + o que testar
+  + como começar a próxima conversa.
+- **Cada coisa num lugar:** planilha "HopeFin — Painel de Demandas" = o que fazer · Obsidian `Projetos/HopeFin` = o que
+  aconteceu e por quê · este arquivo = regras técnicas.
+- **Memória do projeto** (fatos que valem sempre): `C:\Users\TCORP\.claude\projects\C--Users-TCORP\memory\`
+  (`project_hopefin_*.md`, `feedback_hopefin_*.md`). Conversas nesta pasta têm outra pasta de memória automática: ler
+  e atualizar ESSES arquivos em vez de criar cópia.
+- **Skills** (`.claude/skills/`): `hopefin-retomar`, `hopefin-fechar-sessao`, `hopefin-publicar`, `hopefin-banco`,
+  `hopefin-edge`, `hopefin-planilha`. **Agentes** (`.claude/agents/`): `hopefin-testador`, `hopefin-conciliador`.
+  **Trava** (`.claude/settings.json`): escrita no Supabase pelo conector MCP é bloqueada neste projeto.
+
 ---
 
 ## Stack
@@ -268,7 +286,8 @@ colocar** e o Raul mesmo cola. Secrets conhecidos (nomes, sem valores):
 ## Fluxo de trabalho (combinado com o Raul)
 
 - **Branch nova por tarefa.** Uma migração por mudança de banco.
-- **Nunca** commit/push sem o **ok explícito** do Raul.
+- Commit/push: **ajuste de app já está autorizado** (regra "Publicar & aprovar" abaixo); fora disso, pedir o ok do
+  Raul. **Nunca** `git add -A` / `git add .` — só os arquivos da tarefa (pode haver outra conversa no mesmo checkout).
 - **Publicar & aprovar (combinado 15/11/2026):**
   - **Ajuste de app (melhoria, correção, visual) vai DIRETO pra geral:** o Raul já autorizou
     publicar o que a gente conclui — commit + push + `npm run cf:deploy`. Não precisa de prévia

@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "deny": [
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__deploy_edge_function",
+      "mcp__supabase__create_branch",
+      "mcp__supabase__delete_branch",
+      "mcp__supabase__merge_branch",
+      "mcp__supabase__rebase_branch",
+      "mcp__supabase__reset_branch",
+      "mcp__supabase__create_notebook",
+      "mcp__supabase__delete_notebook",
+      "mcp__supabase__run_notebook",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__execute_sql",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__apply_migration",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__deploy_edge_function",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__create_edge_function_secret",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__create_branch",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__delete_branch",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__merge_branch",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__rebase_branch",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__reset_branch",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__create_project",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__pause_project",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__restore_project",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__create_notebook",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__delete_notebook",
+      "mcp__efca7f06-b086-4ad0-a7f6-478d5360e416__run_notebook"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^mcp__(.+__(execute_sql|apply_migration|deploy_edge_function|create_edge_function_secret)|(supabase|efca7f06-b086-4ad0-a7f6-478d5360e416)__(create_branch|delete_branch|merge_branch|rebase_branch|reset_branch|create_project|pause_project|restore_project|create_notebook|delete_notebook|run_notebook))$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'TRAVA HOPEFIN: escrita no Supabase pelo conector MCP esta bloqueada neste projeto. Banco do HopeFin: node scripts/db.mjs (skill hopefin-banco). Edge Functions: npx supabase functions deploy (skill hopefin-edge).' >&2; exit 2",
+            "onFailure": "block",
+            "statusMessage": "Trava do Supabase (HopeFin)"
+          }
+        ]
+      }
+    ]
+  }
+}
