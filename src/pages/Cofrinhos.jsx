@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Plus, Trash2, Pencil, ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight } from 'lucide-react'
+import { Plus, ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight } from 'lucide-react'
+import SwipeRow from '../components/SwipeRow'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { fmt, hojeISO, fmtData, parseDataLocal } from '../lib/format'
@@ -156,7 +157,8 @@ export default function Cofrinhos() {
           const t = tipos[c.tipo] || tipos.cofrinho
           const mi = metaInfo(c)
           return (
-            <div key={c.id} className="card" style={{ marginBottom: 10 }}>
+            <SwipeRow key={c.id} style={{ marginBottom: 10 }} onEdit={() => editar(c)} onDelete={() => excluir(c.id)}>
+            <div className="card" style={{ margin: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 28 }}>{t.icon}</span>
@@ -164,10 +166,6 @@ export default function Cofrinhos() {
                     <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 16 }}>{c.nome}</p>
                     <span style={{ fontSize: 11, background: 'var(--bg3)', color: 'var(--text2)', padding: '2px 8px', borderRadius: 10 }}>{t.label}</span>
                   </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <button onClick={() => editar(c)}><Pencil size={14} color="var(--text3)" /></button>
-                  <button onClick={() => excluir(c.id)}><Trash2 size={15} color="var(--text3)" /></button>
                 </div>
               </div>
 
@@ -221,6 +219,7 @@ export default function Cofrinhos() {
                 )}
               </div>
             </div>
+            </SwipeRow>
           )
         })}
 

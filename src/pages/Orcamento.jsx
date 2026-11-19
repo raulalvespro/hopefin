@@ -3,7 +3,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, ChevronDown, Target, Pencil, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, Target } from 'lucide-react'
+import SwipeRow from '../components/SwipeRow'
 import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
@@ -128,7 +129,10 @@ export default function Orcamento() {
         const pagoCom = o ? pagoComResolvido(o, gastosJanela, hoje) : null
         const estaAberta = aberta === cat
         return (
-          <div key={cat} className="card" style={{ marginBottom: 10 }}>
+          <SwipeRow key={cat} style={{ marginBottom: 10 }}
+            onEdit={() => setModal({ categoria: cat, valor: limite ? String(limite) : '', pago_com: o?.pago_com || 'auto' })}
+            onDelete={limite ? () => excluir(cat) : undefined}>
+          <div className="card" style={{ margin: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: limite ? 10 : 0 }}>
               <button onClick={() => setAberta(estaAberta ? null : cat)} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', padding: 0, textAlign: 'left', color: 'var(--text)', flex: 1, minWidth: 0 }}>
                 <span style={{ fontSize: 20 }}>{emojiDe(cat)}</span>
@@ -144,8 +148,6 @@ export default function Orcamento() {
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {limite && <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Syne', color: corBarra(pct) }}>{pct}%</span>}
-                <button onClick={() => setModal({ categoria: cat, valor: limite ? String(limite) : '', pago_com: o?.pago_com || 'auto' })}><Pencil size={15} color="var(--text3)" /></button>
-                {limite && <button onClick={() => excluir(cat)}><Trash2 size={15} color="var(--text3)" /></button>}
               </div>
             </div>
             {limite && (
@@ -171,6 +173,7 @@ export default function Orcamento() {
               </div>
             )}
           </div>
+          </SwipeRow>
         )
       })}
 

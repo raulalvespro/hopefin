@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Plus, Trash2, Pencil } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import SwipeRow from '../components/SwipeRow'
 import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
@@ -85,7 +86,8 @@ export default function ContasFixas() {
       {loading ? <div className="empty-state">Carregando...</div>
         : contas.length === 0 ? <div className="empty-state">Nenhuma conta fixa cadastrada</div>
         : contas.map(c => (
-          <div key={c.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <SwipeRow key={c.id} style={{ marginBottom: 8 }} onEdit={() => editar(c)} onDelete={() => excluir(c.id)}>
+          <div className="card" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 22 }}>{emojiDe(c.categoria)}</span>
               <div>
@@ -95,10 +97,9 @@ export default function ContasFixas() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ color: 'var(--blue-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(c.valor)}</span>
-              <button onClick={() => editar(c)}><Pencil size={14} color="var(--text3)" /></button>
-              <button onClick={() => excluir(c.id)}><Trash2 size={15} color="var(--text3)" /></button>
             </div>
           </div>
+          </SwipeRow>
         ))}
 
       {modal && (

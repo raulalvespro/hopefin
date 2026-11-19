@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths, getDaysInMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, RefreshCw, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, RefreshCw, Check } from 'lucide-react'
+import SwipeRow from '../components/SwipeRow'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { fmt, fmtData, hojeISO } from '../lib/format'
@@ -288,7 +289,8 @@ export default function Entradas() {
       {loading ? <div className="empty-state">Carregando...</div> : entradas.length === 0 ? (
         previstos.length === 0 && <EmptyState ilustracao={<Joca pose="base" tamanho={150} />} titulo={copy.mascote.vazios.entradasTitulo} texto={copy.mascote.vazios.entradasTexto} />
       ) : entradas.map(e => (
-        <div key={e.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: e.recebido ? 1 : 0.85 }}>
+        <SwipeRow key={e.id} style={{ marginBottom: 8 }} onEdit={() => editar(e)} onDelete={() => excluir(e)}>
+        <div className="card" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: e.recebido ? 1 : 0.85 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <button onClick={() => toggleRecebido(e)} title={e.recebido ? 'Recebido — desfazer' : 'Marcar como recebido'}
               style={{ width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${e.recebido ? 'var(--accent)' : 'var(--amber)'}`, background: e.recebido ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -305,10 +307,9 @@ export default function Entradas() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <span style={{ color: e.recebido ? 'var(--accent)' : 'var(--amber)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(e.valor)}</span>
-            <button onClick={() => editar(e)}><Pencil size={14} color="var(--text3)" /></button>
-            <button onClick={() => excluir(e)}><Trash2 size={15} color="var(--text3)" /></button>
           </div>
         </div>
+        </SwipeRow>
       ))}
 
       <button onClick={abrirNovo} style={{ position: 'fixed', bottom: 80, right: 20, width: 56, height: 56, borderRadius: '50%', background: 'var(--accent)', color: 'var(--on-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(16,185,129,0.35)', zIndex: 50 }}>

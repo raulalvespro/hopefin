@@ -3,7 +3,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import SwipeRow from '../components/SwipeRow'
 
 const EMOJIS_SUGERIDOS = [
   '🛒','🍔','🍕','🍎','🥦','🍞','🥤','☕','🍺','🍷','🎂',
@@ -60,18 +61,15 @@ export default function Categorias() {
       </p>
 
       {categorias.map(c => (
-        <div key={c.id || c.nome} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <SwipeRow key={c.id || c.nome} style={{ marginBottom: 8 }}
+          onEdit={c.id ? () => abrir(c) : undefined} onDelete={c.id ? () => excluir(c) : undefined}>
+        <div className="card" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 24 }}>{c.emoji}</span>
             <span style={{ fontSize: 15, fontWeight: 500, textTransform: 'capitalize' }}>{c.nome}</span>
           </div>
-          {c.id && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button onClick={() => abrir(c)}><Pencil size={15} color="var(--text3)" /></button>
-              <button onClick={() => excluir(c)}><Trash2 size={15} color="var(--text3)" /></button>
-            </div>
-          )}
         </div>
+        </SwipeRow>
       ))}
 
       {modal && (
