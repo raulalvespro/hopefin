@@ -1,7 +1,19 @@
 // A5.2 (19/11/2026): microfone — avisos em vez de silêncio e dica do iPhone.
 import { describe, it, expect } from 'vitest'
-import { motivoErroVoz, ehIosInstalado, ondeLiberarMic } from '../src/hooks/useVoz.js'
+import { motivoErroVoz, ehIosInstalado, ondeLiberarMic, textoErroIa } from '../src/hooks/useVoz.js'
 import { copy } from '../src/copy/pt-BR.js'
+
+describe('erro da IA vira texto (A6.3)', () => {
+  it('códigos conhecidos têm texto; nunca aparece o código cru', () => {
+    expect(textoErroIa('limite_atingido', 'x')).toBe(copy.voz.erroLimite)
+    expect(textoErroIa('assinatura_inativa', 'x')).toBe(copy.voz.erroAssinatura)
+    expect(textoErroIa('algum_codigo_novo', 'padrão')).toBe('padrão')
+    expect(textoErroIa(undefined, 'padrão')).toBe('padrão')
+  })
+  it('mensagem que já vem em português passa direto', () => {
+    expect(textoErroIa('texto muito longo', 'x')).toBe('texto muito longo')
+  })
+})
 
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1'
 const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36'

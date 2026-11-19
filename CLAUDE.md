@@ -122,6 +122,9 @@ em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `L
 - **Depois de TODA migração de schema, rodar `npm run smoke`** (`scripts/smoke-login.mjs`): entra com a conta de teste, lê o
   perfil+grupo como o app faz e confere que `criar_grupo` não cria grupo para quem já tem um. Só dar a migração por
   concluída com `SMOKE OK`. (Credenciais `TESTE_EMAIL/TESTE_SENHA` ficam em `supabase/.env.local`.)
+  Desde 19/11/2026 o smoke também roda `scripts/teste-trava-plano.sql` (A6.3): 12 situações da assinatura × cada pessoa
+  do grupo de teste, numa transação desfeita no fim — lançar é barrado/liberado certo (app, voz, WhatsApp) e ler segue
+  liberado. O `tests/trava-plano.test.js` confere que o app (`estadoAssinatura`) dá a mesma resposta que o banco.
 - **NUNCA criar FK extra entre `grupos` e `usuarios`** (ex.: `grupos.criado_por -> usuarios`): o app faz
   `usuarios?select=*,grupos(*)` no login e o PostgREST passa a recusar com PGRST201 ("more than one relationship"),
   o perfil não carrega e a tela fica em branco. Aconteceu em 07/11/2026 (migração 0028, corrigida na 0031: `criado_por`

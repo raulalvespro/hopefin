@@ -38,10 +38,12 @@ export function estadoAssinatura(a, now = new Date()) {
   const trialValido = status === 'trial' && (!fimTrial || fimTrial > now)
   const ativaPaga = status === 'active' && (!cancelaNoFim || !fimPeriodo || fimPeriodo > now)
 
-  // Estado "humano" (cortesia tem prioridade, como no banco).
+  // Estado "humano" (cortesia tem prioridade, como no banco). Cancelada só enquanto o período pago
+  // não acabou; depois disso já está travada (até a rotina diária marcar como encerrada no banco) —
+  // antes o banner dizia "Seu acesso termina hoje" com os lançamentos já bloqueados (A6.3).
   let estado
   if (emCortesia) estado = 'cortesia'
-  else if (cancelaNoFim) estado = 'cancelada'
+  else if (cancelaNoFim && ativaPaga) estado = 'cancelada'
   else if (ativaPaga) estado = 'ativa'
   else if (status === 'past_due') estado = 'pendente'
   else if (trialValido) estado = 'trial'

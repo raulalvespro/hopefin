@@ -1,4 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { copy } from '../copy/pt-BR'
+
+// Códigos que a função interpretar-lancamento devolve → texto pra pessoa (A6.3). Os outros erros
+// dela já vêm em português; código desconhecido cai no texto padrão — nunca mostra "limite_atingido" cru.
+const ERROS_IA = { limite_atingido: copy.voz.erroLimite, assinatura_inativa: copy.voz.erroAssinatura }
+export function textoErroIa(codigo, padrao) {
+  if (ERROS_IA[codigo]) return ERROS_IA[codigo]
+  return codigo && !/^[a-z_]+$/.test(codigo) ? codigo : padrao
+}
 
 // Erro do reconhecimento de voz → motivo (chave do texto em copy.voz.erroMic). null = sem aviso
 // ('aborted' é a pessoa parando ou fechando; os demais raros caem no aviso genérico).

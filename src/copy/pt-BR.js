@@ -515,6 +515,8 @@ export const copy = {
     entradaFixoOpt: 'Fixo (salário)',
     // Erros e avisos
     erroLimite: 'Você atingiu o limite de lançamentos por IA deste mês. Lance manualmente ou tente no próximo ciclo.',
+    erroAssinatura: 'Seu teste grátis ou plano terminou: você ainda vê e exporta tudo, mas novos lançamentos estão bloqueados.',
+    verPlanos: 'Ver planos',
     erroInterpretar: 'Não consegui interpretar agora. Tente de novo ou lance manualmente.',
     erroNaoEntendi: 'Não entendi. Tente reformular.',
     erroConexao: 'Falha de conexão. Tente de novo.',

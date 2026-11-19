@@ -78,5 +78,24 @@ if (env.SUPABASE_ACCESS_TOKEN && env.SUPABASE_PROJECT_REF) {
   for (const f of ['sou_admin', 'sou_dono_app']) if (!String(src[f]).includes('aal2')) falhar(`${f}() deixou de exigir o código do celular (aal2)`)
   if (!/muitas_tentativas/.test(src.entrar_no_grupo) || !/grupo_cheio/.test(src.entrar_no_grupo)) falhar('entrar_no_grupo() perdeu a trava de tentativas ou o limite de pessoas')
   console.log('✔ painel só com o código do celular; convite com trava e limite')
+
+  // 6) trava do plano (A6.3, 19/11/2026): pra cada situação da assinatura (teste vencido, cancelada,
+  //    pendente, cortesia...), CADA pessoa do grupo de teste é barrada ou liberada certinho ao lançar
+  //    (gastos, entradas, parcelamentos, transferências), no app/voz e no WhatsApp, e continua lendo.
+  //    Roda numa transação desfeita no fim (scripts/teste-trava-plano.sql): nada fica gravado.
+  if (!/^[0-9a-f-]{36}$/i.test(sessao.user.id)) falhar('id da conta de teste inválido')
+  const sqlTrava = readFileSync(join(root, 'scripts', 'teste-trava-plano.sql'), 'utf8').replaceAll('__UID__', sessao.user.id)
+  const tv = await fetch(`https://api.supabase.com/v1/projects/${env.SUPABASE_PROJECT_REF}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: sqlTrava }) })
+  const tvTexto = await tv.text()
+  let trava = null
+  try {
+    const msg = String(JSON.parse(tvTexto).message || '')
+    const ini = msg.indexOf('RESULTADO ')
+    if (ini >= 0) trava = JSON.parse(msg.slice(ini + 'RESULTADO '.length).split('\nCONTEXT')[0].trim())
+  } catch { /* resposta fora do esperado: cai no falhar abaixo */ }
+  if (!trava) falhar('trava do plano: resposta inesperada ' + tvTexto.slice(0, 300))
+  if (trava.erro) falhar('trava do plano: ' + trava.erro)
+  if (trava.falhas?.length) falhar('trava do plano:\n  - ' + trava.falhas.join('\n  - '))
+  console.log(`✔ trava do plano: ${trava.casos} situações × ${trava.pessoas} pessoas do grupo (${trava.checagens} conferências) — barra e libera certo no app, voz e WhatsApp`)
 }
 console.log('✔ SMOKE OK')

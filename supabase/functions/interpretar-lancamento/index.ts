@@ -59,6 +59,12 @@ Deno.serve(async (req) => {
   if (!texto) return json({ erro: 'texto vazio' }, 400)
   if (texto.length > 500) return json({ erro: 'texto muito longo' }, 400)
 
+  // Trava do plano (A6.3, 19/11/2026): com o teste grátis ou o plano vencido o grupo só lê. Não
+  // gasta IA interpretando um lançamento que o banco não vai deixar salvar (o WhatsApp já fazia
+  // isso no wa_pode_grupo). Se a consulta falhar, segue: a RLS do banco barra o salvar do mesmo jeito.
+  const { data: podeLancar } = await sb.rpc('grupo_pode_lancar')
+  if (podeLancar === false) return json({ erro: 'assinatura_inativa' })
+
   // Limite de uso (config do prompt 2.1). Não consome se já estourou.
   const { data: limite } = await sb.rpc('limite_ia_status')
   if (limite && limite.pode === false) {

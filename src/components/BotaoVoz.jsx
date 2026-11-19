@@ -1,10 +1,12 @@
 import { useState, useCallback, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { X, Check, Loader, Sparkles, Send, AlertTriangle } from 'lucide-react'
 import { MicButton, Tag } from './ui'
-import { useVoz, ehIosInstalado, ondeLiberarMic } from '../hooks/useVoz'
+import { useVoz, ehIosInstalado, ondeLiberarMic, textoErroIa } from '../hooks/useVoz'
 import { useAuth } from '../contexts/AuthContext'
 import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
+import { useAssinatura } from '../hooks/useAssinatura'
 import { supabase } from '../lib/supabase'
 import { hojeISO, fmt, fmtData } from '../lib/format'
 import { copy } from '../copy/pt-BR'
@@ -59,14 +61,10 @@ export default function BotaoVoz({ onSalvo }) {
         // A Edge Function devolve erro estruturado no corpo (inclui limite).
         let corpo = null
         try { corpo = await error.context?.json?.() } catch { /* ignore */ }
-        if (corpo?.erro === 'limite_atingido') {
-          setErro(t.erroLimite)
-        } else {
-          setErro(corpo?.erro || t.erroInterpretar)
-        }
+        setErro(textoErroIa(corpo?.erro, t.erroInterpretar))
         return
       }
-      if (!data?.ok) { setErro(data?.erro || t.erroNaoEntendi); return }
+      if (!data?.ok) { setErro(textoErroIa(data?.erro, t.erroNaoEntendi)); return }
 
       const d = data.dados
       setJsonIa(d)
@@ -102,6 +100,9 @@ export default function BotaoVoz({ onSalvo }) {
 
   const { gravando, parcial, erro: erroVoz, suportado, iniciar, parar, cancelar } = useVoz((t) => interpretar(t, 'voz'))
   const [iosApp] = useState(() => ehIosInstalado())
+  // Trava do plano: com o teste/plano vencido a janela já explica (o banco barra o salvar de todo jeito).
+  const { podeLancar, loading: carregandoPlano } = useAssinatura()
+  const travado = !carregandoPlano && !podeLancar
   // A5.2: aviso quando a voz falha (antes o botão só "desligava" sem dizer nada).
   const msgVoz = !erroVoz ? '' : erroVoz === 'bloqueado'
     ? `${t.erroMic.bloqueado} ${t.comoLiberar[ondeLiberarMic()]}`
@@ -224,8 +225,16 @@ export default function BotaoVoz({ onSalvo }) {
               <button onClick={fechar} aria-label={t.fechar} style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} color="var(--text2)" /></button>
             </div>
 
+            {/* Plano travado (teste/plano vencido): só lê — nem abre o microfone (A6.3) */}
+            {!form && travado && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center' }}>
+                <p role="alert" style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: 'var(--text2)' }}>{t.erroAssinatura}</p>
+                <Link to="/planos" onClick={fechar} className="btn-primary" style={{ width: '100%', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }}>{t.verPlanos}</Link>
+              </div>
+            )}
+
             {/* Passo 1: ouvir (voz) ou digitar */}
-            {!form && (
+            {!form && !travado && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
                 <span aria-live="polite" style={{ fontSize: 13, color: 'var(--text2)' }}>
                   {interpretando ? t.interpretar : gravando ? t.ouvindo : t.toqueParaFalar}
