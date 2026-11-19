@@ -51,6 +51,24 @@ export const copy = {
     reenviado: 'Pronto! Enviamos o e-mail de novo.',
     reenviarEspere: 'Aguarde 1 minuto para pedir de novo.',
     reenviarErro: 'Não foi possível reenviar agora. Tente de novo em instantes.',
+    // Esqueci minha senha (A6.4)
+    recuperacaoReenviada: 'Pronto! Enviamos o link de novo.',
+    recuperacaoErro: 'Não foi possível enviar o e-mail. Tente de novo.',
+    naoChegou: 'Não chegou em 1 ou 2 minutos? Veja Spam, Promoções e Atualizações.',
+    reenviarLink: 'Reenviar e-mail',
+    reenviarEm: (s) => `Reenviar em ${s}s`,
+    // Tela "Criar uma nova senha" (link do e-mail)
+    novaSenhaTitulo: 'Criar uma nova senha',
+    novaSenha: 'Nova senha',
+    repitaSenha: 'Repita a nova senha',
+    phRepita: 'digite de novo',
+    senhasDiferentes: 'As senhas não coincidem.',
+    salvarSenha: 'Salvar nova senha',
+    salvandoSenha: 'Salvando…',
+    senhaAtualizada: 'Senha atualizada!',
+    erroSalvarSenha: 'Não foi possível salvar. O link pode ter expirado — peça um novo.',
+    linkInvalido: 'Este link é inválido, já foi usado ou expirou (vale por 1 hora). Peça um novo link.',
+    pedirNovoLink: 'Pedir um novo link',
   },
 
   cadastro: {

@@ -1,6 +1,8 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
+import { supabase } from './lib/supabase'
+import { ehLinkDeRecuperacao } from './lib/acesso'
 import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
 import EntrarConvite from './pages/EntrarConvite'
@@ -73,6 +75,28 @@ function IrParaPainel() {
   return null
 }
 
+// A6.4: o link do "Esqueci minha senha" sempre termina em "Criar uma nova senha", mesmo se cair
+// em outra página do app (ex.: o Supabase devolve pra página inicial). Sem isso a pessoa entrava
+// logada e nunca era levada a trocar a senha. O endereço é lido aqui, ao carregar o app, antes de o
+// supabase-js limpar o "#...type=recovery"; e o evento PASSWORD_RECOVERY cobre o resto.
+let recuperacaoPendente = typeof window !== 'undefined' && ehLinkDeRecuperacao(window.location.hash, window.location.search)
+function PortaoRecuperacao() {
+  const nav = useNavigate()
+  const navRef = useRef(nav)
+  navRef.current = nav
+  useEffect(() => {
+    const irPraNovaSenha = () => {
+      if (window.location.pathname !== '/redefinir-senha') navRef.current('/redefinir-senha', { replace: true })
+    }
+    if (recuperacaoPendente) { recuperacaoPendente = false; irPraNovaSenha() }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((evento) => {
+      if (evento === 'PASSWORD_RECOVERY') irPraNovaSenha()
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+  return null
+}
+
 // Subdomínio do painel: em admin.hopefin.com.br, depois que o admin loga e cai na home,
 // mandamos pro /admin. Só redireciona quem é admin — não-admin fica na home (sem loop).
 function PortaoAdminHost() {
@@ -96,6 +120,7 @@ export default function App() {
   return (
     <>
     <PortaoAdminHost />
+    <PortaoRecuperacao />
     {splash && <Splash onDone={fecharSplash} />}
     <Routes>
       <Route path="/login" element={<Login />} />

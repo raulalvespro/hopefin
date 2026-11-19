@@ -19,6 +19,12 @@ export function mensagemErroSenha(error) {
   return null
 }
 
+// O Supabase segura novos envios de e-mail por ~1 minuto (por segurança). Esse erro vira "aguarde".
+export function ehEsperaDeEnvio(error) {
+  if (!error) return false
+  return error.status === 429 || /seconds|rate limit|too many|security purposes/i.test(error.message || '')
+}
+
 // Reenvia o e-mail de confirmação do cadastro. Devolve { ok, texto } pronto pra mostrar.
 export async function reenviarConfirmacao(email) {
   const { error } = await supabase.auth.resend({
@@ -27,6 +33,22 @@ export async function reenviarConfirmacao(email) {
     options: { emailRedirectTo: `${window.location.origin}/` },
   })
   if (!error) return { ok: true, texto: t.reenviado }
-  const espera = /seconds|rate limit|too many|security purposes/i.test(error.message || '')
-  return { ok: false, texto: espera ? t.reenviarEspere : t.reenviarErro }
+  return { ok: false, texto: ehEsperaDeEnvio(error) ? t.reenviarEspere : t.reenviarErro }
+}
+
+// Esqueci minha senha (A6.4): manda o link de criar senha nova. Devolve { ok, espera, texto }.
+// Por segurança a resposta é a mesma exista ou não conta com esse e-mail.
+export const ESPERA_REENVIO_SEG = 60
+export async function enviarRecuperacao(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(String(email || '').trim(), {
+    redirectTo: `${window.location.origin}/redefinir-senha`,
+  })
+  if (!error) return { ok: true, espera: false, texto: t.recuperacaoReenviada }
+  const espera = ehEsperaDeEnvio(error)
+  return { ok: false, espera, texto: espera ? t.reenviarEspere : t.recuperacaoErro }
+}
+
+// Link de "esqueci minha senha" aberto (o Supabase devolve #...type=recovery na volta).
+export function ehLinkDeRecuperacao(hash = '', search = '') {
+  return /(^|[#&?])type=recovery(&|$)/.test(`${hash}&${search}`)
 }

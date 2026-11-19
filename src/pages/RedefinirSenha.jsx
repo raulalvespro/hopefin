@@ -6,8 +6,11 @@ import Logo from '../components/Logo'
 import { SENHA_MIN, mensagemErroSenha } from '../lib/acesso'
 import { copy } from '../copy/pt-BR'
 
+const t = copy.acesso
+
 // Página de destino do link de recuperação de senha enviado por e-mail.
 // O supabase-js estabelece a sessão de recuperação automaticamente ao abrir a URL.
+// Se o link cair em outra página do app, o PortaoRecuperacao (App.jsx) traz a pessoa pra cá.
 export default function RedefinirSenha() {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -23,13 +26,13 @@ export default function RedefinirSenha() {
   async function handleSubmit(e) {
     e.preventDefault()
     setErro('')
-    if (form.senha.length < SENHA_MIN) { setErro(copy.acesso.senhaCurta); return }
-    if (form.senha !== form.senha2) { setErro('As senhas não coincidem.'); return }
+    if (form.senha.length < SENHA_MIN) { setErro(t.senhaCurta); return }
+    if (form.senha !== form.senha2) { setErro(t.senhasDiferentes); return }
     setLoading(true)
     const { error } = await supabase.auth.updateUser({ password: form.senha })
     setLoading(false)
-    if (error) { setErro(mensagemErroSenha(error) || 'Não foi possível salvar. O link pode ter expirado — peça um novo.'); return }
-    toast('Senha atualizada!', 'ok')
+    if (error) { setErro(mensagemErroSenha(error) || t.erroSalvarSenha); return }
+    toast(t.senhaAtualizada, 'ok')
     navigate('/')
   }
 
@@ -38,32 +41,30 @@ export default function RedefinirSenha() {
       <div style={{ width: '100%', maxWidth: 360 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <Logo size={40} style={{ display: 'flex', justifyContent: 'center' }} />
-          <p style={{ color: 'var(--text2)', marginTop: 8, fontSize: 14 }}>Criar uma nova senha</p>
+          <p style={{ color: 'var(--text2)', marginTop: 8, fontSize: 14 }}>{t.novaSenhaTitulo}</p>
         </div>
 
         {temSessao === false ? (
           <div style={{ textAlign: 'center' }}>
             <p style={{ fontSize: 40, marginBottom: 12 }}>⚠️</p>
-            <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.5 }}>
-              Este link é inválido ou expirou. Volte ao login e peça um novo link de redefinição.
-            </p>
-            <button onClick={() => navigate('/login')} style={{ marginTop: 24, fontSize: 14, color: 'var(--accent-text)', fontWeight: 600 }}>
-              Ir para o login
+            <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.5 }}>{t.linkInvalido}</p>
+            <button className="btn-primary" onClick={() => navigate('/login?recuperar=1')} style={{ marginTop: 24, width: '100%' }}>
+              {t.pedirNovoLink}
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>Nova senha</label>
-              <input type="password" placeholder={copy.acesso.phSenha} value={form.senha} onChange={e => setForm(p => ({ ...p, senha: e.target.value }))} minLength={SENHA_MIN} autoComplete="new-password" required />
+              <label>{t.novaSenha}</label>
+              <input type="password" placeholder={t.phSenha} value={form.senha} onChange={e => setForm(p => ({ ...p, senha: e.target.value }))} minLength={SENHA_MIN} autoComplete="new-password" required />
             </div>
             <div className="form-group">
-              <label>Repita a nova senha</label>
-              <input type="password" placeholder="digite de novo" value={form.senha2} onChange={e => setForm(p => ({ ...p, senha2: e.target.value }))} minLength={SENHA_MIN} autoComplete="new-password" required />
+              <label>{t.repitaSenha}</label>
+              <input type="password" placeholder={t.phRepita} value={form.senha2} onChange={e => setForm(p => ({ ...p, senha2: e.target.value }))} minLength={SENHA_MIN} autoComplete="new-password" required />
             </div>
             {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
             <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={loading || temSessao === null}>
-              {loading ? 'Salvando...' : 'Salvar nova senha'}
+              {loading ? t.salvandoSenha : t.salvarSenha}
             </button>
           </form>
         )}
