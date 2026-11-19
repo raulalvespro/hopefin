@@ -621,5 +621,21 @@ alter table public.app_diagnostico enable row level security;  -- insert só da 
 --   RPC nova do app precisa de "grant execute ... to authenticated". O smoke confere.
 
 -- ============================================================
+-- Painel exige o código do celular (0065) + convite com trava (0066), 19/11/2026
+-- ============================================================
+-- sou_admin()/sou_dono_app(): is_admin/is_dono_app E auth.jwt()->>'aal' = 'aal2'.
+-- minhas_flags(): lê is_admin/is_dono_app direto (vale na sessão normal do app).
+alter table public.limites_config add column if not exists membros_por_grupo int not null default 6;
+create table if not exists public.convite_tentativas (   -- códigos de convite ERRADOS (2 dias)
+  id         bigint generated always as identity primary key,
+  usuario_id uuid not null references auth.users(id) on delete cascade,
+  ip_hash    text,                                     -- md5 do cf-connecting-ip, nunca o IP
+  criado_em  timestamptz not null default now()
+);
+alter table public.convite_tentativas enable row level security;  -- sem regra: só entrar_no_grupo usa
+-- entrar_no_grupo(codigo): 10 errados/pessoa ou 30/IP por hora -> 'muitas_tentativas'; código errado
+--   devolve null (registra a tentativa); grupo com membros_por_grupo pessoas -> 'grupo_cheio'.
+
+-- ============================================================
 -- FIM
 -- ============================================================

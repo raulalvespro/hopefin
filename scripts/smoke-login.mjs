@@ -69,5 +69,14 @@ if (env.SUPABASE_ACCESS_TOKEN && env.SUPABASE_PROJECT_REF) {
   const doServidor = fns.filter(f => f.logado && SO_SERVIDOR.includes(f.proname)).map(f => f.proname)
   if (doServidor.length) falhar('função só do servidor aberta pra quem está logado (revoke ... from authenticated): ' + doServidor.join(', '))
   console.log(`✔ trava das funções: só as ${ABERTAS_DE_PROPOSITO.length} de propósito abertas à chave pública`)
+
+  // 5) proteções que não podem sumir num "create or replace" futuro (0065/0066, 19/11/2026):
+  //    painel só com o código do celular (aal2) e convite com trava contra chute + limite de pessoas.
+  const p = await fetch(`https://api.supabase.com/v1/projects/${env.SUPABASE_PROJECT_REF}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: "select proname, prosrc from pg_proc where pronamespace = 'public'::regnamespace and proname in ('sou_admin', 'sou_dono_app', 'entrar_no_grupo')" }) })
+  if (!p.ok) falhar(`proteções: leitura HTTP ${p.status}`)
+  const src = Object.fromEntries((await p.json()).map(f => [f.proname, f.prosrc]))
+  for (const f of ['sou_admin', 'sou_dono_app']) if (!String(src[f]).includes('aal2')) falhar(`${f}() deixou de exigir o código do celular (aal2)`)
+  if (!/muitas_tentativas/.test(src.entrar_no_grupo) || !/grupo_cheio/.test(src.entrar_no_grupo)) falhar('entrar_no_grupo() perdeu a trava de tentativas ou o limite de pessoas')
+  console.log('✔ painel só com o código do celular; convite com trava e limite')
 }
 console.log('✔ SMOKE OK')

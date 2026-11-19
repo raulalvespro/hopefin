@@ -27,6 +27,7 @@ description: Banco Supabase do HopeFin (projeto oapcjmkklzaodgpuwjsh). Use para 
 - Mexeu em valores de texto/enum? Conferir antes os CHECK da tabela: `select conname, pg_get_constraintdef(oid) from pg_constraint where conrelid = 'public.<tabela>'::regclass`.
 - Função `SECURITY DEFINER`: fixar `search_path` e checar `meu_grupo_id()` ou `is_admin` dentro dela.
 - **Função nova nasce fechada** (0064): só o dono e o `service_role` executam. RPC do app → `grant execute on function ... to authenticated` (anon só se for usada antes do login + incluir em `ABERTAS_DE_PROPOSITO` no `scripts/smoke-login.mjs`). Função do servidor/cron → sem grant (e incluir em `SO_SERVIDOR` no smoke). `drop` + `create` também nasce fechada: refazer os grants. Conferir com `has_function_privilege('anon', oid, 'execute')`. Até a 0063, `revoke ... from public` não bastava e o resumo do mês ficou aberto com nome e e-mail de todos os clientes.
+- **Painel do dono exige o código do celular no banco** (0065): `sou_admin()`/`sou_dono_app()` só valem com `auth.jwt()->>'aal' = 'aal2'`. Função nova do painel: começar com `if not public.sou_admin() then raise exception 'nao_autorizado'`. Não usar `sou_admin()` pra coisa do APP normal (sessão `aal1`): ler `usuarios.is_admin` direto, como em `minhas_flags()`. Testar simulando `request.jwt.claims` com `aal` numa transação desfeita.
 - Datas: o app conta o mês pela data local (America/Sao_Paulo). Converter `timestamptz` antes de agrupar por dia.
 
 ## Dados reais de usuários

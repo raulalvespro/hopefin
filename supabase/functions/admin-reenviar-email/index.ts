@@ -7,11 +7,13 @@
 // com o layout da marca — em vez do template padrão do Supabase.
 //
 // Segurança: roda com verify-jwt. O JWT diz QUEM chamou; validamos is_admin com o
-// service_role antes de qualquer ação. Auditoria em admin_log.
+// service_role e a sessão com o código do celular (aal2) antes de qualquer ação.
+// Auditoria em admin_log.
 // Segredos: SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY. (SUPABASE_URL/ANON injetados.)
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { layoutEmail, enviarEmail, esc } from '../_shared/email.ts'
+import { nivelDaSessao } from '../_shared/sessao.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -47,6 +49,8 @@ Deno.serve(async (req) => {
   // Só admin segue.
   const { data: me } = await admin.from('usuarios').select('is_admin').eq('id', uid).maybeSingle()
   if (!me?.is_admin) return json({ erro: 'não autorizado' }, 403)
+  // O painel exige o código do celular (2 etapas): sessão aal2 (L37, 19/11/2026).
+  if (nivelDaSessao(jwt) !== 'aal2') return json({ erro: 'confirme o código do celular no painel' }, 403)
 
   const body = await req.json().catch(() => ({}))
   const alvoId: string | undefined = body?.user_id

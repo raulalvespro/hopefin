@@ -235,6 +235,13 @@ em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `L
   **nunca os lançamentos — LGPD**), cupons e log de webhooks. Ações com auditoria
   (`admin_log`): estender trial, marcar/tirar cortesia. O admin é marcado pelo e-mail
   `raullerickson@gmail.com` quando a conta é criada. (Reenviar e-mail depende do prompt 7.)
+  **Desde 19/11/2026 (L37, migração 0065):** o painel é o `AdminApp` em `admin.hopefin.com.br` (no computador:
+  `localhost:5173/?admin=1`), com o código do celular (2 etapas, sessão `aal2`) exigido **também no servidor**:
+  `sou_admin()`/`sou_dono_app()` só valem com `aal2` (vale pras `admin_*` e pras regras das tabelas do painel) e as
+  Edge Functions do painel (`admin-reenviar-email`, `admin-suporte-responder`, envio manual do `resumo-mensal`)
+  conferem `aal2` (`_shared/sessao.ts`). `app.hopefin.com.br/admin` só redireciona pro painel. `minhas_flags()` NÃO
+  exige o código (chave de recurso do app). Admin novo sem código cadastrado cadastra no 1º acesso — por isso conta
+  de teste NUNCA é admin.
 - Domínio registrado na **Hostinger**; **DNS e site na Cloudflare**; caixas de e-mail na
   Hostinger (plano Business).
 
@@ -282,7 +289,10 @@ colocar** e o Raul mesmo cola. Secrets conhecidos (nomes, sem valores):
 
 ### Regras de produto (novas, 05/11/2026)
 - **App só para maiores de 18 anos** — filhos não são usuários. **Limite de 6 pessoas por
-  grupo** precisa estar implementado e testado.
+  grupo**: implementado e testado em 19/11/2026 (migração 0066) — `limites_config.membros_por_grupo` (6) conferido em
+  `entrar_no_grupo` ('grupo_cheio'), que também trava chute de código: 10 códigos errados por pessoa ou 30 por IP
+  (`cf-connecting-ip`, guardado só como md5, 2 dias) por hora → 'muitas_tentativas'. Código errado volta VAZIO (sem
+  erro) pra tentativa ficar registrada; o app trata (`mensagemErroConvite` em `src/lib/convite.js`).
 - **Texto do cadastro:** trocar "Depois você convida sua esposa" por algo neutro, ex.:
   "Depois você convida quem divide as contas com você".
 - **Estratégia comercial oficial** (posicionamento, oferta, tom de voz, o que pode ser

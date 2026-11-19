@@ -22,6 +22,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { layoutEmail, enviarEmail, esc } from '../_shared/email.ts'
 import { resumoMes, hojeBRT, addMeses, compDe } from '../_shared/motor.js'
 import { carregarDadosMotor } from '../_shared/motor-dados.js'
+import { nivelDaSessao } from '../_shared/sessao.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -172,6 +173,8 @@ async function ehAdmin(req: Request): Promise<boolean> {
   if (!jwt) return false
   const { data: u } = await admin.auth.getUser(jwt)
   if (!u?.user) return false
+  // Envio manual pelo painel: só com o código do celular (sessão aal2) — L37, 19/11/2026.
+  if (nivelDaSessao(jwt) !== 'aal2') return false
   const { data: p } = await admin.from('usuarios').select('is_admin').eq('id', u.user.id).maybeSingle()
   return !!p?.is_admin
 }
