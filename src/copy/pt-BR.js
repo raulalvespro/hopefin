@@ -456,6 +456,31 @@ export const copy = {
     outra: 'É outra pessoa',
   },
 
+  // Menu "Minha conta" na foto do perfil (A8.12) — Configurações saiu do "Mais"
+  minhaConta: {
+    abrir: 'Minha conta',
+    titulo: 'Minha conta',
+    fechar: 'Fechar',
+    grupo: (nome) => `Grupo: ${nome}`,
+    plano: {
+      sem_assinatura: 'Plano Família',
+      cortesia: 'Cortesia',
+      ativa: (dd) => (dd ? `Plano Família · renova em ${dd}` : 'Plano Família'),
+      cancelada: (dd) => (dd ? `Cancelado · acesso até ${dd}` : 'Cancelado'),
+      pendente: 'Pagamento pendente',
+      trial: (dias) => (dias != null ? `Teste grátis · ${dias === 1 ? 'último dia' : `${dias} dias`}` : 'Teste grátis'),
+      encerrada: 'Plano encerrado',
+    },
+    meuPlano: 'Meu plano',
+    configuracoes: 'Configurações',
+    configuracoesSub: 'Tema, notificações, senha, foto e grupo',
+    meusDados: 'Meus dados',
+    meusDadosSub: 'Exportar um backup ou apagar seus dados',
+    pessoas: 'Pessoas',
+    pessoasSub: 'Quem divide contas com você ou te deve',
+    sair: 'Sair',
+  },
+
   // Tela Pessoas (A8.5): renomear, juntar duplicadas e apagar quem não tem uso
   pessoasTela: {
     titulo: 'Pessoas',
@@ -494,6 +519,10 @@ export const copy = {
 
   // Novo gasto — aviso de compra que parece uma assinatura já cadastrada (A0.7)
   gastos: {
+    // Editar/excluir parcelado pelo Gastos e pela fatura (A8.7)
+    excluirParcelado: (desc, n) => `Excluir a compra parcelada "${desc || 'sem descrição'}" inteira? As ${n || ''} parcelas saem de todas as faturas e meses.`,
+    parceladoExcluido: 'Compra parcelada excluída',
+    naoAchei: 'Não achei esse lançamento (pode ter sido apagado).',
     // Parcelas criadas (A3.5)
     parcelasCriadas: (n, de, ate) => `${n} parcelas criadas (${de} → ${ate})`,
     verTodas: 'ver todas',
@@ -527,6 +556,8 @@ export const copy = {
     limiteEstourado: 'Acima do limite',
     limiteUso: (pct, limite, comprometido) => `${pct}% do limite de ${limite} · ${comprometido} comprometido (inclui o que ainda vai cair)`,
     informarLimite: '+ Informar o limite deste cartão',
+    tocarEditar: 'Tocar pra editar',
+    dicaTocarItem: 'Toque numa compra pra editar · ← → muda de fatura',
     parcelaMovida: (rotulo, seguintes, frente) => {
       const quais = seguintes === 1 ? 'a seguinte' : `as ${seguintes} seguintes`
       if (seguintes > 0) return `Parcela ${rotulo} e ${quais} ${frente ? 'foram pra próxima fatura' : 'voltaram pra fatura anterior'}`

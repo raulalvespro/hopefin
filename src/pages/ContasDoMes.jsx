@@ -310,7 +310,7 @@ export default function ContasDoMes() {
       {/* Navegação de mês */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <button onClick={() => setMes(m => subMonths(m, 1))} aria-label={t.mesAnterior}><ChevronLeft size={20} color="var(--text2)" /></button>
-        <h3 style={{ fontSize: 15, textTransform: 'capitalize' }}>{format(mes, "MMMM 'de' yyyy", { locale: ptBR })}</h3>
+        <h3 style={{ fontSize: 15 }}>{(() => { const s = format(mes, "MMMM 'de' yyyy", { locale: ptBR }); return s.charAt(0).toUpperCase() + s.slice(1) })()}</h3>
         <button onClick={() => setMes(m => addMonths(m, 1))} aria-label={t.proximoMes}><ChevronRight size={20} color="var(--text2)" /></button>
       </div>
 

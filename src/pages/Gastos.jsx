@@ -29,6 +29,19 @@ const tg = copy.gastos
 const vencCurto = (iso, hoje) => fmtData(iso, iso.slice(0, 4) === hoje.slice(0, 4) ? 'dd/MM' : 'dd/MM/yyyy')
 const COR_FATURA = { aberta: 'var(--text3)', fechada: 'var(--amber-text)', atrasada: 'var(--red-text)', paga: 'var(--amber-text)' }
 
+// Linha da lista a partir do gasto do banco — também usada pra abrir o editar pelo link
+// /gastos?editar=<id>&voltar=cartoes (fatura do cartão, A8.7).
+const paraItemGasto = (g) => ({
+  id: 'g-' + g.id, rawId: g.id, tipo: 'gasto',
+  descricao: g.descricao, valor: Number(g.valor), categoria: g.categoria, data: g.data, criado: g.criado_em || '',
+  observacao: g.observacao || '',
+  tipo_pagamento: g.tipo_pagamento, cartao_id: g.cartao_id, fatura_ajuste: Number(g.fatura_ajuste) || 0,
+  // "Cartão" salvo sem dizer qual (antes da trava de 16/11): pede pra escolher.
+  semCartao: g.tipo_pagamento === 'cartao' && !g.cartao_id,
+  origem: g.cartoes?.nome || (g.tipo_pagamento === 'cartao' ? 'cartão?' : g.tipo_pagamento), pessoa: g.usuarios?.nome?.split(' ')[0],
+  pessoa_id: g.pessoa_id, terceiro: g.pessoa_id ? (g.pessoas?.nome || 'alguém') : null, reembolso_status: g.reembolso_status,
+})
+
 export default function Gastos() {
   const { perfil } = useAuth()
   const { categorias, emojiDe } = useCategorias()
@@ -75,16 +88,7 @@ export default function Gastos() {
       supabase.from('parcelas').select('*, parcelamentos(descricao, categoria, num_parcelas, pessoa_id, cartoes(nome), usuarios(nome), pessoas(nome))').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
     ])
 
-    const gastosItens = (gastos || []).map(g => ({
-      id: 'g-' + g.id, rawId: g.id, tipo: 'gasto',
-      descricao: g.descricao, valor: Number(g.valor), categoria: g.categoria, data: g.data, criado: g.criado_em || '',
-      observacao: g.observacao || '',
-      tipo_pagamento: g.tipo_pagamento, cartao_id: g.cartao_id, fatura_ajuste: Number(g.fatura_ajuste) || 0,
-      // "Cartão" salvo sem dizer qual (antes da trava de 16/11): pede pra escolher.
-      semCartao: g.tipo_pagamento === 'cartao' && !g.cartao_id,
-      origem: g.cartoes?.nome || (g.tipo_pagamento === 'cartao' ? 'cartão?' : g.tipo_pagamento), pessoa: g.usuarios?.nome?.split(' ')[0],
-      pessoa_id: g.pessoa_id, terceiro: g.pessoa_id ? (g.pessoas?.nome || 'alguém') : null, reembolso_status: g.reembolso_status,
-    }))
+    const gastosItens = (gastos || []).map(paraItemGasto)
     const parcelasItens = (parcelas || []).map(p => ({
       id: 'p-' + p.id, tipo: 'parcela',
       descricao: p.parcelamentos?.descricao, valor: Number(p.valor), categoria: p.parcelamentos?.categoria, data: p.data_vencimento,
@@ -127,6 +131,22 @@ export default function Gastos() {
     setParams({}, { replace: true })
     abrirNovo({ assinatura: true })
   }, [params, cartoesProntos])
+
+  // Editar direto da fatura do cartão (A8.7): /gastos?editar=<id>&voltar=cartoes. A compra pode
+  // ser de outro mês, então busca ela pelo id (só do grupo) e, no fim, volta pra fatura.
+  useEffect(() => {
+    const id = params.get('editar')
+    if (abriuPeloLink.current || !id || !cartoesProntos || !perfil?.grupo_id) return
+    abriuPeloLink.current = true
+    const v = params.get('voltar')
+    setParams({}, { replace: true })
+    supabase.from('gastos').select('*, cartoes(nome), usuarios(nome), pessoas(nome)').eq('id', id).eq('grupo_id', perfil.grupo_id).maybeSingle()
+      .then(({ data }) => {
+        if (!data) { toast(tg.naoAchei, 'erro'); return }
+        setVoltarPara(v === 'cartoes' ? '/cartoes' : null)
+        editarGasto(paraItemGasto(data))
+      })
+  }, [params, cartoesProntos, perfil]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Novo gasto: sem cartão cadastrado já começa em PIX; com um cartão só, ele vem escolhido.
   function abrirNovo(extra = {}) {
@@ -283,6 +303,13 @@ export default function Gastos() {
     fecharModal(); carregar()
   }
 
+  // Parcela na lista de Gastos (A8.7): arrastar → Editar abre o parcelado; Excluir apaga a compra inteira.
+  async function excluirParcelado(it) {
+    if (!confirm(tg.excluirParcelado(it.descricao, it.totalParcelas))) return
+    const { error } = await run(supabase.from('parcelamentos').delete().eq('id', it.parcelamentoId), { ok: tg.parceladoExcluido })
+    if (!error) carregar()
+  }
+
   async function excluir(id) {
     if (!confirm('Excluir este gasto?')) return
     const { error } = await run(supabase.from('gastos').delete().eq('id', id), { ok: 'Gasto excluído' })
@@ -385,8 +412,8 @@ export default function Gastos() {
           : <EmptyState ilustracao={<Joca pose="anotando" tamanho={150} />} titulo={copy.mascote.vazios.gastosTitulo} texto={copy.mascote.vazios.gastosTexto} />
       ) : (verTodos || filtrando ? lista : lista.slice(0, 10)).map(it => (
         <SwipeRow key={it.id} style={{ marginBottom: 8 }}
-          onEdit={it.tipo === 'gasto' ? () => editarGasto(it) : undefined}
-          onDelete={it.tipo === 'gasto' ? () => excluir(it.rawId) : undefined}>
+          onEdit={it.tipo === 'gasto' ? () => editarGasto(it) : () => navigate(`/parcelamentos?editar=${it.parcelamentoId}&voltar=gastos`)}
+          onDelete={it.tipo === 'gasto' ? () => excluir(it.rawId) : () => excluirParcelado(it)}>
         <div className="card" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 22 }}>{emojiDe(it.categoria)}</span>

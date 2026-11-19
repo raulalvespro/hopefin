@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Info, ChevronDown, ChevronUp, Check } from 'lucide-react'
@@ -103,8 +103,13 @@ export default function Parcelamentos() {
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(novaEdicao())
   const [salvando, setSalvando] = useState(false)
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const ver = params.get('ver') // "ver todas" vindo da lista de Gastos (A3.5)
+  // Editar direto de Gastos ou da fatura do cartão (A8.7): ?editar=<id>&voltar=gastos|cartoes
+  const editarId = params.get('editar')
+  const navigate = useNavigate()
+  const [voltarPara, setVoltarPara] = useState(null)
+  const abriuEdicao = useRef(false)
   const flags = useFlags()
   const buscaLigada = !!flags?.busca_filtros // busca e filtros (A3.1), no começo só o dono
   const [filtro, setFiltro] = useState(filtroVazio())
@@ -149,7 +154,21 @@ export default function Parcelamentos() {
       de_terceiro: !!p.pessoa_id, pessoa_nome: p.pessoas?.nome || '',
     })
   }
-  function fecharEdicao() { setEditando(null); setForm(novaEdicao()) }
+  function fecharEdicao() {
+    setEditando(null); setForm(novaEdicao())
+    if (voltarPara) { const v = voltarPara; setVoltarPara(null); navigate(v) }
+  }
+
+  useEffect(() => {
+    if (!editarId || loading || abriuEdicao.current) return
+    abriuEdicao.current = true
+    const v = params.get('voltar')
+    setVoltarPara(v === 'gastos' ? '/gastos' : v === 'cartoes' ? '/cartoes' : null)
+    setParams({}, { replace: true })
+    const p = parcelamentos.find(x => x.id === editarId)
+    if (p) abrirEdicao(p)
+    else toast(copy.gastos.naoAchei, 'erro')
+  }, [editarId, loading, parcelamentos]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function salvarEdicao() {
     if (!form.descricao.trim()) { toast('Informe a descrição.', 'erro'); return }

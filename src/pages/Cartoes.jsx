@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Plus, X, ArrowRight, ArrowLeft, Undo2, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -45,6 +46,14 @@ export default function Cartoes() {
   const { perfil } = useAuth()
   const run = useDb()
   const { toast } = useToast()
+  const navigate = useNavigate()
+
+  // Tocar num item da fatura abre o editar dele e, no fim, volta pra cá (A8.7).
+  function abrirItemFatura(it) {
+    if (it.tipo === 'gasto') navigate(`/gastos?editar=${it.id}&voltar=cartoes`)
+    else if (it.tipo === 'parcela' && it.parcelamentoId) navigate(`/parcelamentos?editar=${it.parcelamentoId}&voltar=cartoes`)
+    else if (it.tipo === 'assinatura') navigate('/assinaturas')
+  }
   const { emojiDe } = useCategorias()
   const [detalhe, setDetalhe] = useState(null)   // { cardId, comp }
   const [cartoes, setCartoes] = useState([])
@@ -346,11 +355,12 @@ export default function Cartoes() {
               </div>
               {f.totalTerceiros > 0 && <p style={{ fontSize: 11.5, color: 'var(--amber-text)', marginBottom: 8 }}>{fmt(f.totalTerceiros)} desta fatura é de outras pessoas (está em A Receber)</p>}
 
+              {f.itens.length > 0 && <p style={{ fontSize: 11, color: 'var(--text3)', margin: '0 0 2px' }}>{tc.dicaTocarItem}</p>}
               {f.itens.length === 0 ? (
                 <p style={{ fontSize: 12.5, color: 'var(--text3)', padding: '10px 0' }}>Nada lançado nesta fatura.</p>
               ) : f.itens.map((it, i) => (
                 <div key={`${it.tipo}-${it.id}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <button type="button" onClick={() => abrirItemFatura(it)} title={tc.tocarEditar} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1, textAlign: 'left', padding: 0, color: 'var(--text)' }}>
                     <span style={{ fontSize: 16 }}>{it.tipo === 'parcela' ? '💳' : it.tipo === 'assinatura' ? '📺' : emojiDe(it.categoria)}</span>
                     <div style={{ minWidth: 0 }}>
                       <p style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -361,7 +371,7 @@ export default function Cartoes() {
                       </p>
                       <p style={{ fontSize: 11, color: 'var(--text3)' }}>{ddmm(it.data)}{it.ajuste ? ` · movida ${it.ajuste > 0 ? '+' : ''}${it.ajuste} fatura` : ''}</p>
                     </div>
-                  </div>
+                  </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: it.pessoaId ? 'var(--text3)' : 'var(--red-text)' }}>{fmt(it.valor)}</span>
                     {(it.tipo === 'parcela' || it.tipo === 'gasto') && (

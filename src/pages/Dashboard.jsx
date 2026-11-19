@@ -228,7 +228,7 @@ export default function Dashboard() {
       {/* Navegação de mês */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <button onClick={() => setMes(m => subMonths(m, 1))}><ChevronLeft size={20} color="var(--text2)" /></button>
-        <h3 style={{ fontSize: 15, textTransform: 'capitalize' }}>{format(mes, "MMMM 'de' yyyy", { locale: ptBR })}</h3>
+        <h3 style={{ fontSize: 15 }}>{(() => { const s = format(mes, "MMMM 'de' yyyy", { locale: ptBR }); return s.charAt(0).toUpperCase() + s.slice(1) })()}</h3>
         <button onClick={() => setMes(m => addMonths(m, 1))}><ChevronRight size={20} color="var(--text2)" /></button>
       </div>
 
@@ -256,9 +256,12 @@ export default function Dashboard() {
           <svg width="100%" height="48" viewBox="0 0 310 48" preserveAspectRatio="none" aria-hidden="true">
             {historico.map((h, i) => {
               const alt = Math.max(5, (Math.abs(h.saldo) / barMax) * 46)
-              const larg = 310 / historico.length
+              // Sempre 6 lugares, o mês atual na direita: com 1 ou 2 meses de uso a barra não
+              // vira um bloco do tamanho do card (caso de todo usuário novo).
+              const slots = Math.max(historico.length, 6)
+              const larg = 310 / slots
               const ultimo = i === historico.length - 1
-              return <rect key={i} x={i * larg + 4} y={48 - alt} width={larg - 8} height={alt} rx={6}
+              return <rect key={i} x={(slots - historico.length + i) * larg + 4} y={48 - alt} width={larg - 8} height={alt} rx={6}
                 fill={ultimo ? '#10b981' : (h.saldo >= 0 ? '#1b253b' : '#3b2130')} className="hf-grow" style={{ animationDelay: `${i * 0.05}s` }} />
             })}
           </svg>
