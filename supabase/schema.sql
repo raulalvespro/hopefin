@@ -635,6 +635,8 @@ create table if not exists public.convite_tentativas (   -- códigos de convite 
 alter table public.convite_tentativas enable row level security;  -- sem regra: só entrar_no_grupo usa
 -- entrar_no_grupo(codigo): 10 errados/pessoa ou 30/IP por hora -> 'muitas_tentativas'; código errado
 --   devolve null (registra a tentativa); grupo com membros_por_grupo pessoas -> 'grupo_cheio'.
+-- resgatar_cupom(codigo) (0067): se o grupo ainda não tem assinatura, cria já como cortesia ativa
+--   (antes o cupom era gasto sem dar a cortesia).
 
 -- ============================================================
 -- FIM

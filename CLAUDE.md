@@ -167,6 +167,10 @@ em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `L
   preços antigos (R$ 19,90/mês, R$ 14,90/mês). Nada disso pode aparecer no app/e-mails.
 - **Cortesia:** grupos que resgatam cupom (ex.: `IGREJA2026`) viram cortesia por tempo
   indeterminado, sem cobrança (WhatsApp até 100/mês). 1 cupom por grupo.
+  **Desde 19/11/2026 (A6.1):** o cupom NÃO fica mais no cadastro. Entra pelo **link de parceiro**
+  `app.hopefin.com.br/c/CODIGO` (guarda o cupom → vai no `user_metadata.cupom` do cadastro → resgatado em qualquer
+  carregamento depois que o grupo existe, e só sai da conta quando o banco responde de vez — `AuthContext`) ou pelo
+  "Meu plano" (Planos). `resgatar_cupom` cria a assinatura já como cortesia se o grupo ainda não tiver (0067).
 - Modelo: **um plano pago + trial** no começo (sem free tier por ora). Múltiplos planos
   pagos só com Open Finance.
 
@@ -329,7 +333,12 @@ colocar** e o Raul mesmo cola. Secrets conhecidos (nomes, sem valores):
 ## E-mail de acesso (Supabase Auth) e atualização do PWA (08/11/2026)
 - O Auth manda e-mail por **SMTP próprio via Resend** (`avisos@hopefin.com.br`), com modelos em português — configurado por
   `node scripts/config-auth-email.mjs` (reaplicar se mexer nos modelos). Antes disso o remetente padrão do Supabase só entregava
-  para membros da equipe e a esposa do dono não recebia nada. `mailer_autoconfirm` segue LIGADO (cadastro não exige confirmação).
+  para membros da equipe e a esposa do dono não recebia nada.
+- **Desde 19/11/2026 (L39/L40): o cadastro EXIGE confirmar o e-mail** (`mailer_autoconfirm = false`) e a **senha mínima é 8**
+  (`password_min_length`, igual ao `SENHA_MIN` de `src/lib/acesso.js`). Aplicado por `node scripts/config-auth-seguranca.mjs`
+  (`--sem-confirmacao` volta como era). O cadastro mostra "Confirme seu e-mail" + reenviar; o login avisa quando falta confirmar.
+  O link do e-mail volta pro app (`emailRedirectTo`). Testado de ponta a ponta: e-mail chega em ~2 s na aba Atualizações do
+  Gmail. Bloqueio de senha vazada (HIBP) só no plano Pro do Supabase (HTTP 402). Captcha: falta a chave do Turnstile (Raul).
 - `src/lib/atualizarPwa.js`: o app instalado checa versão nova ao voltar para a frente (e a cada 30 min) e recarrega sozinho
   quando ela assume (adia se a pessoa estiver digitando). Quem tinha o app instalado ANTES disso precisa fechar e abrir 1–2 vezes.
 - Plano de lançamento e fila: `docs/PLANO_PROXIMOS_PASSOS.md`. **WhatsApp entra NO lançamento.**
