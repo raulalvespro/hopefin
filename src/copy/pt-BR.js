@@ -329,6 +329,8 @@ export const copy = {
     destinoPago: 'A fatura pra onde ela iria já está paga. Desfaça o pagamento dela antes de mover.',
     moverErro: 'Não foi possível mover a parcela.',
     desfazer: 'Desfazer',
+    pagamentoDesfeito: 'Pagamento desfeito — as parcelas dessa fatura voltaram a ficar em aberto',
+    reabrirParcelasErro: 'O pagamento foi desfeito, mas as parcelas não reabriram. Tente marcar e desfazer de novo.',
     inicialTitulo: 'Já usa esse cartão? (opcional)',
     inicialDica: 'Coloque o que já está nas faturas, sem parcelas e assinaturas (essas você cadastra à parte). Cada valor entra na fatura certa.',
     inicialPreencha: 'Preencha os dias de fechamento e de vencimento pra ver as faturas.',

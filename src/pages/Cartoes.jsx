@@ -86,11 +86,23 @@ export default function Cartoes() {
     carregar()
   }
 
+  // Desfaz o pagamento de uma fatura e reabre as parcelas dela: parcela de cartão "paga" =
+  // fatura paga. O pagarFatura marca as parcelas; sem desmarcar aqui, elas ficavam riscadas
+  // numa fatura em aberto (caso das 2 da Renner, 19/11).
   async function desfazerPagamento(card, comp) {
     const row = (dados?.contasPagas || []).find(p => p.tipo === 'fatura' && p.referencia_id === card.id && p.competencia === comp)
     if (!row?.id) return
-    const { error } = await run(supabase.from('contas_pagas').delete().eq('id', row.id), { ok: 'Pagamento desfeito' })
-    if (!error) carregar()
+    const { error } = await run(supabase.from('contas_pagas').delete().eq('id', row.id), { ok: tc.pagamentoDesfeito })
+    if (error) return
+    const { data: parcs } = await supabase.from('parcelamentos').select('id').eq('cartao_id', card.id)
+    const idsParc = (parcs || []).map(p => p.id)
+    if (idsParc.length) {
+      const { error: e2 } = await supabase.from('parcelas').update({ paga: false })
+        .in('parcelamento_id', idsParc).eq('paga', true)
+        .gte('data_vencimento', `${comp}-01`).lt('data_vencimento', `${addMeses(comp, 1)}-01`)
+      if (e2) toast(tc.reabrirParcelasErro, 'erro')
+    }
+    carregar()
   }
 
   // Move uma parcela ±1 fatura e leva junto as SEGUINTES da mesma compra (A2.9). Parcela de
