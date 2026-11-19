@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, Layers, CalendarCheck } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Layers, CalendarCheck, Upload } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import BotaoVoz from '../components/BotaoVoz'
 import SwipeRow from '../components/SwipeRow'
@@ -353,6 +353,18 @@ export default function Gastos() {
           <ChevronRight size={16} color="var(--text3)" />
         </span>
       </button>}
+
+      {/* Importar (A8.1) — só com a chave de recurso "importar" (no começo, só o dono) */}
+      {flags?.importar && (
+        <button onClick={() => navigate('/importar')} className="card" style={{ width: '100%', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', background: 'var(--bg2)', color: 'var(--text)' }}>
+          <Upload size={18} color="var(--accent)" />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontWeight: 600, fontFamily: 'Syne', fontSize: 14 }}>{copy.importar.botaoGastos}</span>
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>{copy.importar.botaoGastosSub}</span>
+          </span>
+          <ChevronRight size={16} color="var(--text3)" />
+        </button>
+      )}
 
       {/* Busca e filtros (A3.1) — só com a chave de recurso */}
       {buscaLigada && (

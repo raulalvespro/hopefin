@@ -96,11 +96,18 @@ export const primeiroVencimentoParcelado = (cartao, dataCompra, ajuste = 0) =>
   vencimentoDaComp(cartao, compDaCompra(cartao, dataCompra, ajuste))
 
 // ---------------------------------------------------------------- assinatura
-// Data da cobrança da assinatura no mês `comp`, ou null se ainda não valia.
+// Assinatura que ainda conta em algum mês (A8.3, 19/11/2026): a ativa e a CANCELADA com data
+// ("cancelei o serviço": as cobranças até cancelada_em continuam nas faturas/meses delas).
+// Inativa SEM data = removida de tudo ("lancei errado", ou removida antes de 19/11/2026).
+export const assinaturaConta = (a) => a?.ativo !== false || !!a?.cancelada_em
+
+// Data da cobrança da assinatura no mês `comp`, ou null se ainda não valia (antes de
+// cobrada_desde) ou já não valia (depois de cancelada_em).
 export function cobrancaNoMes(assinatura, comp) {
   const data = dataNoMes(comp, Number(assinatura?.dia_cobranca) || 1)
   const desde = assinatura?.cobrada_desde || (assinatura?.criado_em ? `${compDe(assinatura.criado_em)}-01` : null)
   if (desde && data < desde) return null
+  if (assinatura?.cancelada_em && data > assinatura.cancelada_em) return null
   return data
 }
 
@@ -170,7 +177,7 @@ export function faturaDoCartao(cartao, comp, dados, hoje = hojeBRT()) {
     })
   }
   for (const a of dados.assinaturas || []) {
-    if (a.ativo === false || a.cartao_id !== cartao.id) continue
+    if (!assinaturaConta(a) || a.cartao_id !== cartao.id) continue
     for (const d of cobrancasNaFatura(a, cartao, comp)) {
       itens.push({ tipo: 'assinatura', id: a.id, descricao: a.nome, valor: num(a.valor), data: d, categoria: a.categoria || 'assinaturas' })
     }
@@ -294,7 +301,7 @@ export function resumoMes(comp, dados, opcoes = {}) {
   // ASSINATURAS sem cartão (cobradas no mês)
   const assinaturasAvulsas = []
   for (const a of dados.assinaturas || []) {
-    if (a.ativo === false || a.cartao_id) continue
+    if (!assinaturaConta(a) || a.cartao_id) continue
     const d = cobrancaNoMes(a, comp)
     if (!d) continue
     assinaturasAvulsas.push({ tipo: 'assinatura', id: a.id, descricao: a.nome, valor: num(a.valor), data: d, categoria: a.categoria || 'assinaturas', paga: estaPaga(cp, 'assinatura', a.id, comp) })
@@ -381,7 +388,7 @@ export function meuGastoDoMes(comp, dados) {
     add(f.categoria, { tipo: 'fixa', id: f.id, descricao: f.nome, valor: l?.valor_real != null ? num(l.valor_real) : num(f.valor), data: f.dia_vencimento ? dataNoMes(comp, f.dia_vencimento) : null })
   }
   for (const a of dados.assinaturas || []) {
-    if (a.ativo === false) continue
+    if (!assinaturaConta(a)) continue
     const d = cobrancaNoMes(a, comp)
     if (!d) continue
     add(a.categoria || 'assinaturas', { tipo: 'assinatura', id: a.id, descricao: a.nome, valor: num(a.valor), data: d, cartaoId: a.cartao_id || null })
@@ -429,6 +436,7 @@ export function itensDeTerceiros(dados) {
       tipo: 'manual', id: m.id, pessoaId: m.pessoa_id, pessoaNome: m.pessoa_nome || null,
       descricao: m.descricao, valor: num(m.valor), data: m.data, comp: compDe(m.data), dataSaida: m.data,
       recebido: !!m.recebido, entradaId: m.entrada_id || null, recorrente: !!m.recorrente, serieId: m.serie_id || null,
+      numero: m.parcela_num || null, deTotal: m.parcela_total || null, // a receber parcelado (A8.17)
       origem: m.conta_fixa_id
         ? { tipo: 'conta_fixa', contaFixaId: m.conta_fixa_id, contaFixaNome: m.conta_fixa_nome || null }
         : { tipo: m.recorrente ? 'todo_mes' : 'manual' },

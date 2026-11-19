@@ -69,7 +69,7 @@ function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir, onEditar, de
             <div key={parc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <button onClick={() => onToggleParcela(parc)} title={parc.paga ? 'Marcar como não paga' : 'Marcar como paga'}
-                  style={{ width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${parc.paga ? 'var(--accent)' : 'var(--border2)'}`, background: parc.paga ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${parc.paga ? 'var(--accent)' : 'var(--control-line)'}`, background: parc.paga ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {parc.paga && <Check size={13} color="var(--on-accent)" />}
                 </button>
                 <div>

@@ -29,7 +29,7 @@ export async function carregarDadosMotor(cliente, grupoId, { compIni, compFim, p
       .eq('grupo_id', grupoId).gte('data', gIni).lte('data', gFim),
     cliente.from('parcelas').select('id, numero, valor, data_vencimento, paga, recebido, reembolso_entrada_id, parcelamento_id, parcelamentos(descricao, num_parcelas, cartao_id, pessoa_id, categoria, pessoas(nome))')
       .eq('grupo_id', grupoId).gte('data_vencimento', pIni).lte('data_vencimento', pFim),
-    cliente.from('assinaturas').select('id, nome, valor, dia_cobranca, cartao_id, ativo, categoria, cobrada_desde, criado_em').eq('grupo_id', grupoId),
+    cliente.from('assinaturas').select('id, nome, valor, dia_cobranca, cartao_id, ativo, categoria, cobrada_desde, criado_em, cancelada_em').eq('grupo_id', grupoId),
     cliente.from('contas_fixas').select('id, nome, valor, dia_vencimento, categoria, ativo, alerta_dias, criado_em').eq('grupo_id', grupoId),
     cliente.from('fixas_lancamentos').select('conta_fixa_id, competencia, valor_real, pago').eq('grupo_id', grupoId).gte('competencia', compIni).lte('competencia', compFim),
     cliente.from('entradas').select('id, descricao, valor, data, recebido, data_recebimento, recorrente, serie_id, origem, tipo, usuario_id').eq('grupo_id', grupoId)

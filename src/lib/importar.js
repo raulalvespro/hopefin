@@ -1,6 +1,6 @@
 // Importar extrato ou fatura em CSV (A4.1, 19/11/2026): pra onde vai cada linha.
 // Funções puras (testadas em tests/importar.test.js); a tela é src/pages/Importar.jsx.
-import { compDaCompra, addMeses, compDe, cobrancasNaFatura } from '@motor/motor.js'
+import { compDaCompra, addMeses, compDe, cobrancasNaFatura, assinaturaConta } from '@motor/motor.js'
 
 const centavos = (v) => Math.round(Math.abs(Number(v) || 0) * 100)
 
@@ -81,7 +81,7 @@ export function montarJaLancados({ gastos = [], entradas = [], parcelas = [], as
       if (p.parcelamentos?.cartao_id === cartao.id) f.add(chaveFatura(compDe(p.data_vencimento), p.valor))
     }
     for (const a of assinaturas) {
-      if (a.cartao_id !== cartao.id || a.ativo === false) continue
+      if (a.cartao_id !== cartao.id || !assinaturaConta(a)) continue
       for (const comp of comps) if (cobrancasNaFatura(a, cartao, comp).length) f.add(chaveFatura(comp, a.valor))
     }
   }

@@ -8,6 +8,7 @@ import { useAssinatura } from '../hooks/useAssinatura'
 import { lerCupom, limparCupom } from '../lib/cupom'
 import { Tag } from '../components/ui'
 import { copy } from '../copy/pt-BR'
+import { useFlags } from '../hooks/useFlags'
 
 const t = copy.planos
 
@@ -29,6 +30,7 @@ export default function Planos() {
   const [cupomMsg, setCupomMsg] = useState(null) // { ok, texto }
   const [resgatando, setResgatando] = useState(false)
   const [verTudo, setVerTudo] = useState(false)
+  const flags = useFlags() // o item "Importe extratos" só aparece com a chave "importar" (A8.1)
   const [uso, setUso] = useState(null) // { dias, gastos, contas } durante o teste
   const { assinatura, status, diasRestantes, estado, ciclo, renovaEm, terminaEm } = useAssinatura()
 
@@ -175,7 +177,7 @@ export default function Planos() {
 
       {/* Benefícios */}
       <ul style={{ margin: '0 0 10px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {[...t.beneficios, ...(verTudo ? [...t.beneficiosExtras, ...(p.lancamentoAtivo ? [t.beneficioPrecoTravado] : [])] : [])].map(({ icone, texto }) => {
+        {[...t.beneficios, ...(verTudo ? [...t.beneficiosExtras.filter((b) => b.icone !== 'importar' || flags?.importar), ...(p.lancamentoAtivo ? [t.beneficioPrecoTravado] : [])] : [])].map(({ icone, texto }) => {
           const Icon = ICONES[icone] || Check
           return (
             <li key={texto} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, lineHeight: 1.5 }}>

@@ -7,7 +7,7 @@ import {
   compDaCompra, cobrancaNoMes, faturaDoCartao, faturasDoCartaoAgora, limiteComprometido,
   resumoMes, meuGastoDoMes, addMeses, dataNoMes, pagoComResolvido, contasAVencer,
   itensDeTerceiros, reembolsosPrevistos, compDe, dataDeCompraNaFatura, primeiroVencimentoParcelado,
-  planoMoverParcelas,
+  planoMoverParcelas, assinaturaConta,
 } from '../supabase/functions/_shared/motor.js'
 
 const HOJE = '2026-11-16'
@@ -91,6 +91,26 @@ describe('assinaturas', () => {
     const a = { dia_cobranca: 5, cobrada_desde: '2026-11-01' }
     expect(cobrancaNoMes(a, '2026-10')).toBe(null)
     expect(cobrancaNoMes(a, '2026-11')).toBe('2026-11-05')
+  })
+  it('cancelada (A8.3): cobra até cancelada_em e para depois; as cobranças antigas continuam', () => {
+    const a = { dia_cobranca: 5, cobrada_desde: '2026-09-01', ativo: false, cancelada_em: '2026-11-20' }
+    expect(cobrancaNoMes(a, '2026-10')).toBe('2026-10-05')
+    expect(cobrancaNoMes(a, '2026-11')).toBe('2026-11-05')
+    expect(cobrancaNoMes(a, '2026-12')).toBe(null)
+    expect(assinaturaConta(a)).toBe(true)
+  })
+  it('cancelada no meio da fatura: a cobrança de antes fica na fatura do cartão', () => {
+    const d = dados()
+    d.assinaturas = [{ id: 'ax', nome: 'Streaming', cartao_id: 'B', dia_cobranca: 10, valor: 30, ativo: false, cobrada_desde: '2026-10-01', cancelada_em: '2026-11-12' }]
+    // B fecha 18, vence 25: a cobrança de 10/11 cai na fatura de nov; a de 10/12 já não existe
+    expect(faturaDoCartao(B, '2026-11', d, HOJE).itens.filter((i) => i.id === 'ax').map((i) => i.data)).toEqual(['2026-11-10'])
+    expect(faturaDoCartao(B, '2026-12', d, HOJE).itens.filter((i) => i.id === 'ax')).toHaveLength(0)
+  })
+  it('removida sem data (lancei errado) some de todos os meses, como antes', () => {
+    const d = dados()
+    d.assinaturas = [{ id: 'ay', nome: 'Errada', cartao_id: 'B', dia_cobranca: 10, valor: 30, ativo: false, cobrada_desde: '2026-10-01' }]
+    expect(assinaturaConta(d.assinaturas[0])).toBe(false)
+    expect(faturaDoCartao(B, '2026-11', d, HOJE).itens.filter((i) => i.id === 'ay')).toHaveLength(0)
   })
   it('não duplica com o ajuste manual feito antes de cadastrar', () => {
     const f = faturaDoCartao(A, '2026-11', dados(), HOJE)

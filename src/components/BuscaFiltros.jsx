@@ -47,9 +47,17 @@ function Chips({ titulo, opcoes, marcados, onTroca }) {
 // opcoes: { categorias, origens, pessoas, tipos } — cada uma [{ valor, rotulo }]; periodo: mostra o filtro de datas.
 export default function BuscaFiltros({ filtro, onChange, opcoes = {}, periodo = false, resumo, placeholder }) {
   const [aberto, setAberto] = useState(false)
+  // A8.8: o que se mexe no painel de Filtros é um rascunho — só vale ao tocar em "Aplicar".
+  // A busca por texto (fora do painel) continua valendo enquanto digita.
+  const [rascunho, setRascunho] = useState(filtro)
   const n = qtdFiltros(filtro)
   const set = (k, v) => onChange({ ...filtro, [k]: v })
-  const atalho = (tipo) => onChange({ ...filtro, ...periodoAtalho(tipo, hojeISO()) })
+  const setR = (k, v) => setRascunho((r) => ({ ...r, [k]: v }))
+  const atalho = (tipo) => setRascunho((r) => ({ ...r, ...periodoAtalho(tipo, hojeISO()) }))
+  const abrirFechar = () => { if (!aberto) setRascunho(filtro); setAberto(!aberto) }
+  const aplicar = () => { onChange({ ...rascunho, texto: filtro.texto }); setAberto(false) }
+  const limparFiltros = () => { const vazio = { ...filtroVazio(), texto: filtro.texto }; setRascunho(vazio); onChange(vazio); setAberto(false) }
+  const limparTudo = () => { setRascunho(filtroVazio()); onChange(filtroVazio()) }
 
   return (
     <div style={{ marginBottom: 14 }}>
@@ -65,7 +73,7 @@ export default function BuscaFiltros({ filtro, onChange, opcoes = {}, periodo = 
             </button>
           )}
         </div>
-        <button type="button" aria-expanded={aberto} onClick={() => setAberto((a) => !a)}
+        <button type="button" aria-expanded={aberto} onClick={abrirFechar}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600,
             border: `1.5px solid ${n ? 'var(--accent)' : 'var(--border2)'}`, background: n ? 'var(--accent-dim)' : 'transparent', color: n ? 'var(--accent-text)' : 'var(--text2)' }}>
           <SlidersHorizontal size={15} aria-hidden="true" /> {t.filtros}{n ? ` (${n})` : ''}
@@ -77,38 +85,44 @@ export default function BuscaFiltros({ filtro, onChange, opcoes = {}, periodo = 
           {periodo && (
             <Grupo titulo={t.periodo}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                <button type="button" style={estiloChip(false)} onClick={() => atalho('mes')}>{t.esteMes}</button>
-                <button type="button" style={estiloChip(false)} onClick={() => atalho('3m')}>{t.tresMeses}</button>
-                <button type="button" style={estiloChip(false)} onClick={() => atalho('12m')}>{t.dozeMeses}</button>
+                {[['mes', t.esteMes], ['3m', t.tresMeses], ['12m', t.dozeMeses]].map(([tipo, rotulo]) => {
+                  const p = periodoAtalho(tipo, hojeISO())
+                  const on = rascunho.de === p.de && rascunho.ate === p.ate
+                  return <button key={tipo} type="button" aria-pressed={on} style={estiloChip(on)} onClick={() => atalho(tipo)}>{rotulo}</button>
+                })}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <label style={{ fontSize: 11, color: 'var(--text3)' }}>{t.de}
-                  <input type="date" value={filtro.de} onChange={(e) => set('de', e.target.value)} style={{ marginTop: 4 }} />
+                  <input type="date" value={rascunho.de} onChange={(e) => setR('de', e.target.value)} style={{ marginTop: 4 }} />
                 </label>
                 <label style={{ fontSize: 11, color: 'var(--text3)' }}>{t.ate}
-                  <input type="date" value={filtro.ate} onChange={(e) => set('ate', e.target.value)} style={{ marginTop: 4 }} />
+                  <input type="date" value={rascunho.ate} onChange={(e) => setR('ate', e.target.value)} style={{ marginTop: 4 }} />
                 </label>
               </div>
             </Grupo>
           )}
-          <Chips titulo={t.categoria} opcoes={opcoes.categorias} marcados={filtro.categorias} onTroca={(v) => set('categorias', v)} />
-          <Chips titulo={t.origem} opcoes={opcoes.origens} marcados={filtro.origens} onTroca={(v) => set('origens', v)} />
-          <Chips titulo={t.pessoa} opcoes={opcoes.pessoas} marcados={filtro.pessoas} onTroca={(v) => set('pessoas', v)} />
-          <Chips titulo={t.tipo} opcoes={opcoes.tipos} marcados={filtro.tipos} onTroca={(v) => set('tipos', v)} />
+          <Chips titulo={t.categoria} opcoes={opcoes.categorias} marcados={rascunho.categorias} onTroca={(v) => setR('categorias', v)} />
+          <Chips titulo={t.origem} opcoes={opcoes.origens} marcados={rascunho.origens} onTroca={(v) => setR('origens', v)} />
+          <Chips titulo={t.pessoa} opcoes={opcoes.pessoas} marcados={rascunho.pessoas} onTroca={(v) => setR('pessoas', v)} />
+          <Chips titulo={t.tipo} opcoes={opcoes.tipos} marcados={rascunho.tipos} onTroca={(v) => setR('tipos', v)} />
           <Grupo titulo={t.valor}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <input type="number" inputMode="decimal" min="0" value={filtro.min} placeholder={t.min} aria-label={`${t.valor} ${t.min}`} onChange={(e) => set('min', e.target.value)} />
-              <input type="number" inputMode="decimal" min="0" value={filtro.max} placeholder={t.max} aria-label={`${t.valor} ${t.max}`} onChange={(e) => set('max', e.target.value)} />
+              <input type="number" inputMode="decimal" min="0" value={rascunho.min} placeholder={t.min} aria-label={`${t.valor} ${t.min}`} onChange={(e) => setR('min', e.target.value)} />
+              <input type="number" inputMode="decimal" min="0" value={rascunho.max} placeholder={t.max} aria-label={`${t.valor} ${t.max}`} onChange={(e) => setR('max', e.target.value)} />
             </div>
           </Grupo>
-          {temFiltro(filtro) && (
-            <button type="button" onClick={() => onChange(filtroVazio())} style={{ fontSize: 13, color: 'var(--accent-text)', fontWeight: 600 }}>{t.limpar}</button>
-          )}
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <button type="button" className="btn-ghost" style={{ flex: 1 }} onClick={limparFiltros}>{t.limparFiltros}</button>
+            <button type="button" className="btn-primary" style={{ flex: 1 }} onClick={aplicar}>{t.aplicar}</button>
+          </div>
         </div>
       )}
 
       {temFiltro(filtro) && resumo && (
-        <p role="status" style={{ fontSize: 13, margin: '10px 0 0', color: 'var(--text2)' }}>{resumo}</p>
+        <p role="status" style={{ fontSize: 13, margin: '10px 0 0', color: 'var(--text2)', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+          <span>{resumo}</span>
+          <button type="button" onClick={limparTudo} style={{ fontSize: 13, color: 'var(--accent-text)', fontWeight: 600 }}>{t.limpar}</button>
+        </p>
       )}
     </div>
   )

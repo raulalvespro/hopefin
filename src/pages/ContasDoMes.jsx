@@ -62,7 +62,7 @@ export default function ContasDoMes() {
       supabase.from('cartoes').select('id, nome, bandeira, dia_fechamento, dia_vencimento, compra_no_fechamento').eq('grupo_id', gid).eq('ativo', true),
       Promise.resolve({ data: [] }), // faturas agora vêm do motor único (abaixo)
       supabase.from('parcelas').select('valor, data_vencimento, numero, paga, id, parcelamentos!inner(descricao, categoria, num_parcelas, cartao_id)').eq('grupo_id', gid).gte('data_vencimento', ini).lte('data_vencimento', fim),
-      supabase.from('assinaturas').select('id, nome, valor, dia_cobranca, cartao_id, cobrada_desde, criado_em').eq('grupo_id', gid).eq('ativo', true),
+      supabase.from('assinaturas').select('id, nome, valor, dia_cobranca, cartao_id, cobrada_desde, criado_em, ativo, cancelada_em').eq('grupo_id', gid).or('ativo.eq.true,cancelada_em.not.is.null'), // cancelada continua nos meses de antes (A8.3)
       supabase.from('contas_pagas').select('*').eq('grupo_id', gid).eq('competencia', competencia),
       carregarMotor(gid, { compIni: competencia, compFim: competencia }).catch(e => { console.error('[contas do mês] motor', e); return null }),
     ])
@@ -259,7 +259,7 @@ export default function ContasDoMes() {
       <div key={l.key} style={{ padding: '12px 0', borderBottom: ultima ? 'none' : '1px solid var(--border)', opacity: l.pago ? 0.72 : 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={() => l.onToggle()} title={l.pago ? t.desmarcar : t.marcarPaga} aria-label={l.pago ? t.desmarcar : t.marcarPaga} aria-pressed={l.pago}
-            style={{ width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${l.pago ? 'var(--accent)' : 'var(--border2)'}`, background: l.pago ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>
+            style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${l.pago ? 'var(--accent)' : 'var(--control-line)'}`, background: l.pago ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>
             {l.pago && <Check size={14} color="var(--on-accent)" />}
           </button>
           <span style={{ width: 40, height: 40, borderRadius: 'var(--radius)', background: st.vencida ? 'var(--red-dim)' : 'var(--bg3)', color: st.vencida ? 'var(--red-text)' : 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

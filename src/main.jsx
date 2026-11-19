@@ -21,6 +21,16 @@ iniciarAutoAtualizacao()
 // Guarda o convite de instalação do Chrome já na abertura (antes do login).
 iniciarCapturaInstalacao()
 
+// Sem zoom de pinça (A8.11, pedido do Raul): o iPhone ignora o user-scalable=no do
+// viewport, então barramos o gesto de pinça (gesturestart é só do Safari) e o toque com 2
+// dedos arrastando. Rolagem e o arrastar das listas (1 dedo) continuam normais.
+if (typeof document !== 'undefined') {
+  const barrar = (e) => e.preventDefault()
+  document.addEventListener('gesturestart', barrar, { passive: false })
+  document.addEventListener('gesturechange', barrar, { passive: false })
+  document.addEventListener('touchmove', (e) => { if (e.touches && e.touches.length > 1) e.preventDefault() }, { passive: false })
+}
+
 // No subdomínio do painel (admin.hopefin.com.br / admin-preview / localhost?admin=1)
 // renderizamos o PAINEL DO DONO — login próprio + ERP, nada a ver com o app.
 const ehAdmin = ehHostAdmin()

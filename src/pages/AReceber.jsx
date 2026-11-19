@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Check, RotateCcw, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Plus, Send, Trash2, X, Copy } from 'lucide-react'
+import { Check, RotateCcw, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Plus, Send, X, Copy, Users } from 'lucide-react'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { fmt, fmtData, hojeISO } from '../lib/format'
@@ -11,7 +11,10 @@ import { agruparPorOrigem, nomeItem, pagarAtePadrao, rotuloOrigem, textoCobranca
 import { pixCopiaECola } from '../lib/pix'
 import { opcoesImagem } from '../lib/fontesImagem'
 import CobrancaImagem from '../components/CobrancaImagem'
+import SwipeRow from '../components/SwipeRow'
+import { dividirEmParcelas, periodoParcelas, problemaParcelas } from '../lib/parcelas'
 import { copy } from '../copy/pt-BR'
+import { pessoasParecidas } from '../lib/pessoas'
 
 const t = copy.aReceber
 
@@ -28,7 +31,10 @@ const lerPix = () => {
   try { return { chave: '', nome: '', cidade: '', ...(JSON.parse(localStorage.getItem(CHAVE_PIX) || 'null') || {}) } } catch { return { chave: '', nome: '', cidade: '' } }
 }
 const gravarPix = (p) => { try { localStorage.setItem(CHAVE_PIX, JSON.stringify(p)) } catch { /* sem armazenamento: vale só agora */ } }
-const novoManual = () => ({ pessoaId: '', pessoaNome: '', descricao: '', valor: '', data: hojeISO(), recorrente: false, contaFixaId: '' })
+// repete: 'uma' | 'mes' (todo mês) | 'parcelado' (A8.17). id/serieId/dataOriginal/aplicar: só ao editar (A8.16).
+const novoManual = () => ({ id: null, serieId: null, dataOriginal: null, aplicar: 'esta', pessoaId: '', pessoaNome: '', descricao: '', valor: '', data: hojeISO(), repete: 'uma', parcelas: '', contaFixaId: '', numero: null, deTotal: null })
+// 'YYYY-MM-DD' + n dias (meio-dia local, pra não escorregar de dia no fuso)
+const maisDias = (iso, n) => { const d = new Date(`${iso}T12:00:00`); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 const mesAno = (comp) => { const m = nomeMes(comp); return `${m.charAt(0).toUpperCase()}${m.slice(1)} de ${comp.slice(0, 4)}` }
 const primeiroNome = (nome) => String(nome || '').trim().split(/\s+/)[0] || nome
 
@@ -37,6 +43,7 @@ export default function AReceber() {
   const run = useDb()
   const { toast } = useToast()
   const [params] = useSearchParams()
+  const navigate = useNavigate()
   const [comp, setComp] = useState(() => (/^\d{4}-\d{2}$/.test(params.get('mes') || '') ? params.get('mes') : compDe(hojeBRT())))
   const [itens, setItens] = useState([])
   const [pessoas, setPessoas] = useState([])
@@ -51,6 +58,7 @@ export default function AReceber() {
   const [qr, setQr] = useState('')
   const [arquivo, setArquivo] = useState(null)    // PNG da cobrança, pronto antes do toque em Enviar
   const [salvando, setSalvando] = useState(false)
+  const [apagando, setApagando] = useState(null) // item manual a apagar (A8.16)
   const imgRef = useRef(null)
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil])
@@ -68,7 +76,7 @@ export default function AReceber() {
         .select('id, numero, valor, data_vencimento, recebido, reembolso_entrada_id, parcelamentos!inner(descricao, num_parcelas, pessoa_id, cartao_id, pessoas(nome))')
         .eq('grupo_id', gid).not('parcelamentos.pessoa_id', 'is', null),
       supabase.from('a_receber')
-        .select('id, descricao, valor, data, recebido, recebido_em, entrada_id, recorrente, serie_id, pessoa_id, conta_fixa_id, pessoas(nome), contas_fixas(nome)')
+        .select('id, descricao, valor, data, recebido, recebido_em, entrada_id, recorrente, serie_id, parcela_num, parcela_total, pessoa_id, conta_fixa_id, pessoas(nome), contas_fixas(nome)')
         .eq('grupo_id', gid),
       supabase.from('pessoas').select('id, nome').eq('grupo_id', gid).order('nome'),
       supabase.from('contas_fixas').select('id, nome').eq('grupo_id', gid).eq('ativo', true).order('nome'),
@@ -155,26 +163,43 @@ export default function AReceber() {
     if (!error) carregar()
   }
 
-  async function excluirManual(it) {
-    if (it.serieId && it.recorrente) {
-      const todos = confirm('Esse valor repete todo mês.\n\nOK = apagar este e os próximos (para de repetir)\nCancelar = apagar só este mês')
-      if (todos) {
-        const { error } = await run(supabase.from('a_receber').delete().eq('serie_id', it.serieId).eq('recebido', false).gte('data', it.data), { ok: 'Apagado (não repete mais)' })
-        if (error) return
-        await supabase.from('a_receber').update({ recorrente: false }).eq('serie_id', it.serieId)
-        carregar(); return
-      }
-    } else if (!confirm('Apagar este valor a receber?')) return
-    const { error } = await run(supabase.from('a_receber').delete().eq('id', it.id), { ok: 'Apagado' })
-    if (!error) carregar()
+  // Apagar o lançado à mão (A8.16): série (todo mês ou parcelado) pergunta "só esta" ×
+  // "esta e as próximas" num aviso com Voltar (antes o Cancelar do confirm apagava só este mês).
+  async function apagarManual(it, proximas) {
+    setSalvando(true)
+    if (proximas && it.serieId) {
+      const { error } = await run(supabase.from('a_receber').delete().eq('serie_id', it.serieId).eq('recebido', false).gte('data', it.data), { ok: t.okApagadoProximas })
+      if (!error && it.recorrente) await supabase.from('a_receber').update({ recorrente: false }).eq('serie_id', it.serieId) // para de repetir
+      setSalvando(false)
+      if (error) return
+    } else {
+      const { error } = await run(supabase.from('a_receber').delete().eq('id', it.id), { ok: t.okApagado })
+      setSalvando(false)
+      if (error) return
+    }
+    setApagando(null); carregar()
+  }
+
+  function editarManual(it) {
+    setManual({
+      ...novoManual(), id: it.id, serieId: it.serieId || null, dataOriginal: it.data, aplicar: 'esta',
+      pessoaId: it.pessoaId || '', descricao: it.descricao || '', valor: String(it.valor), data: it.data,
+      repete: it.deTotal ? 'parcelado' : it.recorrente ? 'mes' : 'uma', contaFixaId: it.origem?.contaFixaId || '',
+      numero: it.numero || null, deTotal: it.deTotal || null,
+    })
   }
 
   async function salvarManual() {
     const valor = parseFloat(String(manual.valor).replace(',', '.'))
-    if (!manual.descricao.trim() || !(valor > 0)) { toast('Preencha descrição e valor.', 'erro'); return }
+    if (!manual.descricao.trim() || !(valor > 0)) { toast(t.erroPreencha, 'erro'); return }
     let pessoaId = manual.pessoaId
     const nomeNovo = manual.pessoaNome.trim()
-    if (!pessoaId && !nomeNovo) { toast('Escolha ou escreva quem vai pagar.', 'erro'); return }
+    if (!pessoaId && !nomeNovo) { toast(t.erroQuem, 'erro'); return }
+    const nParcelas = parseInt(manual.parcelas, 10)
+    if (!manual.id && manual.repete === 'parcelado') {
+      const problema = problemaParcelas(valor, nParcelas)
+      if (problema) { toast(problema === 'qtd' ? t.erroParcelas : t.erroParcelaPequena, 'erro'); return }
+    }
     setSalvando(true)
     if (!pessoaId) {
       const existe = pessoas.find(p => p.nome.toLowerCase() === nomeNovo.toLowerCase())
@@ -185,13 +210,35 @@ export default function AReceber() {
         pessoaId = data.id
       }
     }
-    const { error } = await run(supabase.from('a_receber').insert({
-      grupo_id: perfil.grupo_id, pessoa_id: pessoaId, descricao: manual.descricao.trim(), valor, data: manual.data || hojeISO(),
-      recorrente: !!manual.recorrente, serie_id: manual.recorrente ? crypto.randomUUID() : null, conta_fixa_id: manual.contaFixaId || null,
-    }), { ok: manual.recorrente ? 'Lançado — vai aparecer todo mês' : 'Lançado' })
+    const base = { pessoa_id: pessoaId, descricao: manual.descricao.trim(), conta_fixa_id: manual.contaFixaId || null }
+    const data = manual.data || hojeISO()
+    let error
+    if (manual.id) {
+      // Editar (A8.16). Série + "esta e as próximas": descrição, valor, pessoa e conta fixa nas que
+      // ainda não foram recebidas, desta em diante; a data muda só nesta.
+      if (manual.serieId && manual.aplicar === 'proximas') {
+        ;({ error } = await run(supabase.from('a_receber').update({ ...base, valor }).eq('serie_id', manual.serieId).eq('recebido', false).gte('data', manual.dataOriginal), { ok: t.okEditadoProximas }))
+        if (!error && data !== manual.dataOriginal) ({ error } = await run(supabase.from('a_receber').update({ data }).eq('id', manual.id)))
+      } else {
+        ;({ error } = await run(supabase.from('a_receber').update({ ...base, valor, data }).eq('id', manual.id), { ok: t.okEditado }))
+      }
+    } else if (manual.repete === 'parcelado') {
+      // A receber parcelado (A8.17): uma linha por mês na mesma série, "1/3", "2/3"...
+      const serie = crypto.randomUUID()
+      const linhas = dividirEmParcelas(valor, nParcelas, data).map(p => ({
+        grupo_id: perfil.grupo_id, ...base, valor: p.valor, data: p.data, recorrente: false, serie_id: serie, parcela_num: p.numero, parcela_total: nParcelas,
+      }))
+      const { de, ate } = periodoParcelas(nParcelas, data)
+      ;({ error } = await run(supabase.from('a_receber').insert(linhas), { ok: t.okParcelado(nParcelas, de, ate) }))
+    } else {
+      const todoMes = manual.repete === 'mes'
+      ;({ error } = await run(supabase.from('a_receber').insert({
+        grupo_id: perfil.grupo_id, ...base, valor, data, recorrente: todoMes, serie_id: todoMes ? crypto.randomUUID() : null,
+      }), { ok: todoMes ? t.okLancadoMes : t.okLancado }))
+      if (!error && todoMes) await supabase.rpc('garantir_series')
+    }
     setSalvando(false)
     if (error) return
-    if (manual.recorrente) await supabase.rpc('garantir_series')
     setManual(null); carregar()
   }
 
@@ -206,7 +253,8 @@ export default function AReceber() {
   function abrirCobranca(gp) {
     const p = lerPix()
     setPix(p); setEditandoPix(!p.chave); setQr(''); setArquivo(null)
-    setCobrar({ pessoaId: gp.id, nome: gp.nome, itens: gp.itens, ate: gp.ate || '', incluirPix: !!p.chave })
+    // A8.21: o prazo é de quem cobra — começa sem data; o último vencimento vira só uma sugestão.
+    setCobrar({ pessoaId: gp.id, nome: gp.nome, itens: gp.itens, ate: '', sugestao: gp.ate || '', incluirPix: !!p.chave })
   }
 
   // QR do Pix na imagem
@@ -295,7 +343,17 @@ export default function AReceber() {
       </div>
     </div>
   )
-  const lixeira = (g) => g.tipo === 'manual' ? <button onClick={() => excluirManual(g)} title="Apagar"><Trash2 size={14} color="var(--text3)" /></button> : null
+  // Lançado à mão: arrastar pra editar/apagar (A8.16), como nas outras listas.
+  const LinhaItem = ({ g }) => g.tipo === 'manual'
+    ? <SwipeRow onEdit={() => editarManual(g)} onDelete={() => setApagando(g)}><Linha g={g} /></SwipeRow>
+    : <Linha g={g} />
+  const hojeCob = hojeISO()
+  const chipsAte = cobrar ? [
+    { rotulo: t.semData, valor: '' },
+    ...(cobrar.sugestao ? [{ rotulo: t.ultimoVenc(fmtData(cobrar.sugestao, 'dd/MM')), valor: cobrar.sugestao }] : []),
+    { rotulo: t.emDias(7, fmtData(maisDias(hojeCob, 7), 'dd/MM')), valor: maisDias(hojeCob, 7) },
+    { rotulo: t.emDias(15, fmtData(maisDias(hojeCob, 15), 'dd/MM')), valor: maisDias(hojeCob, 15) },
+  ] : []
 
   const selTotal = receber ? soma(itens.filter(i => receber.selecionados.has(i.chave))) : 0
   const itensDaPessoa = receber ? itens.filter(i => !i.recebido && (i.pessoaId || i.pessoaNome) === (receber.pessoaId || receber.nome))
@@ -305,11 +363,16 @@ export default function AReceber() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <h2 style={{ fontSize: 20 }}>{t.titulo}</h2>
+        <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={() => navigate('/pessoas')} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', fontSize: 13 }}>
+          <Users size={15} /> {copy.pessoasTela.botao}
+        </button>
         <button onClick={() => setManual({ ...novoManual(), data: comp === compDe(hojeBRT()) ? hojeISO() : `${comp}-01` })} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', color: 'var(--on-accent)', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 700, fontFamily: 'Syne' }}>
           <Plus size={16} /> {t.lancar}
         </button>
+        </div>
       </div>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14, lineHeight: 1.5 }}>{t.intro}</p>
+      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14, lineHeight: 1.5 }}>{t.intro} {t.arrasteDica}</p>
 
       {/* Navegação de mês */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -352,7 +415,7 @@ export default function AReceber() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontWeight: 700, color: 'var(--accent-text)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
                     <span>{og.rotulo}</span><span>{fmt(og.total)}</span>
                   </div>
-                  {og.itens.map(g => <Linha key={g.chave} g={g} acao={lixeira(g)} />)}
+                  {og.itens.map(g => <LinhaItem key={g.chave} g={g} />)}
                 </div>
               ))}
               {gp.id && (
@@ -442,8 +505,20 @@ export default function AReceber() {
             </div>
 
             <div className="form-group">
-              <label>{t.pagarAte}</label>
-              <input type="date" value={cobrar.ate} onChange={e => setCobrar(c => ({ ...c, ate: e.target.value }))} />
+              <label>{t.pagarAtePergunta}</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {chipsAte.map(c => {
+                  const on = cobrar.ate === c.valor
+                  return (
+                    <button key={c.rotulo} type="button" aria-pressed={on} onClick={() => setCobrar(x => ({ ...x, ate: c.valor }))}
+                      style={{ padding: '6px 11px', borderRadius: 16, fontSize: 12.5, fontWeight: 600, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border2)'}`, background: on ? 'var(--accent-dim)' : 'transparent', color: on ? 'var(--accent-text)' : 'var(--text2)' }}>
+                      {c.rotulo}
+                    </button>
+                  )
+                })}
+              </div>
+              <input type="date" value={cobrar.ate} aria-label={t.pagarAte} onChange={e => setCobrar(c => ({ ...c, ate: e.target.value }))} />
+              <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block' }}>{t.pagarAteDica}</span>
             </div>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text2)', marginBottom: 8, cursor: 'pointer' }}>
@@ -494,12 +569,37 @@ export default function AReceber() {
         </div>
       )}
 
+      {/* Apagar o lançado à mão (A8.16) */}
+      {apagando && (
+        <div className="modal-overlay" onClick={() => setApagando(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: 18, marginBottom: 6 }}>{t.apagarTitulo}</h2>
+            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14, lineHeight: 1.45 }}>
+              {nomeItem(apagando)} · {fmt(apagando.valor)}{apagando.serieId ? ` — ${t.apagarSerie}` : ''}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {apagando.serieId ? (
+                <>
+                  <button className="btn-ghost" style={{ color: 'var(--red-text)', opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={() => apagarManual(apagando, false)}>{t.soEsta}</button>
+                  <button className="btn-ghost" style={{ color: 'var(--red-text)', opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={() => apagarManual(apagando, true)}>{t.apagarProximas}</button>
+                </>
+              ) : (
+                <button className="btn-ghost" style={{ color: 'var(--red-text)', opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={() => apagarManual(apagando, false)}>{t.apagar}</button>
+              )}
+              <button className="btn-primary" onClick={() => setApagando(null)}>{t.voltar}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Lançar a receber manual */}
       {manual && (
         <div className="modal-overlay" onClick={() => setManual(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: 18, marginBottom: 6 }}>{t.manualTitulo}</h2>
-            <p style={{ fontSize: 12.5, color: 'var(--text2)', marginBottom: 14 }}>{t.manualSub}</p>
+            <h2 style={{ fontSize: 18, marginBottom: 6 }}>{manual.id ? t.editarTitulo : t.manualTitulo}</h2>
+            <p style={{ fontSize: 12.5, color: 'var(--text2)', marginBottom: 14 }}>
+              {manual.id ? (manual.deTotal ? t.parcelaDe(manual.numero, manual.deTotal) : manual.repete === 'mes' ? t.serieTodoMes : t.manualSub) : t.manualSub}
+            </p>
             <div className="form-group">
               <label>{t.quemPaga}</label>
               {pessoas.length > 0 && (
@@ -515,6 +615,12 @@ export default function AReceber() {
               {!manual.pessoaId && (
                 <input value={manual.pessoaNome} onChange={e => setManual(m => ({ ...m, pessoaNome: e.target.value }))} placeholder={pessoas.length ? 'Ou escreva um nome novo' : 'Nome (ex.: Jacqueline)'} />
               )}
+              {!manual.pessoaId && pessoasParecidas(manual.pessoaNome, pessoas).slice(0, 3).map(p => (
+                <button key={p.id} type="button" onClick={() => setManual(m => ({ ...m, pessoaId: p.id, pessoaNome: '' }))}
+                  style={{ display: 'block', marginTop: 6, fontSize: 12.5, color: 'var(--amber-text)', fontWeight: 600, textAlign: 'left' }}>
+                  {copy.pessoas.parecida(p.nome)} → {copy.pessoas.usar(p.nome)}
+                </button>
+              ))}
             </div>
             {contasFixas.length > 0 && (
               <div className="form-group">
@@ -522,7 +628,7 @@ export default function AReceber() {
                 <select value={manual.contaFixaId} onChange={e => {
                   const id = e.target.value
                   const conta = contasFixas.find(c => c.id === id)
-                  setManual(m => ({ ...m, contaFixaId: id, descricao: m.descricao || (conta ? t.parteDe(conta.nome) : ''), recorrente: id ? true : m.recorrente }))
+                  setManual(m => ({ ...m, contaFixaId: id, descricao: m.descricao || (conta ? t.parteDe(conta.nome) : ''), repete: id && !m.id ? 'mes' : m.repete }))
                 }}>
                   <option value="">{t.contaFixaNenhuma}</option>
                   {contasFixas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -531,14 +637,52 @@ export default function AReceber() {
               </div>
             )}
             <div className="form-group"><label>Descrição</label><input value={manual.descricao} onChange={e => setManual(m => ({ ...m, descricao: e.target.value }))} placeholder="Ex.: parte do aluguel" /></div>
+            {!manual.id && (
+              <div className="form-group">
+                <label>{t.repete}</label>
+                <div role="radiogroup" aria-label={t.repete} style={{ display: 'flex', gap: 6 }}>
+                  {[['uma', t.repeteUma], ['mes', t.repeteMes], ['parcelado', t.repeteParcelado]].map(([v, rotulo]) => {
+                    const on = manual.repete === v
+                    return (
+                      <button key={v} type="button" role="radio" aria-checked={on} onClick={() => setManual(m => ({ ...m, repete: v }))}
+                        style={{ flex: 1, padding: '9px 6px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border2)'}`, background: on ? 'var(--accent-dim)' : 'transparent', color: on ? 'var(--accent-text)' : 'var(--text2)' }}>
+                        {rotulo}
+                      </button>
+                    )
+                  })}
+                </div>
+                {manual.repete === 'mes' && <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block' }}>{t.dicaMes}</span>}
+              </div>
+            )}
             <div className="form-row">
-              <div className="form-group"><label>Valor</label><input type="number" inputMode="decimal" value={manual.valor} onChange={e => setManual(m => ({ ...m, valor: e.target.value }))} placeholder="0,00" /></div>
-              <div className="form-group"><label>Cobrar em</label><input type="date" value={manual.data} onChange={e => setManual(m => ({ ...m, data: e.target.value }))} /></div>
+              <div className="form-group"><label>{!manual.id && manual.repete === 'parcelado' ? t.valorTotal : t.valor}</label><input type="number" inputMode="decimal" value={manual.valor} onChange={e => setManual(m => ({ ...m, valor: e.target.value }))} placeholder="0,00" /></div>
+              <div className="form-group"><label>{!manual.id && manual.repete === 'parcelado' ? t.primeiraEm : t.cobrarEm}</label><input type="date" value={manual.data} onChange={e => setManual(m => ({ ...m, data: e.target.value }))} /></div>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text2)', marginBottom: 16, cursor: 'pointer' }}>
-              <input type="checkbox" checked={manual.recorrente} onChange={e => setManual(m => ({ ...m, recorrente: e.target.checked }))} />
-              Repete todo mês (aparece de novo no mês seguinte; você ajusta o valor se mudar)
-            </label>
+            {!manual.id && manual.repete === 'parcelado' && (
+              <div className="form-group">
+                <label>{t.quantasVezes}</label>
+                <input type="number" inputMode="numeric" pattern="[0-9]*" min="2" max="120" value={manual.parcelas} onChange={e => setManual(m => ({ ...m, parcelas: e.target.value }))} placeholder="Ex.: 3" />
+                <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>{t.dicaParcelado}</span>
+              </div>
+            )}
+            {manual.id && manual.serieId && (
+              <div className="form-group">
+                <label>{t.aplicarEm}</label>
+                <div role="radiogroup" aria-label={t.aplicarEm} style={{ display: 'flex', gap: 6 }}>
+                  {[['esta', t.soEsta], ['proximas', t.estaEProximas]].map(([v, rotulo]) => {
+                    const on = manual.aplicar === v
+                    return (
+                      <button key={v} type="button" role="radio" aria-checked={on} onClick={() => setManual(m => ({ ...m, aplicar: v }))}
+                        style={{ flex: 1, padding: '9px 6px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border2)'}`, background: on ? 'var(--accent-dim)' : 'transparent', color: on ? 'var(--accent-text)' : 'var(--text2)' }}>
+                        {rotulo}
+                      </button>
+                    )
+                  })}
+                </div>
+                {manual.aplicar === 'proximas' && <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block' }}>{t.dicaSerieData}</span>}
+              </div>
+            )}
+            <div style={{ height: 6 }} />
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-ghost" style={{ flex: 1 }} onClick={() => setManual(null)}>Cancelar</button>
               <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarManual}>{salvando ? 'Salvando...' : 'Salvar'}</button>

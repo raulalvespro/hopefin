@@ -648,5 +648,18 @@ alter table public.convite_tentativas enable row level security;  -- sem regra: 
 --   (antes o cupom era gasto sem dar a cortesia).
 
 -- ============================================================
+-- Onda 8 (19/11/2026, tarde): 0070–0073
+-- ============================================================
+-- 0070: feature_flags 'importar' (audiência 'dono') — o Importar só aparece pra quem tem a chave.
+-- 0071: a receber parcelado ("Parcelado em N vezes"): uma linha por mês na mesma série.
+alter table public.a_receber add column if not exists parcela_num int;
+alter table public.a_receber add column if not exists parcela_total int;
+--   a_receber_parcela_chk: ambos nulos, ou parcela_total 2..120, parcela_num 1..total, serie_id não nulo e recorrente = false.
+-- 0072: juntar_pessoas(manter, juntar[]) e apagar_pessoa(p) — SECURITY DEFINER no meu_grupo_id(), grant só authenticated.
+--   Nunca apagar pessoa direto: gastos/parcelamentos têm ON DELETE SET NULL e a_receber ON DELETE CASCADE.
+-- 0073: assinatura cancelada mantém as cobranças antigas (cancelada_em); ativo=false sem data = removida de tudo.
+alter table public.assinaturas add column if not exists cancelada_em date;
+
+-- ============================================================
 -- FIM
 -- ============================================================

@@ -245,6 +245,7 @@ export default function Cartoes() {
           const { aPagar, aberta } = faturasDoCartaoAgora(c, dados, hoje)
           const comprometido = limiteComprometido(c, dados, hoje)
           const usoPct = c.limite ? Math.min(100, Math.round((comprometido / Number(c.limite)) * 100)) : null
+          const disponivel = c.limite ? Math.round((Number(c.limite) - comprometido) * 100) / 100 : null // A8.25
           // Botão de pagar: na fatura a pagar; sem ela, na aberta só se vence este mês
           const alvoPagar = aPagar || (compDe(aberta.vencimento) === compHoje && !aberta.paga && aberta.total > 0 ? aberta : null)
 
@@ -266,15 +267,21 @@ export default function Cartoes() {
               {aPagar && <BlocoFatura card={c} f={aPagar} rotulo={aPagar.status === 'atrasada' ? 'Vencida' : 'A pagar'} destaque />}
               <BlocoFatura card={c} f={aberta} rotulo="Aberta" destaque={!aPagar} />
 
-              {c.limite && (
+              {c.limite ? (
                 <div style={{ marginTop: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 5 }}>
+                    <span style={{ fontSize: 12.5, color: 'var(--text2)' }}>{disponivel < 0 ? tc.limiteEstourado : tc.limiteDisponivel}</span>
+                    <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 16, color: disponivel < 0 ? 'var(--red-text)' : 'var(--text)' }}>{fmt(Math.abs(disponivel))}</span>
+                  </div>
                   <div style={{ background: 'var(--border2)', borderRadius: 4, height: 5, overflow: 'hidden', marginBottom: 4 }}>
                     <div style={{ width: `${usoPct}%`, height: '100%', background: usoPct >= 90 ? 'var(--red)' : usoPct >= 70 ? 'var(--amber)' : 'var(--accent)', borderRadius: 4 }} />
                   </div>
                   <span style={{ fontSize: 11, color: 'var(--text3)' }}>
-                    {usoPct}% do limite de {fmt(c.limite)} · {fmt(comprometido)} comprometido (inclui o que ainda vai cair)
+                    {tc.limiteUso(usoPct, fmt(c.limite), fmt(comprometido))}
                   </span>
                 </div>
+              ) : (
+                <button type="button" onClick={() => editar(c)} style={{ marginTop: 10, fontSize: 12, fontWeight: 500, color: 'var(--accent-text)' }}>{tc.informarLimite}</button>
               )}
 
               {alvoPagar && (

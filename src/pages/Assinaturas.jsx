@@ -81,10 +81,23 @@ export default function Assinaturas() {
     fecharModal(); carregar()
   }
 
-  async function excluir(id) {
-    if (!confirm('Remover esta assinatura?')) return
-    const { error } = await run(supabase.from('assinaturas').update({ ativo: false }).eq('id', id), { ok: 'Assinatura removida' })
-    if (!error) carregar()
+  // A8.3: tirar a assinatura pergunta se o serviço foi cancelado (mantém as cobranças antigas)
+  // ou se foi lançada errado (some de tudo, como era antes).
+  const [tirando, setTirando] = useState(null) // { id, nome, data }
+  function excluir(id) {
+    const a = itens.find(x => x.id === id)
+    setTirando({ id, nome: a?.nome || '', data: hojeISO() })
+  }
+  async function confirmarTirar(cancelou) {
+    if (!tirando) return
+    if (cancelou && !tirando.data) { toast(copy.assinaturasCasa.canceladaEm, 'erro'); return }
+    setSalvando(true)
+    const payload = cancelou ? { ativo: false, cancelada_em: tirando.data } : { ativo: false, cancelada_em: null }
+    const { error } = await run(supabase.from('assinaturas').update(payload).eq('id', tirando.id),
+      { ok: cancelou ? copy.assinaturasCasa.okCancelada : copy.assinaturasCasa.okRemovida })
+    setSalvando(false)
+    if (error) return
+    setTirando(null); carregar()
   }
 
   // Busca e filtros (A3.1) — só com a chave de recurso "busca_filtros".
@@ -166,6 +179,29 @@ export default function Assinaturas() {
           </div>
           </SwipeRow>
         ))}
+
+      {tirando && (
+        <div className="modal-overlay" onClick={() => setTirando(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: 18, marginBottom: 14 }}>{t.tirarTitulo(tirando.nome)}</h2>
+            <div className="card" style={{ marginBottom: 12, background: 'var(--bg3)' }}>
+              <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15, marginBottom: 4 }}>{t.cancelei}</p>
+              <p style={{ fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.45, marginBottom: 10 }}>{t.canceleiDica}</p>
+              <div className="form-group" style={{ marginBottom: 10 }}>
+                <label>{t.canceladaEm}</label>
+                <input type="date" value={tirando.data} max={hojeISO()} onChange={e => setTirando(x => ({ ...x, data: e.target.value }))} />
+              </div>
+              <button className="btn-primary" style={{ width: '100%', opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={() => confirmarTirar(true)}>{t.cancelei}</button>
+            </div>
+            <div className="card" style={{ marginBottom: 14 }}>
+              <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15, marginBottom: 4 }}>{t.lanceiErrado}</p>
+              <p style={{ fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.45, marginBottom: 10 }}>{t.lanceiErradoDica}</p>
+              <button className="btn-ghost" style={{ width: '100%', color: 'var(--red-text)', opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={() => confirmarTirar(false)}>{t.lanceiErrado}</button>
+            </div>
+            <button className="btn-ghost" style={{ width: '100%' }} onClick={() => setTirando(null)}>Voltar</button>
+          </div>
+        </div>
+      )}
 
       {modal && (
         <div className="modal-overlay" onClick={fecharModal}>

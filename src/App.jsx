@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import { useAuth } from './contexts/AuthContext'
 import { supabase } from './lib/supabase'
 import { ehLinkDeRecuperacao } from './lib/acesso'
+import { useFlags } from './hooks/useFlags'
 import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
 import EntrarConvite from './pages/EntrarConvite'
@@ -30,6 +31,7 @@ import Fechamento from './pages/Fechamento'
 import Importar from './pages/Importar'
 import Historico from './pages/Historico'
 import AReceber from './pages/AReceber'
+import Pessoas from './pages/Pessoas'
 import Notificacoes from './pages/Notificacoes'
 import Legal from './pages/Legal'
 import Layout from './components/Layout'
@@ -50,6 +52,14 @@ function marcarSplash() {
 // Onboarding: já visto? (default true em erro, pra nunca prender o usuário num loop)
 function jaViuOnboarding() {
   try { return localStorage.getItem('hopefin_onboarded') === '1' } catch { return true }
+}
+
+// Tela que só existe pra quem tem a chave de recurso (Área de desenvolvimento do /admin).
+// Enquanto as chaves carregam não mostra nada; sem a chave, volta pra `senao`.
+function SoComChave({ chave, senao = '/', children }) {
+  const flags = useFlags()
+  if (flags === null) return null
+  return flags[chave] ? children : <Navigate to={senao} replace />
 }
 
 function RotaProtegida({ children }) {
@@ -145,6 +155,7 @@ export default function App() {
         <Route path="assinaturas" element={<Assinaturas />} />
         <Route path="parcelamentos" element={<Parcelamentos />} />
         <Route path="a-receber" element={<AReceber />} />
+        <Route path="pessoas" element={<Pessoas />} />
         <Route path="projecao" element={<Projecao />} />
         <Route path="cofrinhos" element={<Cofrinhos />} />
         <Route path="orcamento" element={<Orcamento />} />
@@ -154,7 +165,7 @@ export default function App() {
         <Route path="planos" element={<Planos />} />
         <Route path="checkout" element={<Checkout />} />
         <Route path="fechamento" element={<Fechamento />} />
-        <Route path="importar" element={<Importar />} />
+        <Route path="importar" element={<SoComChave chave="importar" senao="/gastos"><Importar /></SoComChave>} />
         <Route path="historico" element={<Historico />} />
         <Route path="notificacoes" element={<Notificacoes />} />
       </Route>

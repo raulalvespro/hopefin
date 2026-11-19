@@ -17,8 +17,8 @@ export function rotuloOrigem(o) {
   }
 }
 
-// Nome do item na lista: parcela ganha "(3/12)".
-export const nomeItem = (i) => `${String(i.descricao || 'Sem descrição').trim()}${i.tipo === 'parcela' && i.numero && i.deTotal ? ` (${i.numero}/${i.deTotal})` : ''}`
+// Nome do item na lista: parcela (do parcelado ou do a receber parcelado, A8.17) ganha "(3/12)".
+export const nomeItem = (i) => `${String(i.descricao || 'Sem descrição').trim()}${(i.tipo === 'parcela' || i.tipo === 'manual') && i.numero && i.deTotal ? ` (${i.numero}/${i.deTotal})` : ''}`
 
 // Itens agrupados pela origem (cartão primeiro, na ordem em que aparecem), cada grupo com total.
 export function agruparPorOrigem(itens) {

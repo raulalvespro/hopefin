@@ -178,8 +178,8 @@ export default function Configuracoes() {
       {/* Dados */}
       <p style={{ fontSize:12, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.04em', margin:'24px 2px 10px' }}>Dados</p>
 
-      {/* Importar CSV */}
-      <Link to="/importar" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>
+      {/* Importar CSV (A8.1) — só com a chave "importar" */}
+      {flags?.importar && <Link to="/importar" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <Upload size={18} color="var(--accent)" />
           <div>
@@ -188,7 +188,7 @@ export default function Configuracoes() {
           </div>
         </div>
         <ChevronRight size={18} color="var(--text3)" />
-      </Link>
+      </Link>}
 
       {/* Meus dados (exportar / excluir) */}
       <Link to="/meus-dados" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>

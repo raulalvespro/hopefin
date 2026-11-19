@@ -100,7 +100,9 @@ export default function Layout() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: 480, margin: '0 auto', position: 'relative' }}>
       {/* Header */}
       <header style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <Logo size={24} />
+        <Link to="/" aria-label="Ir para o Início" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+          <Logo size={24} />
+        </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Sininho de alertas */}
           <div style={{ position: 'relative', display: 'flex' }}>

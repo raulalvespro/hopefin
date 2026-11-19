@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Plus, Check } from 'lucide-react'
 import { copy } from '../copy/pt-BR'
+import { pessoasParecidas } from '../lib/pessoas'
 
 const t = copy.pessoas
 
@@ -19,16 +20,20 @@ export default function EscolherPessoa({ pessoas, valor, onEscolher, onCriar }) 
   const [nome, setNome] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
+  const [confirmouOutra, setConfirmouOutra] = useState(false)
   const atual = String(valor || '').trim().toLowerCase()
+  // A8.5: nome parecido com alguém que já existe (Jak × Jack) → pergunta antes de criar outra pessoa
+  const parecidas = nova ? pessoasParecidas(nome, pessoas) : []
 
   async function adicionar() {
     const n = nome.trim()
     if (!n) return
+    if (parecidas.length && !confirmouOutra) { setConfirmouOutra(true); return }
     setSalvando(true); setErro('')
     const id = await onCriar(n)
     setSalvando(false)
     if (!id) { setErro(t.erroSalvar); return }
-    onEscolher(n); setNome(''); setNova(false)
+    onEscolher(n); setNome(''); setNova(false); setConfirmouOutra(false)
   }
 
   return (
@@ -50,12 +55,23 @@ export default function EscolherPessoa({ pessoas, valor, onEscolher, onCriar }) 
       {nova && (
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           <input autoFocus value={nome} maxLength={60} placeholder={t.phNova} aria-label={t.nova}
-            onChange={(e) => setNome(e.target.value)}
+            onChange={(e) => { setNome(e.target.value); setConfirmouOutra(false) }}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); adicionar() } }} />
           <button type="button" className="btn-primary" disabled={salvando || !nome.trim()} onClick={adicionar}
             style={{ padding: '0 16px', whiteSpace: 'nowrap', opacity: salvando || !nome.trim() ? 0.6 : 1 }}>
             {salvando ? '…' : t.adicionar}
           </button>
+        </div>
+      )}
+      {nova && parecidas.length > 0 && (
+        <div style={{ marginTop: 8, padding: 10, borderRadius: 'var(--radius-sm)', background: 'var(--amber-dim)', border: '1px solid var(--amber)', fontSize: 12.5, lineHeight: 1.4 }}>
+          {t.parecida(parecidas.map((p) => p.nome).join(', '))}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+            {parecidas.slice(0, 3).map((p) => (
+              <button key={p.id} type="button" style={estiloChip(true)} onClick={() => { onEscolher(p.nome); setNome(''); setNova(false); setConfirmouOutra(false) }}>{t.usar(p.nome)}</button>
+            ))}
+            {confirmouOutra && <span style={{ alignSelf: 'center', color: 'var(--text2)' }}>{t.outra}? Toque em {t.adicionar} de novo.</span>}
+          </div>
         </div>
       )}
       {erro && <p style={{ color: 'var(--red-text)', fontSize: 12, margin: '6px 0 0' }}>{erro}</p>}

@@ -297,7 +297,7 @@ export const copy = {
     proximos: (v) => `mais ${v} nos próximos meses`,
     emAberto: (v, n) => `Ainda em aberto de meses anteriores: ${v} (${n} ${n === 1 ? 'item' : 'itens'})`,
     verEmAberto: 'Ver',
-    itensLinha: (n, ate) => `${n} ${n === 1 ? 'item' : 'itens'}${ate ? ` · até ${ate}` : ''}`,
+    itensLinha: (n, ate) => `${n} ${n === 1 ? 'item' : 'itens'}${ate ? ` · último vencimento ${ate}` : ''}`,
     vence: (dd) => `vence ${dd}`,
     recebidoEm: (dd) => `recebido ${dd}`,
     receberDe: (nome) => `Receber de ${nome}`,
@@ -318,9 +318,51 @@ export const copy = {
     contaFixaNenhuma: 'Nenhuma',
     contaFixaDica: 'Ex.: a parte da Jack no aluguel. Aparece como "Conta fixa: Aluguel" — a conta fixa em si não muda.',
     parteDe: (conta) => `Parte de ${conta}`,
+    // Repete / parcelado (A8.17) e editar/apagar (A8.16)
+    repete: 'Repete?',
+    repeteUma: 'Uma vez',
+    repeteMes: 'Todo mês',
+    repeteParcelado: 'Parcelado',
+    dicaMes: 'Aparece de novo no mês seguinte; você ajusta o valor se mudar.',
+    quantasVezes: 'Em quantas vezes',
+    valor: 'Valor',
+    valorTotal: 'Valor total',
+    cobrarEm: 'Cobrar em',
+    primeiraEm: '1ª parcela em',
+    dicaParcelado: 'Cria uma cobrança por mês a partir da data acima (ex.: R$ 300 em 3x = 3 de R$ 100). Se não dividir certinho, a última fica com os centavos.',
+    erroPreencha: 'Preencha descrição e valor.',
+    erroQuem: 'Escolha ou escreva quem vai pagar.',
+    erroParcelas: 'Informe de 2 a 120 parcelas.',
+    erroParcelaPequena: 'Valor pequeno demais pra dividir nessas parcelas.',
+    okLancado: 'Lançado',
+    okLancadoMes: 'Lançado — vai aparecer todo mês',
+    okParcelado: (n, de, ate) => `${n} parcelas lançadas (${de} → ${ate})`,
+    editarTitulo: 'Editar a receber',
+    parcelaDe: (n, m) => `Parcela ${n} de ${m}`,
+    serieTodoMes: 'Repete todo mês',
+    aplicarEm: 'Mudar em',
+    soEsta: 'Só esta',
+    estaEProximas: 'Esta e as próximas',
+    dicaSerieData: 'A data muda só nesta.',
+    okEditado: 'Atualizado',
+    okEditadoProximas: 'Atualizado nesta e nas próximas',
+    apagarTitulo: 'Apagar este valor a receber?',
+    apagarSerie: 'Ele faz parte de uma série. O que você quer apagar?',
+    apagarProximas: 'Esta e as próximas',
+    apagar: 'Apagar',
+    voltar: 'Voltar',
+    okApagado: 'Apagado',
+    okApagadoProximas: 'Apagado (esta e as próximas)',
+    arrasteDica: 'Arraste o que você lançou à mão pra editar ou apagar.',
     // Cobrança
     cobrarTitulo: (nome, mes) => `Cobrar ${nome} · ${mes}`,
     pagarAte: 'Pagar até',
+    // A8.21: quem cobra decide o prazo (antes vinha do último vencimento)
+    pagarAtePergunta: 'Até quando a pessoa pode te pagar?',
+    pagarAteDica: 'Você decide. Sem data, a mensagem não fala em prazo.',
+    semData: 'Sem data',
+    ultimoVenc: (dd) => `Último vencimento · ${dd}`,
+    emDias: (n, dd) => `Em ${n} dias · ${dd}`,
     incluirPix: 'Incluir Pix copia e cola',
     pixChave: 'Sua chave Pix',
     pixChavePh: 'e-mail, celular (+55…), CPF ou chave aleatória',
@@ -352,6 +394,15 @@ export const copy = {
     desde: (mesAno) => `desde ${mesAno}`,
     // A3.6: a aba é o painel; a assinatura nasce no Novo gasto
     comoCriar: 'Pra criar, toque em “Nova” (abre o Novo gasto já marcado como assinatura). Arraste uma linha pra editar ou excluir.',
+    // Tirar a assinatura (A8.3): cancelou o serviço × lançou errado
+    tirarTitulo: (nome) => `Tirar “${nome}”`,
+    cancelei: 'Cancelei o serviço',
+    canceleiDica: 'Para de cobrar a partir da data abaixo. As cobranças que já aconteceram continuam nas faturas e nos meses delas.',
+    canceladaEm: 'Cancelada em',
+    lanceiErrado: 'Lancei errado',
+    lanceiErradoDica: 'Apaga a assinatura de todos os meses, inclusive dos que já passaram.',
+    okCancelada: 'Assinatura cancelada — as cobranças antigas continuam',
+    okRemovida: 'Assinatura removida de todos os meses',
   },
 
   // Busca enquanto digita + filtros (A3.1) — Gastos, Parcelamentos e Assinaturas
@@ -376,6 +427,8 @@ export const copy = {
     min: 'mínimo',
     max: 'máximo',
     limpar: 'Limpar busca e filtros',
+    aplicar: 'Aplicar',
+    limparFiltros: 'Limpar filtros',
     nada: 'Nada encontrado com essa busca e esses filtros.',
     semCartao: 'Sem cartão',
     tipoAvista: 'À vista',
@@ -397,6 +450,46 @@ export const copy = {
     phNova: 'Nome (ex: Pai)',
     adicionar: 'Adicionar',
     erroSalvar: 'Não foi possível salvar a pessoa. Tente de novo.',
+    // A8.5: aviso de nome parecido antes de criar
+    parecida: (nomes) => `Já existe ${nomes}. É a mesma pessoa?`,
+    usar: (nome) => `Usar ${nome}`,
+    outra: 'É outra pessoa',
+  },
+
+  // Tela Pessoas (A8.5): renomear, juntar duplicadas e apagar quem não tem uso
+  pessoasTela: {
+    titulo: 'Pessoas',
+    voltar: 'A receber',
+    botao: 'Pessoas',
+    sub: 'Quem divide contas com você ou te deve. Um nome por pessoa: assim o A receber e a cobrança juntam tudo certo.',
+    vazio: 'Nenhuma pessoa ainda. Elas aparecem quando você marca "Foi de outra pessoa" num gasto ou lança um valor a receber.',
+    usos: (n) => (n === 0 ? 'sem lançamentos' : `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`),
+    nova: 'Nova',
+    novaTitulo: 'Nova pessoa',
+    juntar: 'Juntar pessoas',
+    parecem: (a, b) => `${a} e ${b} parecem a mesma pessoa.`,
+    juntarEssas: 'Juntar',
+    juntarTitulo: 'Juntar pessoas',
+    juntarSub: 'Marque os nomes que são a mesma pessoa. Os gastos, parcelados e valores a receber de todos vão pro nome que ficar.',
+    qualFica: 'Qual nome fica?',
+    juntarBotao: (n) => `Juntar ${n} nomes`,
+    erroJuntarDuas: 'Marque pelo menos 2 nomes.',
+    okJuntou: (nome, n) => `Pronto: tudo agora está em ${nome} (${n} ${n === 1 ? 'lançamento' : 'lançamentos'})`,
+    editarTitulo: 'Renomear',
+    nome: 'Nome',
+    salvar: 'Salvar',
+    cancelar: 'Cancelar',
+    okRenomeado: 'Nome atualizado',
+    okCriada: 'Pessoa cadastrada',
+    jaExiste: (nome) => `Já existe ${nome}. Se for a mesma pessoa, use Juntar.`,
+    apagarConfirma: (nome) => `Apagar ${nome}? (Não tem nenhum lançamento.)`,
+    emUso: (n) => `Tem ${n} ${n === 1 ? 'lançamento' : 'lançamentos'}: pra não perder nada, junte com o nome certo em vez de apagar.`,
+    okApagada: 'Pessoa apagada',
+    parecidaAviso: (nomes) => `Já existe ${nomes}. É a mesma pessoa? Se for, cancele e use Juntar.`,
+    toqueDeNovo: 'Se for outra pessoa mesmo, toque em Salvar.',
+    criarMesmoAssim: 'É outra pessoa',
+    dicaArrastar: 'Arraste um nome pra renomear ou apagar (só apaga quem não tem lançamento).',
+    erroCarregar: 'Não foi possível carregar as pessoas agora.',
   },
 
   // Novo gasto — aviso de compra que parece uma assinatura já cadastrada (A0.7)
@@ -429,6 +522,11 @@ export const copy = {
 
   // Tela Cartões — mover parcela (A2.9) e valor inicial do cartão novo (A2.7)
   cartoes: {
+    // Limite em número (A8.25)
+    limiteDisponivel: 'Limite disponível',
+    limiteEstourado: 'Acima do limite',
+    limiteUso: (pct, limite, comprometido) => `${pct}% do limite de ${limite} · ${comprometido} comprometido (inclui o que ainda vai cair)`,
+    informarLimite: '+ Informar o limite deste cartão',
     parcelaMovida: (rotulo, seguintes, frente) => {
       const quais = seguintes === 1 ? 'a seguinte' : `as ${seguintes} seguintes`
       if (seguintes > 0) return `Parcela ${rotulo} e ${quais} ${frente ? 'foram pra próxima fatura' : 'voltaram pra fatura anterior'}`
@@ -453,6 +551,9 @@ export const copy = {
 
   // Importar extrato ou fatura em CSV (A4.1)
   importar: {
+    // Botão no topo de Gastos (A8.1) — só com a chave "importar"
+    botaoGastos: 'Importar extrato ou fatura',
+    botaoGastosSub: 'Arquivo CSV do banco ou do cartão',
     oQueE: 'O que é este arquivo?',
     destinos: {
       extrato: ['Extrato da conta', 'Negativo vira gasto; positivo, entrada.'],
@@ -747,7 +848,7 @@ export const copy = {
       {
         onde: 'Gastos · Entradas',
         titulo: 'Cada real no lugar certo',
-        texto: 'Registre gastos e entradas com categoria e quem lançou. Filtre por mês, categoria ou pessoa. Já tem extrato ou planilha? Em Configurações dá para importar um CSV.',
+        texto: 'Registre gastos e entradas com categoria e quem lançou. Filtre por mês, categoria ou pessoa.', // A8.1: o Importar está só na Área de desenvolvimento — ao liberar, voltar "Já tem extrato ou planilha? Em Gastos dá para importar um CSV."
       },
       {
         onde: 'Cartões · Parcelamentos · Assinaturas',
