@@ -12,6 +12,9 @@ import { fmt, fmtData, hojeISO, parseDataLocal } from '../lib/format'
 import { usePessoas } from '../hooks/usePessoas'
 import EscolherPessoa from '../components/EscolherPessoa'
 import { copy } from '../copy/pt-BR'
+import { useFlags } from '../hooks/useFlags'
+import BuscaFiltros from '../components/BuscaFiltros'
+import { filtrar, filtroVazio, temFiltro, distintos } from '../lib/busca'
 
 const isoDe = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
@@ -102,6 +105,9 @@ export default function Parcelamentos() {
   const [salvando, setSalvando] = useState(false)
   const [params] = useSearchParams()
   const ver = params.get('ver') // "ver todas" vindo da lista de Gastos (A3.5)
+  const flags = useFlags()
+  const buscaLigada = !!flags?.busca_filtros // busca e filtros (A3.1), no começo só o dono
+  const [filtro, setFiltro] = useState(filtroVazio())
 
   useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes() } }, [perfil])
 
@@ -215,8 +221,24 @@ export default function Parcelamentos() {
     const quitado = pagas >= total
     return { ...p, pagas, total, restante, proxima, quitado }
   })
-  const ativos = comInfo.filter(p => !p.quitado)
-  const quitados = comInfo.filter(p => p.quitado)
+  // Busca e filtros (A3.1) — só com a chave de recurso "busca_filtros".
+  const tb = copy.busca
+  const lerParc = p => ({
+    texto: [p.descricao, p.cartoes?.nome, p.categoria, p.pessoas?.nome],
+    data: p.data_primeira_parcela, categoria: p.categoria, origem: p.cartoes?.nome || tb.semCartao,
+    pessoas: [p.pessoas?.nome].filter(Boolean), tipos: [p.quitado ? 'quitado' : 'andamento'], valor: Number(p.valor_total),
+  })
+  const filtrando = buscaLigada && temFiltro(filtro)
+  const visiveis = filtrando ? filtrar(comInfo, filtro, lerParc) : comInfo
+  const opcoesBusca = buscaLigada ? {
+    categorias: distintos(comInfo.map(p => p.categoria)).map(c => ({ valor: c, rotulo: `${emojiDe(c)} ${c}` })),
+    origens: distintos(comInfo.map(p => p.cartoes?.nome || tb.semCartao)).map(o => ({ valor: o, rotulo: o })),
+    pessoas: distintos(comInfo.map(p => p.pessoas?.nome)).map(n => ({ valor: n, rotulo: n })),
+    tipos: [{ valor: 'andamento', rotulo: tb.tipoAndamento }, { valor: 'quitado', rotulo: tb.tipoQuitado }],
+  } : null
+
+  const ativos = visiveis.filter(p => !p.quitado)
+  const quitados = visiveis.filter(p => p.quitado)
   const totalRestante = ativos.reduce((s, p) => s + p.restante, 0)
   const nEdit = parseInt(form.num_parcelas)
 
@@ -234,8 +256,15 @@ export default function Parcelamentos() {
         </p>
       </div>
 
+      {buscaLigada && parcelamentos.length > 0 && (
+        <BuscaFiltros filtro={filtro} onChange={setFiltro} opcoes={opcoesBusca} periodo placeholder={tb.buscarParcelados}
+          resumo={tb.resumoParcelados(visiveis.length, fmt(visiveis.reduce((s, p) => s + p.restante, 0)))} />
+      )}
+
       {loading ? <div className="empty-state">Carregando...</div> : parcelamentos.length === 0 ? (
         <div className="empty-state">Nenhuma compra parcelada</div>
+      ) : filtrando && visiveis.length === 0 ? (
+        <div className="empty-state">{tb.nada}</div>
       ) : (
         <>
           {ativos.length > 0 && (

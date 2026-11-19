@@ -7,6 +7,9 @@ import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { useCategorias } from '../hooks/useCategorias'
 import SwipeRow from '../components/SwipeRow'
+import { useFlags } from '../hooks/useFlags'
+import BuscaFiltros from '../components/BuscaFiltros'
+import { filtrar, filtroVazio, temFiltro, distintos } from '../lib/busca'
 import { fmt, fmtData, hojeISO } from '../lib/format'
 import { copy } from '../copy/pt-BR'
 
@@ -18,6 +21,9 @@ const novoForm = () => ({ nome: '', valor: '', dia_cobranca: '', cartao_id: '', 
 export default function Assinaturas() {
   const { perfil } = useAuth()
   const navigate = useNavigate()
+  const flags = useFlags()
+  const buscaLigada = !!flags?.busca_filtros // busca e filtros (A3.1), no começo só o dono
+  const [filtro, setFiltro] = useState(filtroVazio())
   const run = useDb()
   const { toast } = useToast()
   const { categorias, emojiDe } = useCategorias()
@@ -81,6 +87,19 @@ export default function Assinaturas() {
     if (!error) carregar()
   }
 
+  // Busca e filtros (A3.1) — só com a chave de recurso "busca_filtros".
+  const tb = copy.busca
+  const lerAss = a => ({
+    texto: [a.nome, a.categoria, a.cartoes?.nome], categoria: a.categoria || 'outros',
+    origem: a.cartoes?.nome || tb.semCartao, valor: Number(a.valor),
+  })
+  const filtrando = buscaLigada && temFiltro(filtro)
+  const visiveis = filtrando ? filtrar(itens, filtro, lerAss) : itens
+  const opcoesBusca = buscaLigada ? {
+    categorias: distintos(itens.map(a => a.categoria || 'outros')).map(c => ({ valor: c, rotulo: `${emojiDe(c)} ${c}` })),
+    origens: distintos(itens.map(a => a.cartoes?.nome || tb.semCartao)).map(o => ({ valor: o, rotulo: o })),
+  } : null
+
   const total = itens.reduce((s, a) => s + Number(a.valor), 0)
   const porCategoria = Object.entries(
     itens.reduce((acc, a) => { const c = a.categoria || 'outros'; acc[c] = (acc[c] || 0) + Number(a.valor); return acc }, {})
@@ -121,9 +140,15 @@ export default function Assinaturas() {
         )}
       </div>
 
+      {buscaLigada && itens.length > 0 && (
+        <BuscaFiltros filtro={filtro} onChange={setFiltro} opcoes={opcoesBusca} placeholder={tb.buscarAssinaturas}
+          resumo={tb.resumoAssinaturas(visiveis.length, fmt(visiveis.reduce((s, a) => s + Number(a.valor), 0)))} />
+      )}
+
       {loading ? <div className="empty-state">Carregando...</div>
         : itens.length === 0 ? <div className="empty-state">Nenhuma assinatura cadastrada</div>
-        : itens.map(a => (
+        : filtrando && visiveis.length === 0 ? <div className="empty-state">{tb.nada}</div>
+        : visiveis.map(a => (
           <SwipeRow key={a.id} style={{ marginBottom: 8 }} onEdit={() => editar(a)} onDelete={() => excluir(a.id)}>
           <div className="card" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

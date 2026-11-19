@@ -18,6 +18,9 @@ import { assinaturaParecida } from '../lib/assinaturaParecida'
 import { periodoParcelas } from '../lib/parcelas'
 import { usePessoas } from '../hooks/usePessoas'
 import EscolherPessoa from '../components/EscolherPessoa'
+import { useFlags } from '../hooks/useFlags'
+import BuscaFiltros from '../components/BuscaFiltros'
+import { filtrar, filtroVazio, temFiltro, distintos } from '../lib/busca'
 import { compDaCompra, faturaDoCartao, addMeses, hojeBRT, primeiroVencimentoParcelado } from '../lib/motor'
 
 const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO(), de_terceiro: false, pessoa_nome: '', reembolso_status: null, observacao: '', assinatura: false, fatura_ajuste: 0 })
@@ -51,14 +54,21 @@ export default function Gastos() {
   const [avisoDispensado, setAvisoDispensado] = useState(null) // "É outra compra"
   const [faturasPagas, setFaturasPagas] = useState([])   // contas_pagas das faturas (aviso "já paga")
 
-  useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes(); carregarAssinaturas() } }, [perfil, mes])
+  // Busca e filtros (A3.1): só pra quem tem a chave de recurso "busca_filtros" (no começo, só o dono).
+  const flags = useFlags()
+  const buscaLigada = !!flags?.busca_filtros
+  const [filtro, setFiltro] = useState(filtroVazio())
+  const periodoFiltro = buscaLigada && (filtro.de || filtro.ate) ? { de: filtro.de, ate: filtro.ate } : null
+
+  useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes(); carregarAssinaturas() } }, [perfil, mes, periodoFiltro?.de, periodoFiltro?.ate])
 
   async function carregar() {
     setLoading(true)
     setVerTodos(false)
     const gid = perfil.grupo_id
-    const inicio = format(startOfMonth(mes), 'yyyy-MM-dd')
-    const fim = format(endOfMonth(mes), 'yyyy-MM-dd')
+    // Com o filtro de período da busca (A3.1), carrega o período escolhido em vez do mês.
+    const inicio = periodoFiltro ? (periodoFiltro.de || '2000-01-01') : format(startOfMonth(mes), 'yyyy-MM-dd')
+    const fim = periodoFiltro ? (periodoFiltro.ate || '2100-12-31') : format(endOfMonth(mes), 'yyyy-MM-dd')
 
     const [{ data: gastos }, { data: parcelas }] = await Promise.all([
       supabase.from('gastos').select('*, cartoes(nome), usuarios(nome), pessoas(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
@@ -284,6 +294,23 @@ export default function Gastos() {
   const nParcelas = parseInt(form.num_parcelas)
   const ehCartao = form.tipo_pagamento === 'cartao'
 
+  // Busca e filtros (A3.1) — campos de cada linha que a busca e os filtros olham.
+  const lerGasto = it => ({
+    texto: [it.descricao, it.origem, it.categoria, it.pessoa, it.terceiro, it.observacao],
+    data: it.data, categoria: it.categoria, origem: it.origem, valor: it.valor,
+    pessoas: [it.pessoa, it.terceiro].filter(Boolean),
+    tipos: [it.tipo === 'parcela' ? 'parcela' : 'avista', it.terceiro ? 'terceiro' : null].filter(Boolean),
+  })
+  const filtrando = buscaLigada && temFiltro(filtro)
+  const lista = filtrando ? filtrar(itens, filtro, lerGasto) : itens
+  const tb = copy.busca
+  const opcoesBusca = buscaLigada ? {
+    categorias: distintos(itens.map(i => i.categoria)).map(c => ({ valor: c, rotulo: `${emojiDe(c)} ${c}` })),
+    origens: distintos(itens.map(i => i.origem)).map(o => ({ valor: o, rotulo: o })),
+    pessoas: distintos(itens.flatMap(i => [i.pessoa, i.terceiro])).map(p => ({ valor: p, rotulo: p })),
+    tipos: [{ valor: 'avista', rotulo: tb.tipoAvista }, { valor: 'parcela', rotulo: tb.tipoParcela }, { valor: 'terceiro', rotulo: tb.tipoTerceiro }],
+  } : null
+
   // Aviso: a compra nova parece uma assinatura que já entra sozinha todo mês.
   const parecida = modal && !editando && !form.parcelado && !form.assinatura && !form.de_terceiro
     ? assinaturaParecida(form, assinaturas) : null
@@ -316,8 +343,8 @@ export default function Gastos() {
         <button onClick={() => setMes(m => addMonths(m, 1))}><ChevronRight size={20} color="var(--text2)" /></button>
       </div>
 
-      {/* Total — clica para ver tudo que vence no mês */}
-      <button onClick={() => navigate('/contas-do-mes')} className="card" style={{ width: '100%', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', background: 'var(--bg2)', color: 'var(--text)' }}>
+      {/* Total — clica para ver tudo que vence no mês (escondido quando a busca está num período) */}
+      {!periodoFiltro && <button onClick={() => navigate('/contas-do-mes')} className="card" style={{ width: '100%', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', background: 'var(--bg2)', color: 'var(--text)' }}>
         <span style={{ color: 'var(--text2)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
           <CalendarCheck size={15} color="var(--accent)" /> Gastos + parcelas do mês
         </span>
@@ -325,12 +352,26 @@ export default function Gastos() {
           <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20, color: 'var(--red-text)' }}>{fmt(total)}</span>
           <ChevronRight size={16} color="var(--text3)" />
         </span>
-      </button>
+      </button>}
+
+      {/* Busca e filtros (A3.1) — só com a chave de recurso */}
+      {buscaLigada && (
+        <BuscaFiltros filtro={filtro} onChange={setFiltro} opcoes={opcoesBusca} periodo placeholder={tb.buscarGastos}
+          resumo={tb.resumoItens(lista.length, fmt(lista.reduce((s, i) => s + Number(i.valor || 0), 0)))} />
+      )}
+      {periodoFiltro && (
+        <p style={{ fontSize: 12, color: 'var(--text3)', margin: '-4px 0 12px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {tb.periodoAtivo(periodoFiltro.de ? fmtData(periodoFiltro.de, 'dd/MM/yy') : '', periodoFiltro.ate ? fmtData(periodoFiltro.ate, 'dd/MM/yy') : '')}
+          <button type="button" onClick={() => setFiltro(f => ({ ...f, de: '', ate: '' }))} style={{ fontSize: 12, color: 'var(--accent-text)', fontWeight: 600 }}>{tb.tirarPeriodo}</button>
+        </p>
+      )}
 
       {/* Lista */}
-      {loading ? <div className="empty-state">Carregando...</div> : itens.length === 0 ? (
-        <EmptyState ilustracao={<Joca pose="anotando" tamanho={150} />} titulo={copy.mascote.vazios.gastosTitulo} texto={copy.mascote.vazios.gastosTexto} />
-      ) : (verTodos ? itens : itens.slice(0, 10)).map(it => (
+      {loading ? <div className="empty-state">Carregando...</div> : lista.length === 0 ? (
+        filtrando
+          ? <div className="empty-state">{tb.nada}</div>
+          : <EmptyState ilustracao={<Joca pose="anotando" tamanho={150} />} titulo={copy.mascote.vazios.gastosTitulo} texto={copy.mascote.vazios.gastosTexto} />
+      ) : (verTodos || filtrando ? lista : lista.slice(0, 10)).map(it => (
         <SwipeRow key={it.id} style={{ marginBottom: 8 }}
           onEdit={it.tipo === 'gasto' ? () => editarGasto(it) : undefined}
           onDelete={it.tipo === 'gasto' ? () => excluir(it.rawId) : undefined}>
@@ -378,10 +419,10 @@ export default function Gastos() {
       ))}
 
       {/* Ver todos / ver menos */}
-      {!loading && itens.length > 10 && (
+      {!loading && !filtrando && lista.length > 10 && (
         <button onClick={() => setVerTodos(v => !v)}
           style={{ width: '100%', padding: '10px', marginTop: 4, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--accent-text)', fontSize: 13, fontWeight: 600 }}>
-          {verTodos ? 'Ver menos' : `Ver todos (${itens.length})`}
+          {verTodos ? 'Ver menos' : `Ver todos (${lista.length})`}
         </button>
       )}
 
