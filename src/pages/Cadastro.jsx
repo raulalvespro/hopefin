@@ -1,4 +1,6 @@
 import { lerConvite, limparConvite, codigoBonito } from '../lib/convite'
+import { lerCupom, limparCupom } from '../lib/cupom'
+import { SENHA_MIN, mensagemErroSenha, reenviarConfirmacao } from '../lib/acesso'
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
@@ -59,9 +61,13 @@ export default function Cadastro() {
   const navigate = useNavigate()
   const conviteLink = lerConvite() // vindo de /entrar?c=…
   const [tipo, setTipo] = useState(conviteLink ? 'existente' : 'novo') // 'novo' (cria família) ou 'existente' (entra por código)
-  const [form, setForm] = useState({ nome: '', email: '', senha: '', senha2: '', telefone: '', nomeGrupo: '', codigoGrupo: conviteLink ? codigoBonito(conviteLink) : '', cupom: '', optin: true, aceite: false })
+  const cupomParceiro = lerCupom() // vindo de /c/CODIGO (o cupom saiu do formulário — A6.1)
+  const [form, setForm] = useState({ nome: '', email: '', senha: '', senha2: '', telefone: '', nomeGrupo: '', codigoGrupo: conviteLink ? codigoBonito(conviteLink) : '', optin: true, aceite: false })
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
+  const [confirmar, setConfirmar] = useState(null) // e-mail esperando confirmação (L40)
+  const [reenvio, setReenvio] = useState(null)     // { ok, texto } do "reenviar e-mail"
+  const [reenviando, setReenviando] = useState(false)
   const [preco, setPreco] = useState(() => precosVigentes(null))
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
@@ -78,43 +84,67 @@ export default function Cadastro() {
   async function handleSubmit(e) {
     e.preventDefault()
     setErro('')
-    if (form.senha.length < 6) { setErro(t.erroSenhaCurta); return }
+    if (form.senha.length < SENHA_MIN) { setErro(t.erroSenhaCurta); return }
     if (form.senha !== form.senha2) { setErro(t.erroSenhaDif); return }
     if (tipo === 'existente' && !form.codigoGrupo.trim()) { setErro(t.erroCodigo); return }
     const telefone = form.telefone.replace(/\D/g, '')
     if (telefone.length < 10) { setErro(t.erroWhats); return }
     if (!form.aceite) { setErro(t.erroAceite); return }
 
-    const extra = { telefone, marketingOptin: form.optin, aceiteVersao: VERSAO_LEGAL }
+    // O cupom do link de parceiro vai junto no cadastro e é resgatado no 1º acesso (AuthContext),
+    // depois que o grupo existe — funciona mesmo confirmando o e-mail em outro aparelho.
+    const extra = { telefone, marketingOptin: form.optin, aceiteVersao: VERSAO_LEGAL, cupom: cupomParceiro || null }
     setLoading(true)
-    if (tipo === 'novo') {
-      const { error } = await cadastrar(form.nome, form.email, form.senha, null, form.nomeGrupo || `Família ${form.nome.split(' ')[0]}`, extra)
-      if (error) { setErro(traduzErro(error)); setLoading(false); return }
-    } else {
-      const { error } = await cadastrar(form.nome, form.email, form.senha, form.codigoGrupo.trim(), null, extra)
-      if (error) { setErro(traduzErro(error)); setLoading(false); return }
+    const res = tipo === 'novo'
+      ? await cadastrar(form.nome, form.email, form.senha, null, form.nomeGrupo || `Família ${form.nome.split(' ')[0]}`, extra)
+      : await cadastrar(form.nome, form.email, form.senha, form.codigoGrupo.trim(), null, extra)
+    setLoading(false)
+    if (res.error) { setErro(traduzErro(res.error)); return }
+    // Com a confirmação de e-mail ligada, o Supabase não diz que o e-mail já existe (devolve uma
+    // conta "vazia", sem identidades). Mostramos o mesmo aviso de antes.
+    if (res.data?.user && Array.isArray(res.data.user.identities) && res.data.user.identities.length === 0) {
+      setErro(t.erroEmailUsado); return
     }
     limparConvite()
-    track('cadastro_concluido', { tipo, marketing_optin: form.optin })
-
-    // Cupom (opcional): a conta e o grupo já existem, então dá para resgatar
-    // agora. Best-effort — se o código estiver errado, mandamos para Planos.
-    const cupom = form.cupom.trim()
-    if (cupom) {
-      const { error } = await supabase.rpc('resgatar_cupom', { p_codigo: cupom })
-      setLoading(false)
-      navigate(error ? '/planos' : '/tour')
-      return
-    }
-    setLoading(false)
+    limparCupom()
+    track('cadastro_concluido', { tipo, marketing_optin: form.optin, confirmar_email: !res.data?.session })
+    // Confirmação de e-mail ligada (L40): sem sessão até a pessoa tocar no link do e-mail.
+    if (!res.data?.session) { setConfirmar(form.email.trim()); return }
     navigate('/tour')
+  }
+
+  async function reenviar() {
+    setReenviando(true); setReenvio(null)
+    setReenvio(await reenviarConfirmacao(confirmar))
+    setReenviando(false)
   }
 
   function traduzErro(error) {
     const m = (error?.message || '').toLowerCase()
     if (m.includes('already registered') || m.includes('already been')) return t.erroEmailUsado
+    const senha = mensagemErroSenha(error)
+    if (senha) return senha
     if (m.includes('codigo_invalido') || m.includes('invalid')) return t.erroCodigoInvalido
     return t.erroGenerico
+  }
+
+  // Conta criada, falta confirmar o e-mail (L40).
+  if (confirmar) {
+    return (
+      <div className="entrada">
+        <PainelMarca titulo={t.painelTitulo} subtitulo={t.painelTexto} arte={<ArteCadastro preco={preco} />} />
+        <section className="entrada-form">
+          <div className="entrada-card hf-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <h2 style={{ margin: 0, fontFamily: "'Syne', system-ui, sans-serif", fontWeight: 700, fontSize: 26, lineHeight: '32px' }}>{t.confirmeTitulo}</h2>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: '22px', color: 'var(--text2)' }}>{t.confirmeTexto(confirmar)}</p>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: '19px', color: 'var(--text3)' }}>{t.confirmeDica}</p>
+            {reenvio && <p style={{ margin: 0, fontSize: 13, color: reenvio.ok ? 'var(--accent-text)' : 'var(--red-text)' }}>{reenvio.texto}</p>}
+            <Button variant="secondary" loading={reenviando} onClick={reenviar} style={{ width: '100%' }}>{t.reenviar}</Button>
+            <Link to="/login" style={{ textAlign: 'center', fontSize: 14, color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 600 }}>{t.jaConfirmei}</Link>
+          </div>
+        </section>
+      </div>
+    )
   }
 
   return (
@@ -152,11 +182,11 @@ export default function Cadastro() {
             </div>
             <div className="form-group">
               <label>{t.labelSenha}</label>
-              <input type="password" placeholder={t.phSenha} value={form.senha} onChange={e => set('senha', e.target.value)} minLength={6} autoComplete="new-password" required />
+              <input type="password" placeholder={t.phSenha} value={form.senha} onChange={e => set('senha', e.target.value)} minLength={SENHA_MIN} autoComplete="new-password" required />
             </div>
             <div className="form-group">
               <label>{t.labelSenha2}</label>
-              <input type="password" placeholder={t.phSenha2} value={form.senha2} onChange={e => set('senha2', e.target.value)} minLength={6} autoComplete="new-password" required />
+              <input type="password" placeholder={t.phSenha2} value={form.senha2} onChange={e => set('senha2', e.target.value)} minLength={SENHA_MIN} autoComplete="new-password" required />
             </div>
 
             {tipo === 'novo' && (
@@ -166,11 +196,6 @@ export default function Cadastro() {
                 <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6 }}>{t.ajudaGrupo}</p>
               </div>
             )}
-
-            <div className="form-group">
-              <label>{t.labelCupom}</label>
-              <input placeholder={t.phCupom} value={form.cupom} onChange={e => set('cupom', e.target.value.toUpperCase())} style={{ textTransform: 'uppercase' }} />
-            </div>
 
             {tipo === 'existente' && (
               <div className="form-group">
@@ -192,6 +217,8 @@ export default function Cadastro() {
               <input type="checkbox" checked={form.optin} onChange={e => set('optin', e.target.checked)} style={{ marginTop: 2, flexShrink: 0, width: 'auto' }} />
               {t.optin}
             </label>
+
+            {cupomParceiro && <p style={{ fontSize: 13, color: 'var(--accent-text)', marginBottom: 14, lineHeight: 1.45 }}>{t.cupomParceiro(cupomParceiro)}</p>}
 
             {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
 

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { normalizarCodigo, limparConvite } from '../lib/convite'
+import { limparCupom } from '../lib/cupom'
 import { identificar, resetarUsuario } from '../lib/analytics'
 import * as Sentry from '@sentry/react'
 
@@ -84,6 +85,14 @@ export function AuthProvider({ children }) {
       }
       perfilRow = (await buscarPerfil(authUser.id)).row
 
+      // Cupom do link de parceiro (A6.1): resgatado agora que o grupo existe. O banco cria a
+      // assinatura já como cortesia se ela ainda não existir (migração 0067).
+      if (md.cupom && perfilRow?.grupo_id) {
+        const { error: erroCupom } = await supabase.rpc('resgatar_cupom', { p_codigo: md.cupom })
+        if (erroCupom) console.error('[auth] cupom do cadastro:', erroCupom.message)
+        limparCupom()
+      }
+
       // E-mails de acolhimento (boas-vindas ao novo usuário; aviso ao dono quando
       // alguém entra pelo convite). Best-effort: o servidor garante 1x via email_log.
       if (perfilRow?.grupo_id) {
@@ -132,6 +141,8 @@ export function AuthProvider({ children }) {
       email,
       password: senha,
       options: {
+        // Com a confirmação de e-mail (L40), o link do e-mail volta pra cá (app ou localhost).
+        emailRedirectTo: `${window.location.origin}/`,
         data: {
           nome,
           nome_grupo: nomeGrupo || null,
@@ -139,6 +150,7 @@ export function AuthProvider({ children }) {
           telefone: extra.telefone || null,
           marketing_optin: !!extra.marketingOptin,
           aceite_versao: extra.aceiteVersao || null,
+          cupom: extra.cupom || null,
         },
       },
     })

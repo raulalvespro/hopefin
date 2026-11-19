@@ -35,6 +35,22 @@ export const copy = {
     enviadoTitulo: 'Verifique seu e-mail',
     enviadoTexto: (email) => `Se houver uma conta para ${email}, enviamos um link para você criar uma nova senha.`,
     enviadoVoltar: 'Voltar para o login',
+
+    // E-mail ainda não confirmado (L40)
+    erroNaoConfirmado: 'Falta confirmar seu e-mail. Toque no link que enviamos (veja também Spam, Promoções e Atualizações).',
+    reenviarConfirmacao: 'Reenviar e-mail de confirmação',
+  },
+
+  // Senha e confirmação de e-mail (L39/L40, 19/11/2026) — usado no cadastro, login e troca de senha.
+  acesso: {
+    senhaCurta: 'A senha precisa ter ao menos 8 caracteres.',
+    senhaVazada: 'Essa senha já apareceu em vazamentos de dados na internet. Escolha outra.',
+    senhaFraca: 'Essa senha é fácil de adivinhar. Escolha outra.',
+    senhaIgual: 'Escolha uma senha diferente da atual.',
+    phSenha: 'mínimo 8 caracteres',
+    reenviado: 'Pronto! Enviamos o e-mail de novo.',
+    reenviarEspere: 'Aguarde 1 minuto para pedir de novo.',
+    reenviarErro: 'Não foi possível reenviar agora. Tente de novo em instantes.',
   },
 
   cadastro: {
@@ -60,13 +76,12 @@ export const copy = {
     labelWhats: 'WhatsApp (com DDD)',
     phWhats: '(11) 90000-0000',
     labelSenha: 'Crie sua senha',
-    phSenha: 'mínimo 6 caracteres',
+    phSenha: 'mínimo 8 caracteres',
     labelSenha2: 'Repita a senha',
     phSenha2: 'digite de novo',
     labelGrupo: 'Nome da família (opcional)',
     ajudaGrupo: 'Depois você convida quem divide as contas com você, com o código que aparece nas Configurações.',
-    labelCupom: 'Cupom (opcional)',
-    phCupom: 'Tem um cupom? Cole aqui',
+    cupomParceiro: (codigo) => `🎟️ Cupom ${codigo}: é aplicado quando você entrar pela primeira vez.`,
     labelCodigo: 'Código do convite',
     phCodigo: 'Cole o código que você recebeu',
     ajudaCodigo: 'Peça o código para quem criou a família (fica nas Configurações, em "Convidar para o grupo").',
@@ -80,8 +95,15 @@ export const copy = {
     jaTemConta: 'Já tem conta?',
     entrar: 'Entrar',
 
+    // Confirmação de e-mail depois de criar a conta (L40)
+    confirmeTitulo: 'Confirme seu e-mail',
+    confirmeTexto: (email) => `Enviamos um link para ${email}. Toque nele para ativar a conta e entrar no HopeFin.`,
+    confirmeDica: 'Não chegou? Veja em Spam, Promoções ou Atualizações. O e-mail vem de avisos@hopefin.com.br.',
+    reenviar: 'Reenviar e-mail',
+    jaConfirmei: 'Já confirmei — entrar',
+
     // Erros
-    erroSenhaCurta: 'A senha precisa ter ao menos 6 caracteres.',
+    erroSenhaCurta: 'A senha precisa ter ao menos 8 caracteres.',
     erroSenhaDif: 'As senhas não coincidem.',
     erroCodigo: 'Cole o código do convite.',
     erroWhats: 'Informe um WhatsApp válido com DDD.',

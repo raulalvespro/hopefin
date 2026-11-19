@@ -4,6 +4,7 @@ import { useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
 import EntrarConvite from './pages/EntrarConvite'
+import EntrarCupom from './pages/EntrarCupom'
 import Tour from './pages/Tour'
 import RedefinirSenha from './pages/RedefinirSenha'
 import EscolhaGrupo from './pages/EscolhaGrupo'
@@ -100,6 +101,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/entrar" element={<EntrarConvite />} />
+      <Route path="/c/:codigo" element={<EntrarCupom />} />
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/tour" element={<RotaProtegida><Tour /></RotaProtegida>} />
       <Route path="/boas-vindas" element={<RotaProtegida><BoasVindas /></RotaProtegida>} />

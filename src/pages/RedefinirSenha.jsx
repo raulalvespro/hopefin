@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
 import Logo from '../components/Logo'
+import { SENHA_MIN, mensagemErroSenha } from '../lib/acesso'
+import { copy } from '../copy/pt-BR'
 
 // Página de destino do link de recuperação de senha enviado por e-mail.
 // O supabase-js estabelece a sessão de recuperação automaticamente ao abrir a URL.
@@ -21,12 +23,12 @@ export default function RedefinirSenha() {
   async function handleSubmit(e) {
     e.preventDefault()
     setErro('')
-    if (form.senha.length < 6) { setErro('A senha precisa ter ao menos 6 caracteres.'); return }
+    if (form.senha.length < SENHA_MIN) { setErro(copy.acesso.senhaCurta); return }
     if (form.senha !== form.senha2) { setErro('As senhas não coincidem.'); return }
     setLoading(true)
     const { error } = await supabase.auth.updateUser({ password: form.senha })
     setLoading(false)
-    if (error) { setErro('Não foi possível salvar. O link pode ter expirado — peça um novo.'); return }
+    if (error) { setErro(mensagemErroSenha(error) || 'Não foi possível salvar. O link pode ter expirado — peça um novo.'); return }
     toast('Senha atualizada!', 'ok')
     navigate('/')
   }
@@ -53,11 +55,11 @@ export default function RedefinirSenha() {
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Nova senha</label>
-              <input type="password" placeholder="mínimo 6 caracteres" value={form.senha} onChange={e => setForm(p => ({ ...p, senha: e.target.value }))} minLength={6} autoComplete="new-password" required />
+              <input type="password" placeholder={copy.acesso.phSenha} value={form.senha} onChange={e => setForm(p => ({ ...p, senha: e.target.value }))} minLength={SENHA_MIN} autoComplete="new-password" required />
             </div>
             <div className="form-group">
               <label>Repita a nova senha</label>
-              <input type="password" placeholder="digite de novo" value={form.senha2} onChange={e => setForm(p => ({ ...p, senha2: e.target.value }))} minLength={6} autoComplete="new-password" required />
+              <input type="password" placeholder="digite de novo" value={form.senha2} onChange={e => setForm(p => ({ ...p, senha2: e.target.value }))} minLength={SENHA_MIN} autoComplete="new-password" required />
             </div>
             {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
             <button className="btn-primary" type="submit" style={{ width: '100%' }} disabled={loading || temSessao === null}>

@@ -6,6 +6,7 @@ import PainelMarca from '../components/PainelMarca'
 import { Button } from '../components/ui'
 import { Eye, EyeOff } from 'lucide-react'
 import { copy } from '../copy/pt-BR'
+import { reenviarConfirmacao } from '../lib/acesso'
 
 const t = copy.login
 
@@ -18,14 +19,25 @@ export default function Login() {
   const [modo, setModo] = useState('login') // 'login' | 'recuperar'
   const [enviado, setEnviado] = useState(false)
   const [verSenha, setVerSenha] = useState(false)
+  const [naoConfirmado, setNaoConfirmado] = useState(false) // conta criada, e-mail ainda não confirmado (L40)
+  const [reenvio, setReenvio] = useState(null)
+  const [reenviando, setReenviando] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setErro(''); setLoading(true)
+    setErro(''); setReenvio(null); setNaoConfirmado(false); setLoading(true)
     const { error } = await login(form.email, form.senha)
     setLoading(false)
-    if (error) setErro(t.erroCredenciais)
-    else navigate('/')
+    if (!error) { navigate('/'); return }
+    const semConfirmar = error.code === 'email_not_confirmed' || /not confirmed/i.test(error.message || '')
+    setNaoConfirmado(semConfirmar)
+    setErro(semConfirmar ? t.erroNaoConfirmado : t.erroCredenciais)
+  }
+
+  async function reenviar() {
+    setReenviando(true); setReenvio(null)
+    setReenvio(await reenviarConfirmacao(form.email))
+    setReenviando(false)
   }
 
   async function handleRecuperar(e) {
@@ -74,6 +86,12 @@ export default function Login() {
               </div>
 
               {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, margin: 0 }}>{erro}</p>}
+              {naoConfirmado && (
+                <>
+                  <Button variant="secondary" loading={reenviando} onClick={reenviar} style={{ width: '100%' }}>{t.reenviarConfirmacao}</Button>
+                  {reenvio && <p style={{ margin: 0, fontSize: 13, color: reenvio.ok ? 'var(--accent-text)' : 'var(--red-text)' }}>{reenvio.texto}</p>}
+                </>
+              )}
 
               <Button type="submit" loading={loading} style={{ width: '100%', marginTop: 4 }}>
                 {loading ? t.entrando : t.entrar}

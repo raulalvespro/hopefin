@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { fmt, fmtData } from '../lib/format'
 import { PRECOS_PADRAO, precosVigentes, economiaPct, porMesReais } from '../lib/precos'
 import { useAssinatura } from '../hooks/useAssinatura'
+import { lerCupom, limparCupom } from '../lib/cupom'
 import { Tag } from '../components/ui'
 import { copy } from '../copy/pt-BR'
 
@@ -24,7 +25,7 @@ const dataLanc = iso => {
 export default function Planos() {
   const [cfg, setCfg] = useState(PRECOS_PADRAO)
   const [plano, setPlano] = useState('anual') // 'anual' | 'mensal'
-  const [cupom, setCupom] = useState('')
+  const [cupom, setCupom] = useState(() => lerCupom()) // preenchido pelo link de parceiro /c/CODIGO
   const [cupomMsg, setCupomMsg] = useState(null) // { ok, texto }
   const [resgatando, setResgatando] = useState(false)
   const [verTudo, setVerTudo] = useState(false)
@@ -69,6 +70,7 @@ export default function Planos() {
     }
     setCupomMsg({ ok: true, texto: t.cupomOk })
     setCupom('')
+    limparCupom()
   }
 
   // Cabeçalho "situação atual" do plano (dados reais da assinatura do grupo).

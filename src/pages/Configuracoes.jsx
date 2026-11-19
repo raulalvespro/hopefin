@@ -10,6 +10,7 @@ import AssinaturaCard from '../components/AssinaturaCard'
 import WhatsAppCard from '../components/WhatsAppCard'
 import { useFlags } from '../hooks/useFlags'
 import { copy } from '../copy/pt-BR'
+import { SENHA_MIN, mensagemErroSenha } from '../lib/acesso'
 import { Compass, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera, Bell, Upload, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
 // Redimensiona (corte quadrado central) para um data URL leve.
@@ -52,13 +53,13 @@ export default function Configuracoes() {
   const [senhaOk, setSenhaOk] = useState(false)
 
   async function alterarSenha() {
-    if (senha.length < 6) { toast('A senha precisa ter ao menos 6 caracteres.', 'erro'); return }
+    if (senha.length < SENHA_MIN) { toast(copy.acesso.senhaCurta, 'erro'); return }
     if (senha !== senha2) { toast('As senhas não conferem.', 'erro'); return }
     setSalvandoSenha(true)
     const { error } = await supabase.auth.updateUser({ password: senha })
     setSalvandoSenha(false)
     if (error) {
-      toast(error.message?.includes('different') ? 'Escolha uma senha diferente da atual.' : 'Não foi possível alterar a senha.', 'erro')
+      toast(mensagemErroSenha(error) || (error.message?.includes('different') ? copy.acesso.senhaIgual : 'Não foi possível alterar a senha.'), 'erro')
       return
     }
     setSenha(''); setSenha2(''); setVerSenha(false)
@@ -222,7 +223,7 @@ export default function Configuracoes() {
               <label>Nova senha</label>
               <div style={{ position:'relative' }}>
                 <input type={verSenha ? 'text' : 'password'} value={senha} onChange={e => setSenha(e.target.value)}
-                  placeholder="Mínimo 6 caracteres" autoComplete="new-password" style={{ paddingRight:44 }} />
+                  placeholder="Mínimo 8 caracteres" autoComplete="new-password" style={{ paddingRight:44 }} />
                 <button type="button" onClick={() => setVerSenha(v => !v)} title={verSenha ? 'Ocultar' : 'Mostrar'}
                   style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)' }}>
                   {verSenha ? <EyeOff size={16} color="var(--text3)" /> : <Eye size={16} color="var(--text3)" />}
