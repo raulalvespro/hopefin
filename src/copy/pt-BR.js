@@ -443,6 +443,20 @@ export const copy = {
     falar: 'Falar',
     dica: 'Fale ou digite. Entende gasto, entrada, parcelas e datas ("ontem", "dia 5").',
     semSuporte: 'Seu navegador não captura voz — use o campo de texto (ou o Chrome no Android).',
+    // A5.2 — microfone: avisos em vez de o botão só "desligar"
+    erroMic: {
+      bloqueado: 'O microfone não foi liberado.',
+      semFala: 'Não ouvi nada. Toque no microfone e fale de novo, pertinho do celular.',
+      semMicrofone: 'Não encontrei um microfone neste aparelho. Digite abaixo.',
+      semInternet: 'O reconhecimento de voz precisa de internet. Confira a conexão ou digite abaixo.',
+      falhou: 'Não consegui ouvir agora. Toque de novo ou digite abaixo.',
+    },
+    comoLiberar: {
+      iosApp: 'No iPhone, feche e abra o app e toque em “Permitir” quando ele perguntar. Ou digite abaixo.',
+      iosSafari: 'No Safari: toque em “aA” na barra de endereço › Ajustes do Site › Microfone › Permitir. Ou digite abaixo.',
+      outro: 'Libere o microfone nas configurações do navegador (cadeado ao lado do endereço › Microfone › Permitir). Ou digite abaixo.',
+    },
+    dicaIosApp: 'No iPhone, o app instalado pede o microfone de novo quando você troca de tela ou fica um tempo sem usar — é uma regra da Apple. Se preferir, digite abaixo.',
     phTexto: 'Ex: mercado 87 no Nubank',
     interpretar: 'Interpretando…',
     interpretarAria: 'Interpretar',

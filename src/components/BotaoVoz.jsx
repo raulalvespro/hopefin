@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { X, Check, Loader, Sparkles, Send, AlertTriangle } from 'lucide-react'
 import { MicButton, Tag } from './ui'
-import { useVoz } from '../hooks/useVoz'
+import { useVoz, ehIosInstalado, ondeLiberarMic } from '../hooks/useVoz'
 import { useAuth } from '../contexts/AuthContext'
 import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
@@ -100,7 +100,12 @@ export default function BotaoVoz({ onSalvo }) {
     }
   }, [categorias])
 
-  const { gravando, parcial, suportado, iniciar, parar } = useVoz((t) => interpretar(t, 'voz'))
+  const { gravando, parcial, erro: erroVoz, suportado, iniciar, parar, cancelar } = useVoz((t) => interpretar(t, 'voz'))
+  const [iosApp] = useState(() => ehIosInstalado())
+  // A5.2: aviso quando a voz falha (antes o botão só "desligava" sem dizer nada).
+  const msgVoz = !erroVoz ? '' : erroVoz === 'bloqueado'
+    ? `${t.erroMic.bloqueado} ${t.comoLiberar[ondeLiberarMic()]}`
+    : t.erroMic[erroVoz] || t.erroMic.falhou
 
   // true se o usuário mexeu em algo em relação ao que a IA sugeriu.
   function houveCorrecao(f) {
@@ -167,7 +172,7 @@ export default function BotaoVoz({ onSalvo }) {
   }
 
   function fechar() {
-    if (gravando) parar()
+    cancelar() // para de ouvir e descarta: fechar não manda nada pra IA
     setAberto(false); setTexto(''); setDigitado(''); setForm(null); setJsonIa(null)
     setLogId(null); setErro(''); setAvisoLimite(''); setSucesso(false); setInterpretando(false); setCorrigindo(false)
   }
@@ -268,7 +273,9 @@ export default function BotaoVoz({ onSalvo }) {
                 </form>
 
                 <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center' }}>{t.dica}</p>
+                {suportado && iosApp && !msgVoz && <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center' }}>{t.dicaIosApp}</p>}
                 {!suportado && <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center' }}>{t.semSuporte}</p>}
+                {msgVoz && !gravando && <p role="alert" style={{ color: 'var(--amber-text)', fontSize: 13, textAlign: 'center', lineHeight: 1.45 }}>{msgVoz}</p>}
                 {erro && <p role="alert" style={{ color: 'var(--red-text)', fontSize: 13, textAlign: 'center' }}>{erro}</p>}
               </div>
             )}
