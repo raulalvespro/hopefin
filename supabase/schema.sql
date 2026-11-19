@@ -76,7 +76,16 @@ create table if not exists public.entradas (
   recebido        boolean not null default false,  -- entrada confirmada na conta
   data_recebimento date,
   data        date not null default current_date,
-  criado_em   timestamptz not null default now()
+  criado_em   timestamptz not null default now(),
+  -- 0061: série (todo mês) e de onde veio; 0069: entrada parcelada ("2/3")
+  serie_id      uuid,
+  origem        text not null default 'manual'
+                check (origem in ('manual', 'recorrente', 'reembolso', 'saldo_anterior', 'parcelada')),
+  parcela_num   int,
+  parcela_total int,
+  constraint entradas_parcela_chk check (
+    (parcela_num is null and parcela_total is null)
+    or (parcela_total between 2 and 120 and parcela_num between 1 and parcela_total))
 );
 
 -- Contas fixas mensais

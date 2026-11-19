@@ -224,6 +224,24 @@ export const copy = {
 
   // Tela Entradas — entrada que repete todo mês (série: os próximos meses já ficam lançados)
   entradas: {
+    // Repete? (A3.4 — entradas parceladas)
+    repete: 'Repete?',
+    umaVez: 'Uma vez',
+    todoMes: 'Todo mês',
+    parcelada: 'Parcelada',
+    numParcelas: 'Nº de parcelas',
+    valorTotal: 'Valor total',
+    primeiraEm: '1ª parcela em',
+    dicaParcelada: (n, valor) => `${n} parcelas de cerca de ${valor}, uma por mês. As que ainda não chegaram ficam "a receber" até você marcar recebida.`,
+    erroParcelas: 'Informe de 2 a 120 parcelas.',
+    erroParcelaPequena: 'O valor é pequeno demais pra dividir em tantas parcelas.',
+    parcelasCriadas: (n, de, ate) => `${n} parcelas criadas (${de} → ${ate})`,
+    parcelaN: (i, n) => `Parcela ${i}/${n}`,
+    apagarTituloParcela: 'Apagar parcela',
+    apagarTextoParcela: (desc, i, n) => `“${desc}” é a parcela ${i}/${n}. O que você quer apagar?`,
+    apagarSoEstaParcelaDica: 'As outras parcelas continuam lançadas.',
+    apagarProximasParcela: (n) => (n > 1 ? `Esta e as próximas (${n} parcelas)` : 'Esta parcela'),
+    apagarProximasParcelaDica: 'As parcelas anteriores ficam.',
     aplicarEm: 'Aplicar a mudança em',
     soEsta: 'Só esta',
     estaEProximas: 'Esta e as próximas',

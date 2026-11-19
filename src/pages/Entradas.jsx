@@ -13,9 +13,10 @@ import { EmptyState } from '../components/ui'
 import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
 import { dataNoMes, nomeMes, carregarMotor, reembolsosPrevistos } from '../lib/motor'
+import { dividirEmParcelas, periodoParcelas, problemaParcelas } from '../lib/parcelas'
 
 const t = copy.entradas
-const novoForm = () => ({ descricao: '', valor: '', tipo: 'avulso', recorrente: false, data: hojeISO() })
+const novoForm = () => ({ descricao: '', valor: '', tipo: 'avulso', recorrente: false, parcelada: false, num_parcelas: '', data: hojeISO() })
 
 export default function Entradas() {
   const { perfil } = useAuth()
@@ -155,6 +156,26 @@ export default function Entradas() {
       const ok = editando.serie_id ? await salvarSerie(valor) : await salvarAvulsa(valor)
       setSalvando(false)
       if (!ok) return
+      fecharModal(); carregar(); return
+    }
+
+    // Parcelada (A3.4): uma entrada por mês na mesma série, "a receber" até marcar recebida.
+    // Não é recorrente, então a série nunca cresce sozinha (garantir_series ignora).
+    if (form.parcelada) {
+      const n = parseInt(form.num_parcelas)
+      const problema = problemaParcelas(valor, n)
+      if (problema) { setSalvando(false); toast(problema === 'qtd' ? t.erroParcelas : t.erroParcelaPequena, 'erro'); return }
+      const serie = crypto.randomUUID()
+      const hoje = hojeISO()
+      const linhas = dividirEmParcelas(valor, n, form.data).map(p => ({
+        descricao: form.descricao, valor: p.valor, tipo: form.tipo, recorrente: false, data: p.data,
+        recebido: p.data <= hoje, grupo_id: perfil.grupo_id, usuario_id: perfil.id,
+        serie_id: serie, origem: 'parcelada', parcela_num: p.numero, parcela_total: n,
+      }))
+      const { de, ate } = periodoParcelas(n, form.data)
+      const { error: erroParc } = await run(supabase.from('entradas').insert(linhas), { ok: t.parcelasCriadas(n, de, ate) })
+      setSalvando(false)
+      if (erroParc) return
       fecharModal(); carregar(); return
     }
 
@@ -302,6 +323,11 @@ export default function Entradas() {
               <p style={{ fontSize: 11, color: 'var(--text3)' }}>
                 {fmtData(e.data, 'dd/MM')} · {e.recebido ? 'Recebido' : 'A receber'} · {e.usuarios?.nome?.split(' ')[0]}
                 {e.recorrente && <span style={{ marginLeft: 6, verticalAlign: 'middle' }}><RefreshCw size={10} /></span>}
+                {e.parcela_total && (
+                  <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--blue-text)', padding: '1px 7px', borderRadius: 10 }}>
+                    {e.parcela_num}/{e.parcela_total}
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -322,9 +348,38 @@ export default function Entradas() {
             <h2 style={{ fontSize: 18, marginBottom: 20 }}>{editando ? 'Editar entrada' : 'Nova entrada'}</h2>
             <div className="form-group"><label>Descrição</label><input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Salário, Freelance..." /></div>
             <div className="form-row">
-              <div className="form-group"><label>Valor</label><input type="number" inputMode="decimal" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
-              <div className="form-group"><label>Data</label><input type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} /></div>
+              <div className="form-group"><label>{form.parcelada ? t.valorTotal : 'Valor'}</label><input type="number" inputMode="decimal" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
+              <div className="form-group"><label>{form.parcelada ? t.primeiraEm : 'Data'}</label><input type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} /></div>
             </div>
+            {/* Repete? — uma vez / todo mês / parcelada (A3.4). Parcelada só ao criar. */}
+            {!editando?.serie_id && (
+              <div className="form-group">
+                <label>{t.repete}</label>
+                <div role="radiogroup" aria-label={t.repete} style={{ display: 'flex', gap: 8 }}>
+                  {[['nao', t.umaVez], ['mes', t.todoMes], ...(editando ? [] : [['parcelada', t.parcelada]])].map(([v, label]) => {
+                    const marcado = v === 'mes' ? form.recorrente : v === 'parcelada' ? form.parcelada : !form.recorrente && !form.parcelada
+                    return (
+                      <button key={v} type="button" role="radio" aria-checked={marcado}
+                        onClick={() => setForm(p => ({ ...p, recorrente: v === 'mes', parcelada: v === 'parcelada' }))}
+                        style={{ flex: 1, padding: '9px 6px', borderRadius: 'var(--radius-sm)', border: `1px solid ${marcado ? 'var(--accent)' : 'var(--border)'}`, background: marcado ? 'var(--accent-dim)' : 'transparent', color: marcado ? 'var(--accent2)' : 'var(--text2)', fontSize: 13, fontWeight: 600 }}>
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+            {form.parcelada && (
+              <div className="form-group">
+                <label>{t.numParcelas}</label>
+                <input type="number" inputMode="numeric" min="2" max="120" value={form.num_parcelas} onChange={e => setForm(p => ({ ...p, num_parcelas: e.target.value }))} placeholder="Ex: 3" />
+                {parseInt(form.num_parcelas) >= 2 && parseFloat(form.valor) > 0 && (
+                  <span style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6, display: 'block', lineHeight: 1.4 }}>
+                    {t.dicaParcelada(parseInt(form.num_parcelas), fmt(parseFloat(form.valor) / parseInt(form.num_parcelas)))}
+                  </span>
+                )}
+              </div>
+            )}
             <div className="form-row">
               <div className="form-group">
                 <label>Tipo</label>
@@ -333,18 +388,15 @@ export default function Entradas() {
                   <option value="avulso">Avulso</option>
                 </select>
               </div>
-              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                {editando?.serie_id ? (
+              {editando?.serie_id && (
+                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 10, fontSize: 13, color: 'var(--text2)' }}>
-                    <RefreshCw size={13} /> {t.repeteTodoMes}
+                    {editando.parcela_total
+                      ? t.parcelaN(editando.parcela_num, editando.parcela_total)
+                      : <><RefreshCw size={13} /> {t.repeteTodoMes}</>}
                   </span>
-                ) : (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingBottom: 10 }}>
-                    <input type="checkbox" checked={form.recorrente} onChange={e => setForm(p => ({ ...p, recorrente: e.target.checked }))} style={{ width: 'auto' }} />
-                    Recorrente
-                  </label>
-                )}
-              </div>
+                </div>
+              )}
             </div>
             {editando?.serie_id && (
               <div className="form-group">
@@ -358,7 +410,7 @@ export default function Entradas() {
                   ))}
                 </div>
                 <span style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6, display: 'block', lineHeight: 1.4 }}>
-                  {escopo === 'proximas' ? t.dicaProximas : t.dicaSoEsta} {t.dicaParar}
+                  {escopo === 'proximas' ? t.dicaProximas : t.dicaSoEsta} {editando.parcela_total ? '' : t.dicaParar}
                 </span>
               </div>
             )}
@@ -375,21 +427,23 @@ export default function Entradas() {
       {/* Apagar entrada que repete: só esta × esta e as próximas */}
       {apagando && (
         <div className="modal-overlay" onClick={() => !salvando && setApagando(null)}>
-          <div className="modal" role="dialog" aria-label={t.apagarTitulo} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: 18, marginBottom: 10 }}>{t.apagarTitulo}</h2>
+          <div className="modal" role="dialog" aria-label={apagando.entrada.parcela_total ? t.apagarTituloParcela : t.apagarTitulo} onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: 18, marginBottom: 10 }}>{apagando.entrada.parcela_total ? t.apagarTituloParcela : t.apagarTitulo}</h2>
             <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.5, marginBottom: 18 }}>
-              {t.apagarTexto(apagando.entrada.descricao, `${nomeMes(apagando.entrada.data.slice(0, 7))} de ${apagando.entrada.data.slice(0, 4)}`)}
+              {apagando.entrada.parcela_total
+                ? t.apagarTextoParcela(apagando.entrada.descricao, apagando.entrada.parcela_num, apagando.entrada.parcela_total)
+                : t.apagarTexto(apagando.entrada.descricao, `${nomeMes(apagando.entrada.data.slice(0, 7))} de ${apagando.entrada.data.slice(0, 4)}`)}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button className="btn-ghost" onClick={() => apagarSerie('esta')} disabled={salvando}
                 style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 2, opacity: salvando ? 0.6 : 1 }}>
                 <span style={{ fontWeight: 600, color: 'var(--text)' }}>{t.apagarSoEsta}</span>
-                <span style={{ fontSize: 12, color: 'var(--text3)' }}>{t.apagarSoEstaDica}</span>
+                <span style={{ fontSize: 12, color: 'var(--text3)' }}>{apagando.entrada.parcela_total ? t.apagarSoEstaParcelaDica : t.apagarSoEstaDica}</span>
               </button>
               <button className="btn-ghost" onClick={() => apagarSerie('proximas')} disabled={salvando}
                 style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 2, opacity: salvando ? 0.6 : 1 }}>
-                <span style={{ fontWeight: 600, color: 'var(--red-text)' }}>{t.apagarProximas(apagando.proximas)}</span>
-                <span style={{ fontSize: 12, color: 'var(--text3)' }}>{t.apagarProximasDica}</span>
+                <span style={{ fontWeight: 600, color: 'var(--red-text)' }}>{apagando.entrada.parcela_total ? t.apagarProximasParcela(apagando.proximas) : t.apagarProximas(apagando.proximas)}</span>
+                <span style={{ fontSize: 12, color: 'var(--text3)' }}>{apagando.entrada.parcela_total ? t.apagarProximasParcelaDica : t.apagarProximasDica}</span>
               </button>
               <button onClick={() => setApagando(null)} disabled={salvando}
                 style={{ padding: '10px', fontSize: 14, color: 'var(--text2)', minHeight: 44 }}>
