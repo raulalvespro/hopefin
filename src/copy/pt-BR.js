@@ -318,6 +318,9 @@ export const copy = {
 
   // Novo gasto — aviso de compra que parece uma assinatura já cadastrada (A0.7)
   gastos: {
+    // Parcelas criadas (A3.5)
+    parcelasCriadas: (n, de, ate) => `${n} parcelas criadas (${de} → ${ate})`,
+    verTodas: 'ver todas',
     pareceAssinatura: (nome) => `Parece a assinatura “${nome}”`,
     pareceAssinaturaTexto: (detalhe, onde) => `${detalhe}. Ela já entra sozinha ${onde} todo mês — se for ela, não precisa lançar de novo (senão conta 2x).`,
     naFatura: (cartao) => `na fatura do ${cartao}`,

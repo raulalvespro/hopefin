@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Info, ChevronDown, ChevronUp, Check } from 'lucide-react'
@@ -11,14 +12,15 @@ import { fmt, fmtData, hojeISO, parseDataLocal } from '../lib/format'
 
 const isoDe = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir, onEditar }) {
-  const [aberto, setAberto] = useState(false)
+function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir, onEditar, destacado = false }) {
+  // Vindo do "ver todas" de uma parcela (A3.5): já abre com as parcelas à mostra e com destaque.
+  const [aberto, setAberto] = useState(destacado)
   const progresso = Math.round((p.pagas / p.total) * 100)
   const parcelasOrdenadas = [...(p.parcelas || [])].sort((a, b) => a.numero - b.numero)
 
   return (
     <SwipeRow style={{ marginBottom: 10 }} onEdit={() => onEditar(p)} onDelete={() => onExcluir(p.id)}>
-    <div className="card" style={{ margin: 0 }}>
+    <div id={`parc-${p.id}`} className="card" style={{ margin: 0, ...(destacado ? { boxShadow: '0 0 0 2px var(--accent)' } : null) }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 22 }}>{emojiDe(p.categoria)}</span>
@@ -95,8 +97,18 @@ export default function Parcelamentos() {
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(novaEdicao())
   const [salvando, setSalvando] = useState(false)
+  const [params] = useSearchParams()
+  const ver = params.get('ver') // "ver todas" vindo da lista de Gastos (A3.5)
 
   useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes(); carregarPessoas() } }, [perfil])
+
+  // Rola até a compra pedida depois que a lista carregar.
+  useEffect(() => {
+    if (!ver || loading) return
+    const el = document.getElementById(`parc-${ver}`)
+    const suave = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    el?.scrollIntoView({ behavior: suave ? 'smooth' : 'auto', block: 'center' })
+  }, [ver, loading])
 
   async function carregar() {
     setLoading(true)
@@ -237,14 +249,14 @@ export default function Parcelamentos() {
                 <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Syne' }}>Em andamento</span>
                 <span style={{ fontSize: 12, color: 'var(--text2)' }}>falta pagar {fmt(totalRestante)}</span>
               </div>
-              {ativos.map(p => <CardParcelamento key={p.id} p={p} emojiDe={emojiDe} onToggleParcela={toggleParcela} onExcluir={excluir} onEditar={abrirEdicao} />)}
+              {ativos.map(p => <CardParcelamento key={p.id} p={p} emojiDe={emojiDe} onToggleParcela={toggleParcela} onExcluir={excluir} onEditar={abrirEdicao} destacado={p.id === ver} />)}
             </>
           )}
 
           {quitados.length > 0 && (
             <>
               <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Syne', margin: '20px 0 10px' }}>Quitados</p>
-              {quitados.map(p => <CardParcelamento key={p.id} p={p} emojiDe={emojiDe} onToggleParcela={toggleParcela} onExcluir={excluir} onEditar={abrirEdicao} />)}
+              {quitados.map(p => <CardParcelamento key={p.id} p={p} emojiDe={emojiDe} onToggleParcela={toggleParcela} onExcluir={excluir} onEditar={abrirEdicao} destacado={p.id === ver} />)}
             </>
           )}
         </>

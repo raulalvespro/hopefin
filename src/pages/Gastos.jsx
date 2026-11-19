@@ -15,6 +15,7 @@ import { EmptyState } from '../components/ui'
 import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
 import { assinaturaParecida } from '../lib/assinaturaParecida'
+import { periodoParcelas } from '../lib/parcelas'
 import { compDaCompra, faturaDoCartao, addMeses, hojeBRT, primeiroVencimentoParcelado } from '../lib/motor'
 
 const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO(), de_terceiro: false, pessoa_nome: '', reembolso_status: null, observacao: '', assinatura: false, fatura_ajuste: 0 })
@@ -73,6 +74,7 @@ export default function Gastos() {
       descricao: p.parcelamentos?.descricao, valor: Number(p.valor), categoria: p.parcelamentos?.categoria, data: p.data_vencimento,
       origem: p.parcelamentos?.cartoes?.nome || 'Parcelado', pessoa: p.parcelamentos?.usuarios?.nome?.split(' ')[0],
       numero: p.numero, totalParcelas: p.parcelamentos?.num_parcelas, criado: p.criado_em || '',
+      parcelamentoId: p.parcelamento_id,
       // Parcela de compra de outra pessoa: fica em "A receber" e não entra no total do mês
       terceiro: p.parcelamentos?.pessoa_id ? (p.parcelamentos?.pessoas?.nome || 'alguém') : null,
       reembolso_status: p.recebido ? 'quitado' : 'pendente',
@@ -241,7 +243,7 @@ export default function Gastos() {
           data_primeira_parcela: dataPrimeira, parcelas_pagas: pagas,
           grupo_id: perfil.grupo_id, usuario_id: perfil.id, pessoa_id: pessoaId,
         }),
-        { ok: `Parcelamento criado (${n}x)` }
+        { ok: (() => { const { de, ate } = periodoParcelas(n, dataPrimeira); return copy.gastos.parcelasCriadas(n, de, ate) })() }
       )
       setSalvando(false)
       if (error) return
@@ -331,9 +333,11 @@ export default function Gastos() {
               <p style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
                 {it.descricao}
                 {it.tipo === 'parcela' && (
-                  <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--blue-text)', padding: '1px 7px', borderRadius: 10 }}>
-                    {it.numero}/{it.totalParcelas}x
-                  </span>
+                  <button type="button" onClick={e => { e.stopPropagation(); navigate(`/parcelamentos?ver=${it.parcelamentoId}`) }}
+                    title="Ver todas as parcelas desta compra"
+                    style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--blue-text)', padding: '1px 7px', borderRadius: 10, border: 'none' }}>
+                    {it.numero}/{it.totalParcelas} · {copy.gastos.verTodas}
+                  </button>
                 )}
                 {it.terceiro && (
                   <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--amber-text)', padding: '1px 7px', borderRadius: 10 }}>

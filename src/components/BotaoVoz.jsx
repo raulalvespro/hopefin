@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase'
 import { hojeISO, fmt, fmtData } from '../lib/format'
 import { copy } from '../copy/pt-BR'
 import { primeiroVencimentoParcelado } from '../lib/motor'
+import { periodoParcelas } from '../lib/parcelas'
 
 const t = copy.voz
 
@@ -121,6 +122,7 @@ export default function BotaoVoz({ onSalvo }) {
     setSalvando(true)
 
     let op
+    let msgOk = form.tipo === 'entrada' ? t.okEntrada : t.okGasto
     if (form.tipo === 'entrada') {
       op = supabase.from('entradas').insert({
         descricao: form.descricao, valor, tipo: form.entrada_tipo,
@@ -131,12 +133,16 @@ export default function BotaoVoz({ onSalvo }) {
       const n = Number(form.parcelas)
       // A 1ª parcela cai na mesma fatura que a compra à vista cairia (A2.5)
       const cartao = cartoes.find(c => c.id === form.cartao_id)
+      const dataPrimeira = cartao ? primeiroVencimentoParcelado(cartao, form.data) : form.data
       op = supabase.from('parcelamentos').insert({
         descricao: form.descricao, valor_total: valor, num_parcelas: n,
         valor_parcela: parseFloat((valor / n).toFixed(2)), cartao_id: form.cartao_id,
-        categoria: form.categoria, data_primeira_parcela: cartao ? primeiroVencimentoParcelado(cartao, form.data) : form.data,
+        categoria: form.categoria, data_primeira_parcela: dataPrimeira,
         grupo_id: perfil.grupo_id, usuario_id: perfil.id,
       })
+      // A3.5: deixa claro que as parcelas foram criadas e até quando vão.
+      const { de, ate } = periodoParcelas(n, dataPrimeira)
+      msgOk = copy.gastos.parcelasCriadas(n, de, ate)
     } else {
       op = supabase.from('gastos').insert({
         grupo_id: perfil.grupo_id, usuario_id: perfil.id, descricao: form.descricao,
@@ -146,7 +152,7 @@ export default function BotaoVoz({ onSalvo }) {
       })
     }
 
-    const { error } = await run(op, { ok: form.tipo === 'entrada' ? t.okEntrada : t.okGasto })
+    const { error } = await run(op, { ok: msgOk })
     if (error) { setSalvando(false); return }
 
     // Marca o log como salvo (e se o usuário corrigiu) — alimenta a taxa de acerto no /admin.
