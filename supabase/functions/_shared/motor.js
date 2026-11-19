@@ -13,7 +13,9 @@
 //  • Assinatura: cobra todo mês no dia_cobranca (sem dia = dia 1), só a partir de
 //    cobrada_desde; no cartão entra na fatura daquela cobrança.
 //  • Compra de outra pessoa: no DINHEIRO sai normal (fatura/pix) e o reembolso entra
-//    como entrada; no MEU GASTO (categorias, orçamento) não entra.
+//    como entrada; no MEU GASTO (categorias, orçamento) não entra. Enquanto a pessoa
+//    não paga, o reembolso fica PREVISTO (a receber) no mês em que o dinheiro sai —
+//    mês da fatura, da parcela ou da compra (A1.14, 18/11/2026).
 //  • Saldo do mês  = o que entrou na conta − o que foi pago no mês.
 //  • Sobra do mês  = entradas do mês − tudo que vence no mês − à vista do mês
 //    (− aportes em cofrinho + saques). É o "Quanto posso gastar".
@@ -211,8 +213,17 @@ export function resumoMes(comp, dados, opcoes = {}) {
   const cp = dados.contasPagas || []
 
   // ENTRADAS com data no mês (recorrentes já vêm lançadas, pendentes até receber)
-  const entradas = (dados.entradas || []).filter((e) => compDe(e.data) === comp)
-    .map((e) => ({ tipo: 'entrada', id: e.id, descricao: e.descricao, valor: num(e.valor), data: e.data, recebida: !!e.recebido, origem: e.origem || 'manual' }))
+  // + REEMBOLSOS PREVISTOS: o que outras pessoas vão te devolver pelo que saiu neste mês
+  //   (uma linha por pessoa, a receber; some quando você marca "Receber de Fulano").
+  const entradas = [
+    ...(dados.entradas || []).filter((e) => compDe(e.data) === comp)
+      .map((e) => ({ tipo: 'entrada', id: e.id, descricao: e.descricao, valor: num(e.valor), data: e.data, recebida: !!e.recebido, origem: e.origem || 'manual' })),
+    ...reembolsosPrevistos(comp, dados).map((p) => ({
+      tipo: 'entrada', id: `previsto:${p.pessoaId || p.pessoaNome}`, descricao: `A receber de ${p.pessoaNome}`,
+      valor: p.total, data: p.data, recebida: false, origem: 'reembolso_previsto',
+      pessoaId: p.pessoaId, pessoaNome: p.pessoaNome, qtd: p.itens.length, itens: p.itens,
+    })),
+  ]
 
   // FATURAS que vencem no mês
   const faturas = (dados.cartoes || [])
@@ -333,6 +344,70 @@ export function meuGastoDoMes(comp, dados) {
     add(a.categoria || 'assinaturas', { tipo: 'assinatura', id: a.id, descricao: a.nome, valor: num(a.valor), data: d, cartaoId: a.cartao_id || null })
   }
   return { porCategoria, itens, total: soma(itens) }
+}
+
+// ---------------------------------------------------------------- outras pessoas (a receber)
+// Tudo que é de outra pessoa (compra à vista ou no cartão, parcela, valor lançado à mão),
+// com o MÊS EM QUE O DINHEIRO SAI da sua conta — é nesse mês que o reembolso fica previsto
+// (A1.14) e é por ele que o A Receber separa os meses (A1.13):
+//   compra no cartão → mês da fatura (vencimento) · parcela → mês da parcela ·
+//   pix/dinheiro/débito → data da compra · lançado à mão → a data dele.
+// `origem` diz de onde veio (A1.15): cartão (qual), à vista (forma), parcelado sem cartão,
+// conta fixa (a receber manual ligado a uma conta fixa), todo mês ou lançado à mão.
+export function itensDeTerceiros(dados) {
+  const cartaoPorId = new Map((dados.cartoes || []).map((c) => [c.id, c]))
+  const out = []
+  for (const g of dados.gastos || []) {
+    if (!g.pessoa_id) continue
+    const cartao = g.cartao_id ? cartaoPorId.get(g.cartao_id) : null
+    const comp = cartao ? compDaCompra(cartao, g.data, g.fatura_ajuste) : compDe(g.data)
+    out.push({
+      tipo: 'gasto', id: g.id, pessoaId: g.pessoa_id, pessoaNome: g.pessoa_nome || null,
+      descricao: g.descricao, valor: num(g.valor), data: g.data, comp,
+      dataSaida: cartao ? vencimentoDaComp(cartao, comp) : g.data,
+      recebido: g.reembolso_status === 'quitado', entradaId: g.reembolso_entrada_id || null,
+      origem: cartao ? { tipo: 'cartao', cartaoId: cartao.id, cartaoNome: cartao.nome } : { tipo: 'avista', forma: g.tipo_pagamento || null },
+    })
+  }
+  for (const p of dados.parcelas || []) {
+    if (!p.pessoa_id) continue
+    const cartao = p.cartao_id ? cartaoPorId.get(p.cartao_id) : null
+    const comp = compDe(p.data_vencimento)
+    out.push({
+      tipo: 'parcela', id: p.id, pessoaId: p.pessoa_id, pessoaNome: p.pessoa_nome || null,
+      descricao: p.descricao, valor: num(p.valor), data: p.data_vencimento, comp,
+      dataSaida: cartao ? vencimentoDaComp(cartao, comp) : p.data_vencimento,
+      recebido: !!p.recebido, entradaId: p.reembolso_entrada_id || null, numero: p.numero, deTotal: p.num_parcelas,
+      origem: cartao ? { tipo: 'cartao', cartaoId: cartao.id, cartaoNome: cartao.nome } : { tipo: 'parcelado' },
+    })
+  }
+  for (const m of dados.aReceber || []) {
+    out.push({
+      tipo: 'manual', id: m.id, pessoaId: m.pessoa_id, pessoaNome: m.pessoa_nome || null,
+      descricao: m.descricao, valor: num(m.valor), data: m.data, comp: compDe(m.data), dataSaida: m.data,
+      recebido: !!m.recebido, entradaId: m.entrada_id || null, recorrente: !!m.recorrente, serieId: m.serie_id || null,
+      origem: m.conta_fixa_id
+        ? { tipo: 'conta_fixa', contaFixaId: m.conta_fixa_id, contaFixaNome: m.conta_fixa_nome || null }
+        : { tipo: m.recorrente ? 'todo_mes' : 'manual' },
+    })
+  }
+  return out
+}
+
+// Reembolsos previstos do mês `comp` (A1.14): o que outras pessoas ainda vão te devolver
+// pelo que saiu da sua conta neste mês — uma linha por pessoa (maior primeiro).
+export function reembolsosPrevistos(comp, dados) {
+  const porPessoa = new Map()
+  for (const i of itensDeTerceiros(dados)) {
+    if (i.recebido || i.comp !== comp || i.valor <= 0.004) continue
+    const k = i.pessoaId || i.pessoaNome || '?'
+    if (!porPessoa.has(k)) porPessoa.set(k, { pessoaId: i.pessoaId, pessoaNome: i.pessoaNome || 'Alguém', itens: [], total: 0, data: i.dataSaida })
+    const p = porPessoa.get(k)
+    p.itens.push(i)
+    p.total = arred(p.total + i.valor)
+    if (i.dataSaida > p.data) p.data = i.dataSaida
+  }
+  return [...porPessoa.values()].sort((a, b) => b.total - a.total)
 }
 
 // ---------------------------------------------------------------- contas a vencer

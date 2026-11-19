@@ -162,12 +162,20 @@ export default function Parcelamentos() {
     )
     if (error) { setSalvando(false); return }
 
-    // Regenera as parcelas (o trigger só roda no INSERT do parcelamento).
+    // Regenera as parcelas (o trigger só roda no INSERT do parcelamento). Parcelado de outra
+    // pessoa: guarda o que ela já pagou (recebido + entrada do reembolso) e as "já paguei"
+    // nascem recebidas (A1.13) — antes a edição apagava o "recebido".
+    const { data: antigas } = await supabase.from('parcelas').select('numero, recebido, reembolso_entrada_id').eq('parcelamento_id', editando)
+    const antes = new Map((antigas || []).map(p => [p.numero, p]))
     await supabase.from('parcelas').delete().eq('parcelamento_id', editando)
     const base = parseDataLocal(form.data_primeira_parcela)
     const rows = Array.from({ length: n }, (_, k) => {
       const i = k + 1
-      return { grupo_id: perfil.grupo_id, parcelamento_id: editando, numero: i, valor: vParcela, data_vencimento: isoDe(addMonths(base, i - 1)), paga: i <= pagas }
+      const a = antes.get(i)
+      return {
+        grupo_id: perfil.grupo_id, parcelamento_id: editando, numero: i, valor: vParcela, data_vencimento: isoDe(addMonths(base, i - 1)), paga: i <= pagas,
+        recebido: !!pessoaId && (i <= pagas || !!a?.recebido), reembolso_entrada_id: pessoaId ? (a?.reembolso_entrada_id || null) : null,
+      }
     })
     await supabase.from('parcelas').insert(rows)
 

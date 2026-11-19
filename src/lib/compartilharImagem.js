@@ -2,11 +2,12 @@
 // celular, ex.: WhatsApp) ou baixa o arquivo quando o aparelho não compartilha arquivos.
 // A biblioteca html-to-image só é carregada na hora de usar.
 // Devolve 'compartilhado' | 'baixado' | 'cancelado'; lança erro se a imagem não puder ser gerada.
+import { opcoesImagem } from './fontesImagem'
 export async function compartilharImagem(elemento, { nomeArquivo = 'resumo.png', titulo = '', texto = '' } = {}) {
   const { toBlob } = await import('html-to-image')
-  // Fontes da marca já carregadas na página (Syne/DM Sans) entram na imagem.
+  // Fontes da marca (Syne/DM Sans) embutidas na imagem — ver lib/fontesImagem.js.
   if (document.fonts?.ready) { try { await document.fonts.ready } catch { /* segue */ } }
-  const blob = await toBlob(elemento, { pixelRatio: 2, cacheBust: true })
+  const blob = await toBlob(elemento, await opcoesImagem({ pixelRatio: 2, cacheBust: true }))
   if (!blob) throw new Error('imagem_vazia')
   const arquivo = new File([blob], nomeArquivo, { type: 'image/png' })
 

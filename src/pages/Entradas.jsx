@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths, getDaysInMonth } from 'date-fns'
@@ -10,7 +11,7 @@ import { fmt, fmtData, hojeISO } from '../lib/format'
 import { EmptyState } from '../components/ui'
 import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
-import { dataNoMes, nomeMes } from '../lib/motor'
+import { dataNoMes, nomeMes, carregarMotor, reembolsosPrevistos } from '../lib/motor'
 
 const t = copy.entradas
 const novoForm = () => ({ descricao: '', valor: '', tipo: 'avulso', recorrente: false, data: hojeISO() })
@@ -19,8 +20,10 @@ export default function Entradas() {
   const { perfil } = useAuth()
   const run = useDb()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const [mes, setMes] = useState(new Date())
   const [entradas, setEntradas] = useState([])
+  const [previstos, setPrevistos] = useState([])     // reembolsos previstos do mês (A1.14), um por pessoa
   const [pendentes, setPendentes] = useState([])
   const [lancando, setLancando] = useState(false)
   const [modal, setModal] = useState(false)
@@ -52,6 +55,16 @@ export default function Entradas() {
     const chavesAtuais = new Set((data || []).map(e => `${e.descricao}|${e.usuario_id}`))
     setPendentes((recAnt || []).filter(r => !chavesAtuais.has(`${r.descricao}|${r.usuario_id}`)))
     setLoading(false)
+
+    // O que outras pessoas vão te devolver pelo que saiu neste mês (motor único, mesma conta do Início).
+    const comp = format(mes, 'yyyy-MM')
+    try {
+      const dados = await carregarMotor(gid, { compIni: comp, compFim: comp })
+      setPrevistos(reembolsosPrevistos(comp, dados))
+    } catch (e) {
+      console.error('[entradas] reembolso previsto:', e)
+      setPrevistos([])
+    }
   }
 
   async function lancarRecorrentes() {
@@ -207,7 +220,8 @@ export default function Entradas() {
     setApagando(null); carregar()
   }
 
-  const total = entradas.reduce((s, e) => s + e.valor, 0)
+  const totalPrevisto = previstos.reduce((s, p) => s + p.total, 0)
+  const total = entradas.reduce((s, e) => s + Number(e.valor), 0) + totalPrevisto
   const totalRecebido = entradas.filter(e => e.recebido).reduce((s, e) => s + Number(e.valor), 0)
   const aReceber = total - totalRecebido
 
@@ -229,6 +243,9 @@ export default function Entradas() {
             <span style={{ color: 'var(--text2)' }}>Recebido <strong style={{ color: 'var(--accent-text)' }}>{fmt(totalRecebido)}</strong></span>
             <span style={{ color: 'var(--text2)' }}>A receber <strong style={{ color: 'var(--amber-text)' }}>{fmt(aReceber)}</strong></span>
           </div>
+        )}
+        {totalPrevisto > 0.004 && (
+          <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>{t.incluiPrevisto(fmt(totalPrevisto))}</p>
         )}
       </div>
 
@@ -253,8 +270,23 @@ export default function Entradas() {
         </div>
       )}
 
+      {/* Reembolso previsto (A1.14): calculado na hora pelo motor — some quando você toca "Receber" */}
+      {!loading && previstos.map(p => (
+        <button key={p.pessoaId || p.pessoaNome} onClick={() => navigate(`/a-receber?mes=${format(mes, 'yyyy-MM')}`)} className="card"
+          style={{ width: '100%', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', border: '1px dashed var(--amber)', background: 'var(--bg2)', color: 'var(--text)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <span style={{ fontSize: 22 }}>🤝</span>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 14, fontWeight: 500 }}>{t.previstoDe(p.pessoaNome)}</p>
+              <p style={{ fontSize: 11, color: 'var(--text3)' }}>{fmtData(p.data, 'dd/MM')} · {t.previstoSub(p.itens.length)}</p>
+            </div>
+          </div>
+          <span style={{ color: 'var(--amber)', fontWeight: 700, fontFamily: 'Syne', flexShrink: 0 }}>{fmt(p.total)}</span>
+        </button>
+      ))}
+
       {loading ? <div className="empty-state">Carregando...</div> : entradas.length === 0 ? (
-        <EmptyState ilustracao={<Joca pose="base" tamanho={150} />} titulo={copy.mascote.vazios.entradasTitulo} texto={copy.mascote.vazios.entradasTexto} />
+        previstos.length === 0 && <EmptyState ilustracao={<Joca pose="base" tamanho={150} />} titulo={copy.mascote.vazios.entradasTitulo} texto={copy.mascote.vazios.entradasTexto} />
       ) : entradas.map(e => (
         <div key={e.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: e.recebido ? 1 : 0.85 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>

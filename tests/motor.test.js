@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest'
 import {
   compDaCompra, cobrancaNoMes, faturaDoCartao, faturasDoCartaoAgora, limiteComprometido,
   resumoMes, meuGastoDoMes, addMeses, dataNoMes, pagoComResolvido, contasAVencer,
+  itensDeTerceiros, reembolsosPrevistos,
 } from '../supabase/functions/_shared/motor.js'
 
 const HOJE = '2026-11-16'
@@ -21,13 +22,13 @@ function dados() {
       { id: 'g1', cartao_id: 'A', data: '2026-10-20', valor: 100, categoria: 'mercado' },
       { id: 'g2', cartao_id: 'A', data: '2026-11-02', valor: 40, categoria: 'mercado' },          // dia do fechamento -> dez
       { id: 'g3', cartao_id: 'A', data: '2026-11-10', valor: 60, categoria: 'lazer' },
-      { id: 'g4', cartao_id: 'A', data: '2026-10-25', valor: 30, categoria: 'saude', pessoa_id: 'P1' }, // de outra pessoa
+      { id: 'g4', cartao_id: 'A', data: '2026-10-25', valor: 30, categoria: 'saude', pessoa_id: 'P1', reembolso_status: 'quitado' }, // de outra pessoa (já devolveu: e3)
       { id: 'g5', cartao_id: 'A', data: '2026-10-28', valor: 50, categoria: 'casa', fatura_ajuste: 1 }, // movida -> dez
       { id: 'g6', cartao_id: 'A', data: '2026-10-13', valor: 20, categoria: 'assinaturas' },      // "ajuste assinaturas" à mão
       { id: 'g7', cartao_id: 'B', data: '2026-11-10', valor: 80, categoria: 'mercado' },
       { id: 'g8', cartao_id: null, tipo_pagamento: 'pix', data: '2026-11-09', valor: 200, categoria: 'transporte' },
       { id: 'g9', cartao_id: null, tipo_pagamento: 'pix', data: '2026-11-20', valor: 50, categoria: 'lazer' },
-      { id: 'g10', cartao_id: null, tipo_pagamento: 'pix', data: '2026-11-05', valor: 40, categoria: 'saude', pessoa_id: 'P1' },
+      { id: 'g10', cartao_id: null, tipo_pagamento: 'pix', data: '2026-11-05', valor: 40, categoria: 'saude', pessoa_id: 'P1', reembolso_status: 'quitado' },
     ],
     parcelas: [
       { id: 'p1', cartao_id: 'A', data_vencimento: '2026-11-10', valor: 25, numero: 2, num_parcelas: 6, categoria: 'casa' },
@@ -176,6 +177,63 @@ describe('contas a vencer (avisos por e-mail e push)', () => {
     const d = dados()
     d.cartoes = [A, { ...B, ativo: false }]
     expect(contasAVencer(d, '2026-11-01', '2026-11-30', { hoje: HOJE }).map((i) => i.tipo)).toEqual(['parcela', 'conta_fixa'])
+  })
+})
+
+describe('reembolso previsto e A Receber por mês (A1.13 / A1.14)', () => {
+  // Jack: compra no cartão A em 10/11 (A fecha dia 2 → fatura de dez), pix em 12/11,
+  // parcela de nov no cartão B e uma de out já recebida. Raifran: parte da luz lançada à mão.
+  function comTerceiros() {
+    const d = dados()
+    d.gastos.push(
+      { id: 't1', cartao_id: 'A', data: '2026-11-10', valor: 80, categoria: 'lazer', pessoa_id: 'P2', pessoa_nome: 'Jack' },
+      { id: 't2', cartao_id: null, tipo_pagamento: 'pix', data: '2026-11-12', valor: 30, categoria: 'saude', pessoa_id: 'P2', pessoa_nome: 'Jack' },
+    )
+    d.parcelas.push(
+      { id: 't3', cartao_id: 'B', data_vencimento: '2026-11-25', valor: 50, numero: 3, num_parcelas: 10, pessoa_id: 'P2', pessoa_nome: 'Jack' },
+      { id: 't4', cartao_id: 'B', data_vencimento: '2026-10-25', valor: 50, numero: 2, num_parcelas: 10, pessoa_id: 'P2', pessoa_nome: 'Jack', recebido: true },
+    )
+    d.aReceber = [{ id: 'm1', pessoa_id: 'P3', pessoa_nome: 'Raifran', descricao: 'parte da luz', valor: 120, data: '2026-11-10', recebido: false, conta_fixa_id: 'f9', conta_fixa_nome: 'Luz' }]
+    return d
+  }
+  const quitarTudo = (d) => {
+    for (const g of d.gastos) if (g.pessoa_id) g.reembolso_status = 'quitado'
+    for (const p of d.parcelas) if (p.pessoa_id) p.recebido = true
+    for (const m of d.aReceber) m.recebido = true
+    return d
+  }
+
+  it('mês de cada item = mês em que o dinheiro sai (fatura, parcela, pix, data do lançado à mão)', () => {
+    const porId = Object.fromEntries(itensDeTerceiros(comTerceiros()).map((i) => [i.id, i]))
+    expect(porId.t1.comp).toBe('2026-12')                // cartão: vai na fatura que vence em dez
+    expect(porId.t1.dataSaida).toBe('2026-12-09')
+    expect(porId.t2.comp).toBe('2026-11')                // pix: data da compra
+    expect(porId.t3.comp).toBe('2026-11')                // parcela: mês da parcela
+    expect(porId.t3.origem).toEqual({ tipo: 'cartao', cartaoId: 'B', cartaoNome: 'Nubank' })
+    expect(porId.m1.origem).toEqual({ tipo: 'conta_fixa', contaFixaId: 'f9', contaFixaNome: 'Luz' })
+  })
+  it('previsto por pessoa no mês; o que já foi recebido fica de fora', () => {
+    const nov = reembolsosPrevistos('2026-11', comTerceiros())
+    expect(nov.map((p) => [p.pessoaNome, p.total, p.itens.length])).toEqual([['Raifran', 120, 1], ['Jack', 80, 2]])
+    expect(reembolsosPrevistos('2026-12', comTerceiros()).map((p) => [p.pessoaNome, p.total])).toEqual([['Jack', 80]])
+    expect(reembolsosPrevistos('2026-10', comTerceiros())).toEqual([]) // a de out já foi recebida
+  })
+  it('o previsto entra no "vai sobrar", não no saldo do mês', () => {
+    const com = resumoMes('2026-11', comTerceiros(), { hoje: HOJE })
+    const sem = resumoMes('2026-11', quitarTudo(comTerceiros()), { hoje: HOJE })
+    expect(com.entradas.filter((e) => e.origem === 'reembolso_previsto').map((e) => e.descricao)).toEqual(['A receber de Raifran', 'A receber de Jack'])
+    expect(com.sobraDoMes - sem.sobraDoMes).toBeCloseTo(200, 2)
+    expect(com.saldoDoMes).toBe(sem.saldoDoMes)
+    expect(com.aReceber - sem.aReceber).toBeCloseTo(200, 2)
+  })
+  it('quando a pessoa paga, vira entrada de verdade e não conta 2x', () => {
+    const pago = quitarTudo(comTerceiros())
+    pago.entradas.push({ id: 'e9', descricao: 'Reembolso · Jack (2 itens)', valor: 80, data: '2026-11-20', recebido: true, origem: 'reembolso' })
+    pago.aReceber[0].recebido = false // Raifran ainda não pagou
+    const r = resumoMes('2026-11', pago, { hoje: HOJE })
+    const previstos = r.entradas.filter((e) => e.origem === 'reembolso_previsto')
+    expect(previstos.map((e) => [e.descricao, e.valor])).toEqual([['A receber de Raifran', 120]])
+    expect(r.entradasPrevistas).toBe(3570 + 80 + 120) // as do mês + o reembolso real + o previsto
   })
 })
 

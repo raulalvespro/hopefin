@@ -197,7 +197,7 @@ export default function Dashboard() {
     },
     sobra: {
       titulo: t.resultadoSobra, subtitulo: t.explicaSobraSub,
-      blocos: [{ titulo: t.blocoEntradas, sinal: '+', itens: linhas(r.entradas, e => e.recebida ? 'recebida' : 'a receber'), total: r.entradasPrevistas }, ...blocosSaidas(false)],
+      blocos: [{ titulo: t.blocoEntradas, sinal: '+', itens: linhas(r.entradas, e => e.origem === 'reembolso_previsto' ? `previsto · ${e.qtd} ${e.qtd === 1 ? 'item' : 'itens'}` : e.recebida ? 'recebida' : 'a receber'), total: r.entradasPrevistas }, ...blocosSaidas(false)],
       resultado: { rotulo: t.resultadoSobra, valor: r.sobraDoMes },
     },
   }
