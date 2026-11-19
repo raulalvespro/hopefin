@@ -300,6 +300,43 @@ export const copy = {
     nasContas: 'nas contas do mês',
     naoLancar: 'Não lançar',
     eOutraCompra: 'É outra compra',
+    // Em qual fatura cai (A2.5)
+    vaiCairNaFatura: (venc) => `Vai cair na fatura que vence ${venc}`,
+    primeiraParcelaNaFatura: (venc) => `1ª parcela cai na fatura que vence ${venc}`,
+    proximaParcelaNaFatura: (n, venc) => `A próxima (${n}ª parcela) cai na fatura que vence ${venc}`,
+    statusFatura: {
+      aberta: (fecha) => `aberta · fecha ${fecha}`,
+      fechada: 'já fechou · a pagar',
+      atrasada: 'já venceu',
+      paga: 'essa fatura já está paga',
+    },
+    voceTrocou: 'você trocou a fatura',
+    faturaAnterior: 'Fatura anterior',
+    proximaFatura: 'Próxima fatura',
+    dataDaCompra: 'Data da compra',
+    dicaJaPagasCartao: (pagas, total) => `Já pagou ${pagas} de ${total}? Use a data da compra: as já pagas entram marcadas e a próxima cai na fatura mostrada acima.`,
+  },
+
+  // Tela Cartões — mover parcela (A2.9) e valor inicial do cartão novo (A2.7)
+  cartoes: {
+    parcelaMovida: (rotulo, seguintes, frente) => {
+      const quais = seguintes === 1 ? 'a seguinte' : `as ${seguintes} seguintes`
+      if (seguintes > 0) return `Parcela ${rotulo} e ${quais} ${frente ? 'foram pra próxima fatura' : 'voltaram pra fatura anterior'}`
+      return `Parcela ${rotulo} ${frente ? 'foi pra próxima fatura' : 'voltou pra fatura anterior'}`
+    },
+    ficaramNaPaga: (n) => ` · ${n === 1 ? '1 ficou' : `${n} ficaram`} onde estava${n === 1 ? '' : 'm'} (fatura já paga)`,
+    parcelaEmFaturaPaga: 'Essa parcela está numa fatura já paga. Desfaça o pagamento dela antes de mover.',
+    destinoPago: 'A fatura pra onde ela iria já está paga. Desfaça o pagamento dela antes de mover.',
+    moverErro: 'Não foi possível mover a parcela.',
+    desfazer: 'Desfazer',
+    inicialTitulo: 'Já usa esse cartão? (opcional)',
+    inicialDica: 'Coloque o que já está nas faturas, sem parcelas e assinaturas (essas você cadastra à parte). Cada valor entra na fatura certa.',
+    inicialPreencha: 'Preencha os dias de fechamento e de vencimento pra ver as faturas.',
+    faturaFechada: (venc) => `Fatura fechada a pagar (vence ${venc})`,
+    faturaAberta: (fecha) => `Compras da fatura aberta até agora (fecha ${fecha})`,
+    descFechada: 'Valor inicial · fatura fechada',
+    descAberta: 'Valor inicial · fatura aberta',
+    okInicial: 'Valores iniciais lançados nas faturas',
   },
 
   voz: {

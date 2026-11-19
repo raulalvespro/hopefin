@@ -2,20 +2,39 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Plus, X, ArrowRight, ArrowLeft, Undo2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { addMonths } from 'date-fns'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { useCategorias } from '../hooks/useCategorias'
 import SwipeRow from '../components/SwipeRow'
-import { fmt, fmtData, parseDataLocal, hojeISO } from '../lib/format'
+import { fmt, fmtData, hojeISO } from '../lib/format'
+import { copy } from '../copy/pt-BR'
 import {
   carregarMotor, faturaDoCartao, faturasDoCartaoAgora, limiteComprometido,
-  addMeses, compDe, compsEntre, hojeBRT, nomeMesCurto,
+  addMeses, compDe, compsEntre, hojeBRT, nomeMesCurto, diaDe, planoMoverParcelas,
+  compDaCompra, vencimentoDaComp, fechamentoDaComp, dataDeCompraNaFatura,
 } from '../lib/motor'
 
 const bandeiras = { Visa: '💙', Mastercard: '🔴', Elo: '🟡', Amex: '🟢', Hipercard: '🔵' }
 const CORES = ['#8B5CF6', '#3B82F6', '#14B8A6', '#10B981', '#F97316', '#EF4444', '#EC4899', '#64748B']
-const novoForm = () => ({ nome: '', bandeira: 'Visa', cor: '', dia_fechamento: '', dia_vencimento: '', limite: '', alerta_dias: 3, fatura_inicial: '', compra_no_fechamento: 'proxima' })
+const novoForm = () => ({ nome: '', bandeira: 'Visa', cor: '', dia_fechamento: '', dia_vencimento: '', limite: '', alerta_dias: 3, fatura_fechada: '', fatura_inicial: '', compra_no_fechamento: 'proxima' })
+const tc = copy.cartoes
+const valorNum = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return n > 0 ? Math.round(n * 100) / 100 : 0 }
+
+// Faturas do cartão que está sendo criado (A2.7): a fechada que ainda não venceu (se houver)
+// e a aberta, pelos dias do formulário. null enquanto os dias não estão preenchidos.
+function faturasIniciais(form, hoje) {
+  const f = Number(form.dia_fechamento), v = Number(form.dia_vencimento)
+  if (!(f >= 1 && f <= 31 && v >= 1 && v <= 31)) return null
+  const cfg = { dia_fechamento: f, dia_vencimento: v, compra_no_fechamento: form.compra_no_fechamento }
+  const compAberta = compDaCompra(cfg, hoje)
+  const compFechada = addMeses(compAberta, -1)
+  const vencFechada = vencimentoDaComp(cfg, compFechada)
+  return {
+    cfg,
+    aberta: { comp: compAberta, fechamento: fechamentoDaComp(cfg, compAberta) },
+    fechada: vencFechada >= hoje ? { comp: compFechada, vencimento: vencFechada } : null,
+  }
+}
 
 // Cores do histórico: paga (verde), fechada no prazo (âmbar), atrasada (vermelho), aberta (azul claro)
 const COR_STATUS = { paga: 'var(--accent)', fechada: 'var(--amber)', atrasada: 'var(--red)', aberta: 'var(--blue)' }
@@ -74,18 +93,39 @@ export default function Cartoes() {
     if (!error) carregar()
   }
 
-  // Move uma parcela ±1 fatura (muda o vencimento). Com "Desfazer".
+  // Move uma parcela ±1 fatura e leva junto as SEGUINTES da mesma compra (A2.9). Parcela de
+  // fatura já paga não sai, e nenhuma entra numa fatura já paga. "Desfazer" volta tudo.
   async function moverParcela(parcelaId, delta) {
     const p = (dados?.parcelas || []).find(x => x.id === parcelaId)
-    if (!p) return
-    const antes = p.data_vencimento
-    const nova = addMonths(parseDataLocal(antes), delta)
-    const iso = `${nova.getFullYear()}-${String(nova.getMonth() + 1).padStart(2, '0')}-${String(nova.getDate()).padStart(2, '0')}`
-    const { error } = await supabase.from('parcelas').update({ data_vencimento: iso }).eq('id', parcelaId)
-    if (error) { toast('Não foi possível mover a parcela.', 'erro'); return }
+    const card = p && cartoes.find(c => c.id === p.cartao_id)
+    if (!p || !card) return
+    // As parcelas da compra direto do banco (as mais distantes podem não estar carregadas)
+    const [{ data: irmas, error }, { data: parc }] = await Promise.all([
+      supabase.from('parcelas').select('id, numero, data_vencimento').eq('parcelamento_id', p.parcelamento_id),
+      supabase.from('parcelamentos').select('data_primeira_parcela').eq('id', p.parcelamento_id).maybeSingle(),
+    ])
+    if (error || !irmas?.length) { toast(tc.moverErro, 'erro'); return }
+    const plano = planoMoverParcelas({
+      cartao: card, parcelas: irmas, parcelaId, delta, contasPagas: dados.contasPagas,
+      diaBase: parc?.data_primeira_parcela ? diaDe(parc.data_primeira_parcela) : null,
+    })
+    if (!plano.ok) {
+      if (plano.motivo === 'fatura_paga') toast(tc.parcelaEmFaturaPaga, 'erro')
+      else if (plano.motivo === 'destino_pago') toast(tc.destinoPago, 'erro')
+      return
+    }
+    if (!plano.mudancas.length) return
+    const gravar = lado => Promise.all(plano.mudancas.map(m => supabase.from('parcelas').update({ data_vencimento: m[lado] }).eq('id', m.id)))
+    // Moveu a 1ª parcela: o começo do parcelamento anda junto (editar depois não desfaz o ajuste)
+    const primeira = parc ? plano.mudancas.find(m => m.numero === 1) : null
+    const gravarInicio = data => supabase.from('parcelamentos').update({ data_primeira_parcela: data }).eq('id', p.parcelamento_id)
+    const res = await gravar('para')
+    if (res.some(r => r.error)) { await gravar('de'); toast(tc.moverErro, 'erro'); carregar(); return }
+    if (primeira) await gravarInicio(primeira.para)
     carregar()
-    toast(delta > 0 ? 'Parcela jogada pra próxima fatura' : 'Parcela voltou pra fatura anterior', 'ok', {
-      acao: { label: 'Desfazer', onClick: async () => { await supabase.from('parcelas').update({ data_vencimento: antes }).eq('id', parcelaId); carregar() } },
+    const msg = tc.parcelaMovida(`${p.numero}/${p.num_parcelas}`, plano.mudancas.length - 1, delta > 0) + (plano.ficaram ? tc.ficaramNaPaga(plano.ficaram) : '')
+    toast(msg, 'ok', {
+      acao: { label: tc.desfazer, onClick: async () => { await gravar('de'); if (primeira) await gravarInicio(parc.data_primeira_parcela); carregar() } },
     })
   }
 
@@ -106,7 +146,7 @@ export default function Cartoes() {
     setForm({
       nome: c.nome, bandeira: c.bandeira || 'Visa', cor: c.cor || '',
       dia_fechamento: String(c.dia_fechamento ?? ''), dia_vencimento: String(c.dia_vencimento ?? ''),
-      limite: c.limite != null ? String(c.limite) : '', alerta_dias: c.alerta_dias ?? 3, fatura_inicial: '',
+      limite: c.limite != null ? String(c.limite) : '', alerta_dias: c.alerta_dias ?? 3, fatura_fechada: '', fatura_inicial: '',
       compra_no_fechamento: c.compra_no_fechamento || 'proxima',
     })
     setModal(true)
@@ -131,15 +171,18 @@ export default function Cartoes() {
         { ok: 'Cartão criado' }
       )
       if (error) { setSalvando(false); return }
-      const fat = parseFloat(String(form.fatura_inicial).replace(',', '.'))
-      if (data?.id && fat > 0) {
-        await run(
-          supabase.from('gastos').insert({
-            grupo_id: perfil.grupo_id, usuario_id: perfil.id, cartao_id: data.id, tipo_pagamento: 'cartao',
-            descricao: 'Fatura atual (ajuste inicial)', valor: fat, categoria: 'outros', data: hojeISO(),
-          }),
-          { ok: 'Fatura inicial registrada' }
-        )
+      // Valores iniciais (A2.7): cada um entra numa data que cai na fatura certa —
+      // a fechada a pagar na véspera do fechamento dela, a aberta hoje.
+      const hojeAgora = hojeBRT()
+      const ini = faturasIniciais(form, hojeAgora)
+      if (data?.id && ini) {
+        const base = { grupo_id: perfil.grupo_id, usuario_id: perfil.id, cartao_id: data.id, tipo_pagamento: 'cartao', categoria: 'outros' }
+        const vFechada = ini.fechada ? valorNum(form.fatura_fechada) : 0
+        const vAberta = valorNum(form.fatura_inicial)
+        const linhas = []
+        if (vFechada > 0) linhas.push({ ...base, descricao: tc.descFechada, valor: vFechada, data: dataDeCompraNaFatura(ini.cfg, ini.fechada.comp) })
+        if (vAberta > 0) linhas.push({ ...base, descricao: tc.descAberta, valor: vAberta, data: hojeAgora })
+        if (linhas.length) await run(supabase.from('gastos').insert(linhas), { ok: tc.okInicial })
       }
     }
     setSalvando(false)
@@ -375,15 +418,31 @@ export default function Cartoes() {
               <div className="form-group"><label>Limite (opcional)</label><input type="number" inputMode="decimal" value={form.limite} onChange={e => setForm(p => ({ ...p, limite: e.target.value }))} placeholder="0,00" /></div>
               <div className="form-group"><label>Alertar X dias antes</label><input type="number" inputMode="numeric" pattern="[0-9]*" min="1" max="15" value={form.alerta_dias} onChange={e => setForm(p => ({ ...p, alerta_dias: e.target.value }))} /></div>
             </div>
-            {!editando && (
-              <div className="form-group">
-                <label>Fatura atual aproximada (opcional)</label>
-                <input type="number" inputMode="decimal" value={form.fatura_inicial} onChange={e => setForm(p => ({ ...p, fatura_inicial: e.target.value }))} placeholder="0,00" />
-                <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
-                  Já usa esse cartão? Informe o que já tem na fatura aberta (fora parcelas e assinaturas) e a gente lança um ajuste pra começar com o valor certo.
-                </span>
-              </div>
-            )}
+            {!editando && (() => {
+              // Valor inicial (A2.7): a fatura fechada que ainda vai ser paga + o que já está na aberta
+              const ini = faturasIniciais(form, hoje)
+              const dica = { fontSize: 11, color: 'var(--text3)', marginTop: 4, marginBottom: 14, display: 'block', lineHeight: 1.4 }
+              return (
+                <div style={{ marginBottom: 4 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 8 }}>{tc.inicialTitulo}</p>
+                  {!ini ? <span style={dica}>{tc.inicialPreencha}</span> : (
+                    <>
+                      {ini.fechada && (
+                        <div className="form-group">
+                          <label>{tc.faturaFechada(ddmm(ini.fechada.vencimento))}</label>
+                          <input type="number" inputMode="decimal" value={form.fatura_fechada} onChange={e => setForm(p => ({ ...p, fatura_fechada: e.target.value }))} placeholder="0,00" />
+                        </div>
+                      )}
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label>{tc.faturaAberta(ddmm(ini.aberta.fechamento))}</label>
+                        <input type="number" inputMode="decimal" value={form.fatura_inicial} onChange={e => setForm(p => ({ ...p, fatura_inicial: e.target.value }))} placeholder="0,00" />
+                      </div>
+                      <span style={dica}>{tc.inicialDica}</span>
+                    </>
+                  )}
+                </div>
+              )
+            })()}
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharModal}>Cancelar</button>
               <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} onClick={salvar} disabled={salvando}>

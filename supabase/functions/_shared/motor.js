@@ -10,6 +10,11 @@
 //    NO dia do fechamento vai pra PRÓXIMA fatura (padrão dos bancos; o cartão pode
 //    dizer 'atual'). "Mover de fatura" (gasto.fatura_ajuste) soma ±N faturas.
 //  • Parcela: cai na fatura do mês do vencimento dela (data_vencimento).
+//  • Parcelado NOVO no cartão (A2.5, 18/11/2026): a 1ª parcela cai na mesma fatura em que
+//    a compra à vista cairia (data da compra × fechamento, ± ajuste); o 1º vencimento
+//    guardado é o dia em que essa fatura vence. As seguintes vêm uma por fatura.
+//  • Mover parcela de fatura leva junto as SEGUINTES da mesma compra; fatura já paga não
+//    perde nem ganha parcela (A2.9, 18/11/2026).
 //  • Assinatura: cobra todo mês no dia_cobranca (sem dia = dia 1), só a partir de
 //    cobrada_desde; no cartão entra na fatura daquela cobrança.
 //  • Compra de outra pessoa: no DINHEIRO sai normal (fatura/pix) e o reembolso entra
@@ -80,6 +85,14 @@ export function compDaCompra(cartao, iso, ajuste = 0) {
   return addMeses(addMeses(compFech, atrasoVenc(cartao)), Number(ajuste) || 0)
 }
 
+// Uma data de compra que cai na fatura `comp`: a véspera do fechamento dela (vale nas
+// duas regras do dia do fechamento). Usada no valor inicial do cartão novo (A2.7).
+export const dataDeCompraNaFatura = (cartao, comp) => addDias(fechamentoDaComp(cartao, comp), -1)
+
+// Parcelado no cartão (A2.5): 1º vencimento = dia em que vence a fatura da compra.
+export const primeiroVencimentoParcelado = (cartao, dataCompra, ajuste = 0) =>
+  vencimentoDaComp(cartao, compDaCompra(cartao, dataCompra, ajuste))
+
 // ---------------------------------------------------------------- assinatura
 // Data da cobrança da assinatura no mês `comp`, ou null se ainda não valia.
 export function cobrancaNoMes(assinatura, comp) {
@@ -102,6 +115,34 @@ export function cobrancasNaFatura(assinatura, cartao, comp) {
 // ---------------------------------------------------------------- pagamentos
 export function estaPaga(contasPagas, tipo, referenciaId, comp) {
   return (contasPagas || []).some((r) => r.tipo === tipo && r.referencia_id === referenciaId && r.competencia === comp && r.pago)
+}
+
+// ---------------------------------------------------------------- mover parcela (A2.9)
+// Plano pra mover uma parcela de cartão ±N faturas: ela e as SEGUINTES da mesma compra
+// (número maior) andam juntas, pra não juntar duas parcelas na mesma fatura. Parcela numa
+// fatura já paga não sai dela e nenhuma entra numa fatura já paga ("paga" = fatura marcada
+// como paga em contas_pagas — é o que vale pra parcela de cartão).
+// `parcelas`: as da compra ({ id, numero, data_vencimento }). `diaBase`: dia do mês da 1ª
+// parcela, pra não "encolher" o dia a cada mudança (31 → 28 → 28...).
+// Devolve { ok, motivo, mudancas: [{ id, numero, de, para }], ficaram }.
+export function planoMoverParcelas({ cartao, parcelas, parcelaId, delta, contasPagas, diaBase }) {
+  const passo = Number(delta) || 0
+  const alvo = (parcelas || []).find((p) => p.id === parcelaId)
+  const vazio = (motivo) => ({ ok: false, motivo, mudancas: [], ficaram: 0 })
+  if (!alvo || !passo) return vazio('nada')
+  const paga = (iso) => estaPaga(contasPagas, 'fatura', cartao?.id, compDe(iso))
+  const destino = (iso) => dataNoMes(addMeses(compDe(iso), passo), Number(diaBase) || diaDe(iso))
+  if (paga(alvo.data_vencimento)) return vazio('fatura_paga')
+  if (paga(destino(alvo.data_vencimento))) return vazio('destino_pago')
+  const mudancas = []
+  let ficaram = 0
+  const seguintes = parcelas.filter((p) => Number(p.numero) >= Number(alvo.numero)).sort((a, b) => a.numero - b.numero)
+  for (const p of seguintes) {
+    const para = destino(p.data_vencimento)
+    if (paga(p.data_vencimento) || paga(para)) { ficaram++; continue }
+    if (para !== p.data_vencimento) mudancas.push({ id: p.id, numero: Number(p.numero), de: p.data_vencimento, para })
+  }
+  return { ok: true, motivo: null, mudancas, ficaram }
 }
 
 // ---------------------------------------------------------------- fatura

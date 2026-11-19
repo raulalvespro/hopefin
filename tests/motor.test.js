@@ -6,7 +6,8 @@ import { describe, it, expect } from 'vitest'
 import {
   compDaCompra, cobrancaNoMes, faturaDoCartao, faturasDoCartaoAgora, limiteComprometido,
   resumoMes, meuGastoDoMes, addMeses, dataNoMes, pagoComResolvido, contasAVencer,
-  itensDeTerceiros, reembolsosPrevistos,
+  itensDeTerceiros, reembolsosPrevistos, compDe, dataDeCompraNaFatura, primeiroVencimentoParcelado,
+  planoMoverParcelas,
 } from '../supabase/functions/_shared/motor.js'
 
 const HOJE = '2026-11-16'
@@ -253,5 +254,81 @@ describe('orçamento', () => {
     expect(r.reservaAvista).toBe(300)
     expect(r.livreSeparandoOrcamento).toBe(1309)
     expect(r.faturaMesQueVemEstimada).toBe(685) // 205 + 480
+  })
+})
+
+describe('cartão: parcelado novo, valor inicial e mover parcela (A2.5 / A2.7 / A2.9)', () => {
+  const AMZ = { id: 'Z', nome: 'Amazon', dia_fechamento: 26, dia_vencimento: 10 } // vence no mês seguinte ao fechamento
+  const F1 = { id: 'F1', nome: 'Fecha dia 1', dia_fechamento: 1, dia_vencimento: 8 }
+  const F31 = { id: 'F31', nome: 'Fecha dia 31', dia_fechamento: 31, dia_vencimento: 7 }
+  const B_ATUAL = { ...B, id: 'BA', compra_no_fechamento: 'atual' }
+
+  it('parcelado no cartão: a 1ª parcela cai na fatura da compra (igual à compra à vista)', () => {
+    expect(primeiroVencimentoParcelado(AMZ, '2026-11-12')).toBe('2026-12-10') // fecha 26/11, vence 10/12
+    expect(primeiroVencimentoParcelado(AMZ, '2026-11-26')).toBe('2027-01-10') // no dia do fechamento -> próxima
+    expect(primeiroVencimentoParcelado(A, '2026-11-10')).toBe('2026-12-09')
+    expect(primeiroVencimentoParcelado(A, '2026-11-10', 1)).toBe('2027-01-09') // trocou a fatura no lançamento
+    expect(primeiroVencimentoParcelado(A, '2026-11-10', -1)).toBe('2026-11-09')
+    for (const c of [A, B, C, AMZ, F1, F31, B_ATUAL]) {
+      for (const d of ['2026-01-31', '2026-02-27', '2026-02-28', '2026-11-01', '2026-11-18', '2026-11-30', '2026-12-31']) {
+        expect(compDe(primeiroVencimentoParcelado(c, d))).toBe(compDaCompra(c, d))
+      }
+    }
+  })
+
+  it('valor inicial do cartão novo: a data usada cai na fatura pedida', () => {
+    for (const c of [A, B, C, AMZ, F1, F31, B_ATUAL]) {
+      for (const comp of ['2026-01', '2026-02', '2026-03', '2026-11', '2026-12', '2027-01', '2028-03']) {
+        expect(compDaCompra(c, dataDeCompraNaFatura(c, comp))).toBe(comp)
+      }
+    }
+    // Nubank fecha 18: a fatura fechada que vence 25/11 recebe a compra de 17/11
+    expect(dataDeCompraNaFatura(B, '2026-11')).toBe('2026-11-17')
+  })
+
+  describe('mover parcela leva as seguintes', () => {
+    // caso "Receitas": a 1/4 e a 2/4 caíram juntas na fatura de novembro
+    const parc = [
+      { id: 'r1', numero: 1, data_vencimento: '2026-11-25' },
+      { id: 'r2', numero: 2, data_vencimento: '2026-11-25' },
+      { id: 'r3', numero: 3, data_vencimento: '2026-12-25' },
+      { id: 'r4', numero: 4, data_vencimento: '2027-01-25' },
+    ]
+    const pagaOut = [{ tipo: 'fatura', referencia_id: 'B', competencia: '2026-10', pago: true }]
+    const mover = (parcelaId, delta, contasPagas = pagaOut) =>
+      planoMoverParcelas({ cartao: B, parcelas: parc, parcelaId, delta, contasPagas, diaBase: 25 })
+
+    it('pra frente: a parcela e as seguintes andam uma fatura; as anteriores ficam', () => {
+      const p = mover('r2', 1)
+      expect(p.ok).toBe(true)
+      expect(p.mudancas.map((m) => [m.id, m.de, m.para])).toEqual([
+        ['r2', '2026-11-25', '2026-12-25'], ['r3', '2026-12-25', '2027-01-25'], ['r4', '2027-01-25', '2027-02-25'],
+      ])
+    })
+    it('pra trás: as seguintes voltam junto', () => {
+      expect(mover('r3', -1).mudancas.map((m) => [m.id, m.para])).toEqual([['r3', '2026-11-25'], ['r4', '2026-12-25']])
+    })
+    it('parcela de fatura já paga não sai, e nenhuma entra em fatura paga', () => {
+      const pagaNov = [...pagaOut, { tipo: 'fatura', referencia_id: 'B', competencia: '2026-11', pago: true }]
+      expect(mover('r2', 1, pagaNov)).toMatchObject({ ok: false, motivo: 'fatura_paga', mudancas: [] })
+      expect(mover('r3', -1, pagaNov)).toMatchObject({ ok: false, motivo: 'destino_pago', mudancas: [] })
+      // fatura paga de OUTRO cartão não atrapalha
+      expect(mover('r2', 1, [{ tipo: 'fatura', referencia_id: 'A', competencia: '2026-11', pago: true }]).ok).toBe(true)
+    })
+    it('uma seguinte que iria pra fatura paga fica onde está (e é contada)', () => {
+      const pagaFev = [{ tipo: 'fatura', referencia_id: 'B', competencia: '2027-02', pago: true }]
+      const p = mover('r2', 1, pagaFev)
+      expect(p.mudancas.map((m) => m.id)).toEqual(['r2', 'r3'])
+      expect(p.ficaram).toBe(1)
+    })
+    it('dia 31 não encolhe pra sempre (usa o dia da 1ª parcela)', () => {
+      const fev = [{ id: 'x1', numero: 1, data_vencimento: '2027-02-28' }, { id: 'x2', numero: 2, data_vencimento: '2027-03-31' }]
+      const p = planoMoverParcelas({ cartao: B, parcelas: fev, parcelaId: 'x1', delta: 1, contasPagas: [], diaBase: 31 })
+      expect(p.mudancas.map((m) => m.para)).toEqual(['2027-03-31', '2027-04-30'])
+    })
+    it('parcela que não existe ou passo zero: nada muda', () => {
+      expect(mover('zz', 1).ok).toBe(false)
+      expect(mover('r2', 0).ok).toBe(false)
+    })
   })
 })

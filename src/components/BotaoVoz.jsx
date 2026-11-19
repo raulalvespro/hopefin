@@ -8,6 +8,7 @@ import { useDb } from '../hooks/useDb'
 import { supabase } from '../lib/supabase'
 import { hojeISO, fmt, fmtData } from '../lib/format'
 import { copy } from '../copy/pt-BR'
+import { primeiroVencimentoParcelado } from '../lib/motor'
 
 const t = copy.voz
 
@@ -39,7 +40,7 @@ export default function BotaoVoz({ onSalvo }) {
   // Carrega os cartões do grupo ao abrir (para o select).
   useEffect(() => {
     if (!aberto || !perfil?.grupo_id) return
-    supabase.from('cartoes').select('id, nome').eq('grupo_id', perfil.grupo_id).eq('ativo', true)
+    supabase.from('cartoes').select('id, nome, dia_fechamento, dia_vencimento, compra_no_fechamento').eq('grupo_id', perfil.grupo_id).eq('ativo', true)
       .then(({ data }) => setCartoes(data || []))
   }, [aberto, perfil])
 
@@ -128,10 +129,12 @@ export default function BotaoVoz({ onSalvo }) {
       })
     } else if (form.cartao_id && Number(form.parcelas) > 1) {
       const n = Number(form.parcelas)
+      // A 1ª parcela cai na mesma fatura que a compra à vista cairia (A2.5)
+      const cartao = cartoes.find(c => c.id === form.cartao_id)
       op = supabase.from('parcelamentos').insert({
         descricao: form.descricao, valor_total: valor, num_parcelas: n,
         valor_parcela: parseFloat((valor / n).toFixed(2)), cartao_id: form.cartao_id,
-        categoria: form.categoria, data_primeira_parcela: form.data,
+        categoria: form.categoria, data_primeira_parcela: cartao ? primeiroVencimentoParcelado(cartao, form.data) : form.data,
         grupo_id: perfil.grupo_id, usuario_id: perfil.id,
       })
     } else {

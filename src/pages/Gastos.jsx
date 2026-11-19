@@ -15,9 +15,13 @@ import { EmptyState } from '../components/ui'
 import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
 import { assinaturaParecida } from '../lib/assinaturaParecida'
+import { compDaCompra, faturaDoCartao, addMeses, hojeBRT, primeiroVencimentoParcelado } from '../lib/motor'
 
-const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO(), de_terceiro: false, pessoa_nome: '', reembolso_status: null, observacao: '', assinatura: false })
+const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO(), de_terceiro: false, pessoa_nome: '', reembolso_status: null, observacao: '', assinatura: false, fatura_ajuste: 0 })
 const tg = copy.gastos
+// Vencimento curto: "09/12" no ano corrente, "09/01/2027" em outro ano
+const vencCurto = (iso, hoje) => fmtData(iso, iso.slice(0, 4) === hoje.slice(0, 4) ? 'dd/MM' : 'dd/MM/yyyy')
+const COR_FATURA = { aberta: 'var(--text3)', fechada: 'var(--amber-text)', atrasada: 'var(--red-text)', paga: 'var(--amber-text)' }
 
 export default function Gastos() {
   const { perfil } = useAuth()
@@ -38,6 +42,7 @@ export default function Gastos() {
   const [faltaCartao, setFaltaCartao] = useState(false) // tentou salvar "Cartão" sem escolher qual
   const [assinaturas, setAssinaturas] = useState([])     // as cadastradas (aviso de compra repetida)
   const [avisoDispensado, setAvisoDispensado] = useState(null) // "É outra compra"
+  const [faturasPagas, setFaturasPagas] = useState([])   // contas_pagas das faturas (aviso "já paga")
 
   useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes(); carregarPessoas(); carregarAssinaturas() } }, [perfil, mes])
 
@@ -57,7 +62,7 @@ export default function Gastos() {
       id: 'g-' + g.id, rawId: g.id, tipo: 'gasto',
       descricao: g.descricao, valor: Number(g.valor), categoria: g.categoria, data: g.data, criado: g.criado_em || '',
       observacao: g.observacao || '',
-      tipo_pagamento: g.tipo_pagamento, cartao_id: g.cartao_id,
+      tipo_pagamento: g.tipo_pagamento, cartao_id: g.cartao_id, fatura_ajuste: Number(g.fatura_ajuste) || 0,
       // "Cartão" salvo sem dizer qual (antes da trava de 16/11): pede pra escolher.
       semCartao: g.tipo_pagamento === 'cartao' && !g.cartao_id,
       origem: g.cartoes?.nome || (g.tipo_pagamento === 'cartao' ? 'cartão?' : g.tipo_pagamento), pessoa: g.usuarios?.nome?.split(' ')[0],
@@ -79,9 +84,14 @@ export default function Gastos() {
     setLoading(false)
   }
 
+  // Cartões com os dias (pra mostrar em qual fatura a compra cai) + as faturas já pagas.
   async function carregarCartoes() {
-    const { data } = await supabase.from('cartoes').select('id, nome').eq('grupo_id', perfil.grupo_id).eq('ativo', true)
+    const [{ data }, { data: pagas }] = await Promise.all([
+      supabase.from('cartoes').select('id, nome, dia_fechamento, dia_vencimento, compra_no_fechamento').eq('grupo_id', perfil.grupo_id).eq('ativo', true),
+      supabase.from('contas_pagas').select('tipo, referencia_id, competencia, pago').eq('grupo_id', perfil.grupo_id).eq('tipo', 'fatura'),
+    ])
     setCartoes(data || [])
+    setFaturasPagas(pagas || [])
   }
 
   async function carregarPessoas() {
@@ -106,9 +116,14 @@ export default function Gastos() {
   function mudarPagamento(tipo) {
     setFaltaCartao(false)
     setForm(p => ({
-      ...p, tipo_pagamento: tipo,
+      ...p, tipo_pagamento: tipo, fatura_ajuste: 0,
       cartao_id: tipo === 'cartao' ? (p.cartao_id || (cartoes.length === 1 ? cartoes[0].id : '')) : '',
     }))
+  }
+
+  // ‹ › da fatura (A2.5): troca a fatura em que a compra cai, ali mesmo.
+  function mudarFatura(delta) {
+    setForm(p => ({ ...p, fatura_ajuste: (Number(p.fatura_ajuste) || 0) + delta }))
   }
 
   function editarGasto(it) {
@@ -120,7 +135,7 @@ export default function Gastos() {
       parcelado: false, num_parcelas: '', parcelas_pagas: '', data: it.data,
       de_terceiro: !!it.terceiro, pessoa_nome: it.terceiro && it.terceiro !== 'alguém' ? it.terceiro : '',
       reembolso_status: it.reembolso_status || null,
-      observacao: it.observacao || '', assinatura: false,
+      observacao: it.observacao || '', assinatura: false, fatura_ajuste: it.fatura_ajuste || 0,
     })
     setModal(true)
   }
@@ -155,6 +170,9 @@ export default function Gastos() {
       return
     }
     setSalvando(true)
+    // Fatura escolhida no ‹ › (A2.5): só vale pra compra no cartão
+    const cartaoSel = form.cartao_id ? cartoes.find(c => c.id === form.cartao_id) : null
+    const ajuste = form.cartao_id ? (Number(form.fatura_ajuste) || 0) : 0
 
     // Nova assinatura mensal (repete todo mês) — cria em `assinaturas`, não em `gastos`.
     // Conta a partir do mês desta data (a cobrança que está sendo lançada agora já entra).
@@ -179,7 +197,7 @@ export default function Gastos() {
       const patch = {
         descricao: form.descricao, valor, categoria: form.categoria,
         tipo_pagamento: form.tipo_pagamento, cartao_id: form.cartao_id || null, data: form.data,
-        pessoa_id: pessoaId, observacao: form.observacao || null,
+        pessoa_id: pessoaId, observacao: form.observacao || null, fatura_ajuste: ajuste,
       }
       if (pessoaId) {
         patch.reembolso_status = form.reembolso_status || 'pendente' // preserva "quitado" se já estava
@@ -203,10 +221,14 @@ export default function Gastos() {
       if (pagas < 0) pagas = 0
       if (pagas > n - 1) pagas = n - 1 // deixa ao menos 1 parcela em aberto
       const vParcela = parseFloat((valor / n).toFixed(2))
-      // Quando já há parcelas pagas, a data informada é a da PRÓXIMA parcela (nº pagas+1).
-      // Retrocede `pagas` meses pra achar a data da 1ª parcela, que o trigger usa como base.
       let dataPrimeira = form.data
-      if (pagas > 0) {
+      if (cartaoSel) {
+        // No cartão (A2.5): a data é a da COMPRA; a 1ª parcela cai na mesma fatura que a compra
+        // à vista cairia (± a fatura escolhida no ‹ ›) e vence no dia em que essa fatura vence.
+        dataPrimeira = primeiroVencimentoParcelado(cartaoSel, form.data, ajuste)
+      } else if (pagas > 0) {
+        // Sem cartão, com parcelas já pagas: a data informada é a da PRÓXIMA parcela (nº pagas+1).
+        // Retrocede `pagas` meses pra achar a data da 1ª parcela, que o trigger usa como base.
         const [yy, mm, dd] = form.data.split('-').map(Number)
         const prim = subMonths(new Date(yy, mm - 1, dd), pagas)
         dataPrimeira = `${prim.getFullYear()}-${String(prim.getMonth() + 1).padStart(2, '0')}-${String(prim.getDate()).padStart(2, '0')}`
@@ -231,7 +253,7 @@ export default function Gastos() {
           tipo_pagamento: form.tipo_pagamento, cartao_id: form.cartao_id || null,
           data: form.data, grupo_id: perfil.grupo_id, usuario_id: perfil.id,
           pessoa_id: pessoaId, reembolso_status: pessoaId ? 'pendente' : null,
-          observacao: form.observacao || null,
+          observacao: form.observacao || null, fatura_ajuste: ajuste,
         }),
         { ok: 'Gasto adicionado' }
       )
@@ -257,6 +279,23 @@ export default function Gastos() {
     ? assinaturaParecida(form, assinaturas) : null
   const aviso = parecida && parecida.id !== avisoDispensado ? parecida : null
   const avisoCartao = aviso?.cartao_id ? cartoes.find(c => c.id === aviso.cartao_id)?.nome : null
+
+  // Em qual fatura cai (A2.5), ao vivo: à vista = a compra; parcelado = a 1ª parcela (ou a
+  // próxima, se já pagou algumas). O ‹ › soma ±1 fatura (gastos.fatura_ajuste).
+  const hoje = hojeBRT()
+  const pagasForm = form.parcelado ? Math.max(0, Math.min(parseInt(form.parcelas_pagas) || 0, nParcelas >= 2 ? nParcelas - 1 : 0)) : 0
+  const cartaoForm = modal && ehCartao && !form.assinatura && form.data ? cartoes.find(c => c.id === form.cartao_id) : null
+  const ajusteForm = Number(form.fatura_ajuste) || 0
+  const faturaForm = cartaoForm
+    ? faturaDoCartao(cartaoForm, addMeses(compDaCompra(cartaoForm, form.data, ajusteForm), pagasForm), { contasPagas: faturasPagas }, hoje)
+    : null
+  const textoFatura = !faturaForm ? null
+    : !form.parcelado ? tg.vaiCairNaFatura(vencCurto(faturaForm.vencimento, hoje))
+    : pagasForm > 0 ? tg.proximaParcelaNaFatura(pagasForm + 1, vencCurto(faturaForm.vencimento, hoje))
+    : tg.primeiraParcelaNaFatura(vencCurto(faturaForm.vencimento, hoje))
+  const statusFatura = !faturaForm ? null
+    : faturaForm.status === 'aberta' ? tg.statusFatura.aberta(fmtData(faturaForm.fechamento, 'dd/MM'))
+    : tg.statusFatura[faturaForm.status]
 
   return (
     <div>
@@ -349,7 +388,7 @@ export default function Gastos() {
             <div className="form-group"><label>Descrição</label><input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Mercado Extra" /></div>
             <div className="form-row">
               <div className="form-group"><label>{form.parcelado ? 'Valor total' : 'Valor'}</label><input type="number" inputMode="decimal" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" /></div>
-              <div className="form-group"><label>{form.parcelado ? ((parseInt(form.parcelas_pagas) || 0) > 0 ? 'Próxima parcela em' : '1ª parcela em') : 'Data'}</label><input type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} /></div>
+              <div className="form-group"><label>{form.parcelado ? (ehCartao ? tg.dataDaCompra : (parseInt(form.parcelas_pagas) || 0) > 0 ? 'Próxima parcela em' : '1ª parcela em') : 'Data'}</label><input type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value, fatura_ajuste: 0 }))} /></div>
             </div>
             <div className="form-row">
               <div className="form-group">
@@ -371,7 +410,7 @@ export default function Gastos() {
             {ehCartao && (
               <div className="form-group">
                 <label>Cartão</label>
-                <select value={form.cartao_id} onChange={e => { setFaltaCartao(false); setForm(p => ({ ...p, cartao_id: e.target.value })) }}
+                <select value={form.cartao_id} onChange={e => { setFaltaCartao(false); setForm(p => ({ ...p, cartao_id: e.target.value, fatura_ajuste: 0 })) }}
                   style={faltaCartao ? { borderColor: 'var(--red)', boxShadow: '0 0 0 2px var(--red-dim)' } : undefined}>
                   <option value="">Escolha o cartão</option>
                   {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -380,6 +419,24 @@ export default function Gastos() {
                   <span style={{ fontSize: 11.5, color: 'var(--red-text)', marginTop: 4, display: 'block' }}>
                     {cartoes.length ? 'Escolha qual cartão foi usado.' : 'Nenhum cartão cadastrado — use PIX ou Dinheiro.'}
                   </span>
+                )}
+                {faturaForm && (
+                  <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '6px 6px', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)' }}>
+                    <button type="button" onClick={() => mudarFatura(-1)} aria-label={tg.faturaAnterior} title={tg.faturaAnterior}
+                      style={{ width: 30, height: 30, flexShrink: 0, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg2)' }}>
+                      <ChevronLeft size={16} color="var(--text2)" />
+                    </button>
+                    <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+                      <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{textoFatura}</p>
+                      <p style={{ fontSize: 11, color: COR_FATURA[faturaForm.status] || 'var(--text3)' }}>
+                        {statusFatura}{ajusteForm ? ` · ${tg.voceTrocou}` : ''}
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => mudarFatura(1)} aria-label={tg.proximaFatura} title={tg.proximaFatura}
+                      style={{ width: 30, height: 30, flexShrink: 0, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg2)' }}>
+                      <ChevronRight size={16} color="var(--text2)" />
+                    </button>
+                  </div>
                 )}
               </div>
             )}
@@ -469,7 +526,9 @@ export default function Gastos() {
                     )}
                     {(parseInt(form.parcelas_pagas) || 0) > 0 && (
                       <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 4, lineHeight: 1.4 }}>
-                        Já pagou {parseInt(form.parcelas_pagas) || 0} de {nParcelas || '—'}? Informe acima a data da <strong>próxima</strong> parcela — as já pagas entram marcadas.
+                        {ehCartao ? tg.dicaJaPagasCartao(parseInt(form.parcelas_pagas) || 0, nParcelas || '—') : (
+                          <>Já pagou {parseInt(form.parcelas_pagas) || 0} de {nParcelas || '—'}? Informe acima a data da <strong>próxima</strong> parcela — as já pagas entram marcadas.</>
+                        )}
                       </p>
                     )}
                   </div>
