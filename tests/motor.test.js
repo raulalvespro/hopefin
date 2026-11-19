@@ -276,6 +276,22 @@ describe('cartão: parcelado novo, valor inicial e mover parcela (A2.5 / A2.7 / 
     }
   })
 
+  // O WhatsApp faz esta mesma conta em SQL (public.vencimento_fatura_por_dias, migração 0063),
+  // conferida dia a dia contra o motor em 19/11/2026. Mudou a regra? Mude lá também.
+  it('parcelado no cartão: viradas e fim de mês (mesmos casos do SQL do WhatsApp)', () => {
+    expect(primeiroVencimentoParcelado(C, '2027-01-31')).toBe('2027-03-08') // fecha 30/01: 31/01 já é da próxima
+    expect(primeiroVencimentoParcelado(C, '2027-02-28')).toBe('2027-04-08') // fevereiro não tem 30: fecha 28/02
+    expect(primeiroVencimentoParcelado(C, '2028-02-28')).toBe('2028-03-08') // ano bissexto: fecha 29/02
+    expect(primeiroVencimentoParcelado(F31, '2026-11-29')).toBe('2026-12-07')
+    expect(primeiroVencimentoParcelado(F31, '2026-11-30')).toBe('2027-01-07') // novembro fecha no dia 30
+    expect(primeiroVencimentoParcelado(F1, '2026-10-31')).toBe('2026-11-08')
+    expect(primeiroVencimentoParcelado(F1, '2026-11-01')).toBe('2026-12-08')
+    expect(primeiroVencimentoParcelado(B, '2026-11-18')).toBe('2026-12-25')
+    expect(primeiroVencimentoParcelado(B_ATUAL, '2026-11-18')).toBe('2026-11-25') // regra 'atual' segura o dia
+    expect(primeiroVencimentoParcelado({ id: 'V31', dia_fechamento: 20, dia_vencimento: 31 }, '2026-10-25')).toBe('2026-11-30') // vence 31 em mês de 30 dias
+    expect(primeiroVencimentoParcelado({ id: 'SEM' }, '2026-11-01')).toBe('2026-12-10') // sem dias: fecha 1, vence 10
+  })
+
   it('valor inicial do cartão novo: a data usada cai na fatura pedida', () => {
     for (const c of [A, B, C, AMZ, F1, F31, B_ATUAL]) {
       for (const comp of ['2026-01', '2026-02', '2026-03', '2026-11', '2026-12', '2027-01', '2028-03']) {

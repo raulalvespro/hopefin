@@ -90,6 +90,8 @@ export function compDaCompra(cartao, iso, ajuste = 0) {
 export const dataDeCompraNaFatura = (cartao, comp) => addDias(fechamentoDaComp(cartao, comp), -1)
 
 // Parcelado no cartão (A2.5): 1º vencimento = dia em que vence a fatura da compra.
+// O WhatsApp faz a mesma conta em SQL: public.vencimento_fatura_por_dias (migração 0063).
+// Mudou a regra aqui (compDaCompra / vencimentoDaComp)? Mude lá também.
 export const primeiroVencimentoParcelado = (cartao, dataCompra, ajuste = 0) =>
   vencimentoDaComp(cartao, compDaCompra(cartao, dataCompra, ajuste))
 

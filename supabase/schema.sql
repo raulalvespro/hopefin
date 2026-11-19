@@ -564,7 +564,8 @@ alter table public.whatsapp_mensagens enable row level security;  -- sem policy:
 --   Webhook (service_role, SECURITY DEFINER): wa_conectar(tel,cod), wa_usuario(tel),
 --     pode_lancar_grupo(g) [espelha grupo_pode_lancar p/ g dado],
 --     wa_pode_grupo(g) [paywall + teto mensal de IA, mesmo contador da voz],
---     wa_salvar_lancamento(g,u,dados jsonb) [insere gasto/entrada/parcelamento origem='whatsapp'].
+--     wa_salvar_lancamento(g,u,dados jsonb) [insere gasto/entrada/parcelamento origem='whatsapp';
+--       parcelado no cartão: ver 0063 abaixo].
 --   Admin (sou_admin()): admin_whatsapp_resumo() -> jsonb (conectados, msgs/mês, erros,
 --     pausado, teto), admin_whatsapp_conexoes() -> (nome, telefone mascarado, conectado).
 -- Edge Function `whatsapp-webhook` (deploy --no-verify-jwt): valida assinatura da Meta,
@@ -588,6 +589,21 @@ create table if not exists public.app_diagnostico (   -- erros de aparelho, sem 
   criado_em timestamptz not null default now()
 );
 alter table public.app_diagnostico enable row level security;  -- insert só da própria linha; leitura só service_role
+
+-- ============================================================
+-- WhatsApp: parcelado no cartão + trava (0063, 19/11/2026)
+-- ============================================================
+-- vencimento_fatura_por_dias(fech int, venc int, regra text, data date) -> date: espelho em
+--   SQL de primeiroVencimentoParcelado() do motor (fechamento limitado ao fim do mês; compra
+--   no dia do fechamento vai pra próxima, salvo regra 'atual'; vence no mês seguinte quando
+--   vencimento <= fechamento; sem dias: fecha 1, vence 10).
+-- vencimento_da_fatura_da_compra(cartao uuid, data date) -> date: a mesma conta lendo o cartão
+--   (nulo se o cartão não existe).
+-- wa_salvar_lancamento: parcelado no cartão grava data_primeira_parcela = vencimento da fatura
+--   da compra (igual ao app); sem cartão, a data da compra.
+-- Trava: wa_salvar_lancamento, wa_usuario, wa_conectar, wa_pode_grupo, pode_lancar_grupo e as
+--   duas acima: EXECUTE só para service_role (revoke de public, anon e authenticated — o
+--   Supabase dá EXECUTE a anon/authenticated em toda função nova do schema public).
 
 -- ============================================================
 -- FIM
