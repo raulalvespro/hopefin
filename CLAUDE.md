@@ -130,6 +130,12 @@ em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `L
 - **RLS por grupo:** helper `meu_grupo_id()` (SECURITY DEFINER evita recursão). Entrar/
   criar grupo via RPC (`entrar_no_grupo`, `criar_grupo`). Tabelas de dados usam política
   `FOR ALL ... using (grupo_id = meu_grupo_id())`.
+- **Função nova nasce FECHADA** (desde a migração 0064, 19/11/2026): só o dono e o `service_role` executam. RPC que o
+  app chama → `grant execute on function ... to authenticated` na mesma migração (anon só se for usada ANTES do login,
+  e aí entra na lista `ABERTAS_DE_PROPOSITO` do `scripts/smoke-login.mjs`). Função só do servidor/cron → sem grant.
+  `drop function` + `create` também nasce fechada: refazer os grants. O `npm run smoke` reprova se alguma função
+  SECURITY DEFINER ficar aberta à chave pública fora da lista. Antes da 0063/0064, `revoke ... from public` NÃO tirava
+  o acesso de anon/authenticated (o resumo do mês chegou a entregar nome, e-mail e totais de todos os clientes).
 
 ## Chaves e segredos — onde cada coisa vai
 

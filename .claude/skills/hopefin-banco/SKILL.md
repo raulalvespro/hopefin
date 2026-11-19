@@ -26,6 +26,7 @@ description: Banco Supabase do HopeFin (projeto oapcjmkklzaodgpuwjsh). Use para 
 - RLS por grupo: `using (grupo_id = meu_grupo_id())`. Tabelas de lançamento têm policy **restrictive** de insert `with check (grupo_pode_lancar())`; tabela nova de lançamento precisa dela também.
 - Mexeu em valores de texto/enum? Conferir antes os CHECK da tabela: `select conname, pg_get_constraintdef(oid) from pg_constraint where conrelid = 'public.<tabela>'::regclass`.
 - Função `SECURITY DEFINER`: fixar `search_path` e checar `meu_grupo_id()` ou `is_admin` dentro dela.
+- **Função nova nasce fechada** (0064): só o dono e o `service_role` executam. RPC do app → `grant execute on function ... to authenticated` (anon só se for usada antes do login + incluir em `ABERTAS_DE_PROPOSITO` no `scripts/smoke-login.mjs`). Função do servidor/cron → sem grant (e incluir em `SO_SERVIDOR` no smoke). `drop` + `create` também nasce fechada: refazer os grants. Conferir com `has_function_privilege('anon', oid, 'execute')`. Até a 0063, `revoke ... from public` não bastava e o resumo do mês ficou aberto com nome e e-mail de todos os clientes.
 - Datas: o app conta o mês pela data local (America/Sao_Paulo). Converter `timestamptz` antes de agrupar por dia.
 
 ## Dados reais de usuários

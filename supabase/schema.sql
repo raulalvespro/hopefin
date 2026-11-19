@@ -606,5 +606,20 @@ alter table public.app_diagnostico enable row level security;  -- insert só da 
 --   Supabase dá EXECUTE a anon/authenticated em toda função nova do schema public).
 
 -- ============================================================
+-- Trava das funções do banco (0064, 19/11/2026)
+-- ============================================================
+-- Só o servidor (service_role): resumo_mensal, vencimentos_a_vencer, encerrar_trials_vencidos,
+--   encerrar_assinaturas_canceladas, garantir_series_grupo (+ as do WhatsApp, 0063).
+-- Só quem está logado (authenticated): admin_* (conferem sou_admin()/sou_dono_app() por dentro) e
+--   as RPCs do app (criar_grupo, entrar_no_grupo, garantir_series, receber_de_pessoa, ...).
+-- Abertas de propósito à chave pública: planos_publicos, config_mascote, meu_grupo_id, sou_admin,
+--   grupo_pode_lancar.
+-- iniciar_trial_familia: dias SEMPRE de planos_config.trial_dias (parâmetro ignorado).
+-- registrar_ia_chamada: sem negativo, teto de 1.000.000 tokens, textos cortados.
+-- Gatilhos com search_path = public.
+-- Privilégio padrão: função nova criada pelo postgres nasce SEM execute pra public/anon/authenticated.
+--   RPC nova do app precisa de "grant execute ... to authenticated". O smoke confere.
+
+-- ============================================================
 -- FIM
 -- ============================================================

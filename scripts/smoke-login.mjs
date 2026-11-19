@@ -52,5 +52,22 @@ if (env.SUPABASE_ACCESS_TOKEN && env.SUPABASE_PROJECT_REF) {
   const n = (await q.json())?.[0]?.n
   if (n > 3) console.warn(`⚠ ${n} grupos VAZIOS criados nas últimas 24h — investigar (possível laço de criar_grupo).`)
   else console.log(`✔ grupos vazios nas últimas 24h: ${n}`)
+
+  // 4) trava das funções (migrações 0063/0064, 19/11/2026): função com poder especial (SECURITY
+  //    DEFINER) aberta à chave pública só as de propósito, e as do servidor fechadas pra quem está
+  //    logado. Função nova pro app precisa de "grant execute ... to authenticated" (e anon só se for
+  //    usada antes do login — aí entra na lista ABERTAS_DE_PROPOSITO).
+  const ABERTAS_DE_PROPOSITO = ['config_mascote', 'grupo_pode_lancar', 'meu_grupo_id', 'planos_publicos', 'sou_admin']
+  const SO_SERVIDOR = ['wa_salvar_lancamento', 'wa_usuario', 'wa_conectar', 'wa_pode_grupo', 'pode_lancar_grupo',
+    'vencimento_fatura_por_dias', 'vencimento_da_fatura_da_compra', 'resumo_mensal', 'vencimentos_a_vencer',
+    'encerrar_trials_vencidos', 'encerrar_assinaturas_canceladas', 'garantir_series_grupo', 'push_pendencias']
+  const t = await fetch(`https://api.supabase.com/v1/projects/${env.SUPABASE_PROJECT_REF}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: "select p.proname, p.prosecdef as especial, has_function_privilege('anon', p.oid, 'execute') as anon, has_function_privilege('authenticated', p.oid, 'execute') as logado from pg_proc p where p.pronamespace = 'public'::regnamespace" }) })
+  if (!t.ok) falhar(`trava das funções: leitura HTTP ${t.status}`)
+  const fns = await t.json()
+  const abertas = fns.filter(f => f.especial && f.anon && !ABERTAS_DE_PROPOSITO.includes(f.proname)).map(f => f.proname)
+  if (abertas.length) falhar('função com poder especial aberta à chave pública (revoke ... from public, anon): ' + abertas.join(', '))
+  const doServidor = fns.filter(f => f.logado && SO_SERVIDOR.includes(f.proname)).map(f => f.proname)
+  if (doServidor.length) falhar('função só do servidor aberta pra quem está logado (revoke ... from authenticated): ' + doServidor.join(', '))
+  console.log(`✔ trava das funções: só as ${ABERTAS_DE_PROPOSITO.length} de propósito abertas à chave pública`)
 }
 console.log('✔ SMOKE OK')
