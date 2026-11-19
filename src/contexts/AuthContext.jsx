@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
   const [perfil, setPerfil] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erroPerfil, setErroPerfil] = useState(null) // motivo, quando o perfil não carrega (mostrado ao usuário)
+  const [avisoConvite, setAvisoConvite] = useState(null) // { codigo, motivo } quando o convite do cadastro não deu certo
   const usuarioCarregadoRef = useRef(null) // id do usuário cujo perfil já carregamos (evita recarga a cada refoco da aba)
 
   useEffect(() => {
@@ -74,7 +75,10 @@ export function AuthProvider({ children }) {
         termos_aceito_em: md.aceite_versao ? new Date().toISOString() : null,
       })
       if (md.codigo_grupo) {
-        await supabase.rpc('entrar_no_grupo', { p_codigo: md.codigo_grupo })
+        // Se não entrou (código errado, muitas tentativas ou grupo cheio), a tela de escolher
+        // grupo mostra o motivo, já com o código preenchido.
+        const { data: gidConvite, error: erroConvite } = await supabase.rpc('entrar_no_grupo', { p_codigo: md.codigo_grupo })
+        if (erroConvite || !gidConvite) setAvisoConvite({ codigo: md.codigo_grupo, motivo: erroConvite?.message || 'codigo_invalido' })
       } else if (md.nome_grupo) {
         await supabase.rpc('criar_grupo', { p_nome: md.nome_grupo })
       }
@@ -157,6 +161,9 @@ export function AuthProvider({ children }) {
     if (!user) return { error: { message: 'Sem sessão ativa' } }
     const { data: gid, error } = await supabase.rpc('entrar_no_grupo', { p_codigo: normalizarCodigo(codigo) })
     if (error) return { error }
+    // Código errado volta vazio, sem erro: assim o banco consegue contar a tentativa (trava contra chute).
+    if (!gid) return { error: { message: 'codigo_invalido' } }
+    setAvisoConvite(null)
     limparConvite()
     avisarEmail('cadastro')         // boas-vindas a quem entrou agora
     avisarEmail('entrou_no_grupo')  // e avisa o dono do grupo
@@ -173,7 +180,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      user, perfil, loading, precisaGrupo, erroPerfil,
+      user, perfil, loading, precisaGrupo, erroPerfil, avisoConvite,
       login, cadastrar, criarGrupo, entrarGrupo, logout, carregarPerfil,
     }}>
       {children}

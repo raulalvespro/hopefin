@@ -1,15 +1,16 @@
-import { lerConvite, codigoBonito } from '../lib/convite'
+import { lerConvite, codigoBonito, mensagemErroConvite } from '../lib/convite'
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import Logo from '../components/Logo'
 
 export default function EscolhaGrupo() {
-  const { perfil, criarGrupo, entrarGrupo, logout } = useAuth()
-  const conviteLink = lerConvite() // vindo de /entrar?c=…
-  const [modo, setModo] = useState(conviteLink ? 'entrar' : null) // 'criar' ou 'entrar'
+  const { perfil, criarGrupo, entrarGrupo, logout, avisoConvite } = useAuth()
+  // Código vindo de /entrar?c=… ou do cadastro com convite que não deu certo (avisoConvite).
+  const codigoInicial = lerConvite() || avisoConvite?.codigo || ''
+  const [modo, setModo] = useState(codigoInicial ? 'entrar' : null) // 'criar' ou 'entrar'
   const [nomeGrupo, setNomeGrupo] = useState('')
-  const [codigo, setCodigo] = useState(conviteLink ? codigoBonito(conviteLink) : '')
-  const [erro, setErro] = useState('')
+  const [codigo, setCodigo] = useState(codigoInicial ? codigoBonito(codigoInicial) : '')
+  const [erro, setErro] = useState(avisoConvite ? mensagemErroConvite({ message: avisoConvite.motivo }) : '')
   const [loading, setLoading] = useState(false)
 
   async function handleCriar() {
@@ -23,7 +24,7 @@ export default function EscolhaGrupo() {
     if (!codigo.trim()) return
     setLoading(true); setErro('')
     const { error } = await entrarGrupo(codigo.trim())
-    if (error) setErro('Código inválido. Verifique com quem te convidou.')
+    if (error) setErro(mensagemErroConvite(error))
     setLoading(false)
   }
 

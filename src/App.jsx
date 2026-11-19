@@ -28,7 +28,6 @@ import Importar from './pages/Importar'
 import Historico from './pages/Historico'
 import AReceber from './pages/AReceber'
 import Notificacoes from './pages/Notificacoes'
-import Admin from './pages/Admin'
 import Legal from './pages/Legal'
 import Layout from './components/Layout'
 import CookieConsent from './components/CookieConsent'
@@ -63,17 +62,14 @@ function RotaProtegida({ children }) {
   return children
 }
 
-// Guarda do /admin: exige sessão; o próprio Admin confere o papel is_admin.
-function RotaAdmin({ children }) {
-  const { user, loading } = useAuth()
-  if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'var(--text2)' }}>
-      <div style={{ width:36, height:36, border:'3px solid var(--border2)', borderTop:'3px solid var(--accent)', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  )
-  if (!user) return <Navigate to="/login" replace />
-  return children
+// O painel do dono mora em admin.hopefin.com.br, com o código do celular (2 etapas). O /admin
+// antigo dentro do app abria só com a senha (L37, 19/11/2026): agora só leva pra lá.
+function IrParaPainel() {
+  useEffect(() => {
+    const local = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    window.location.replace(local ? '/?admin=1' : 'https://admin.hopefin.com.br')
+  }, [])
+  return null
 }
 
 // Subdomínio do painel: em admin.hopefin.com.br, depois que o admin loga e cai na home,
@@ -110,7 +106,7 @@ export default function App() {
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       <Route path="/termos" element={<Legal doc="termos" />} />
       <Route path="/privacidade" element={<Legal doc="privacidade" />} />
-      <Route path="/admin" element={<RotaAdmin><Admin /></RotaAdmin>} />
+      <Route path="/admin" element={<IrParaPainel />} />
       {import.meta.env.DEV && <Route path="/dev/componentes" element={<DevComponentes />} />}
       <Route path="/" element={<RotaProtegida><Layout /></RotaProtegida>}>
         <Route index element={<Dashboard />} />

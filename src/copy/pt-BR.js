@@ -88,6 +88,8 @@ export const copy = {
     erroAceite: 'Para continuar, aceite os Termos de Uso e a Política de Privacidade.',
     erroEmailUsado: 'Já existe uma conta com esse e-mail. Faça login.',
     erroCodigoInvalido: 'Código do convite inválido. Confira com quem te convidou.',
+    erroMuitasTentativas: 'Muitas tentativas com código errado. Por segurança, espere 1 hora e tente de novo, ou peça o link do convite para quem te chamou.',
+    erroGrupoCheio: 'Esse grupo já tem 6 pessoas, o máximo do plano Família. Para entrar, alguém do grupo precisa sair ou ser removido.',
     erroGenerico: 'Não foi possível criar a conta. Tente de novo.',
   },
 

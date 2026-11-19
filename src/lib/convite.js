@@ -1,3 +1,5 @@
+import { copy } from '../copy/pt-BR'
+
 // Convite do grupo: o código do banco tem 8 caracteres (ex.: "a1b2c3d4"). Mostramos
 // no formato "A1B2-C3D4" (mais fácil de ler/ditar) e aceitamos com ou sem hífen.
 export const normalizarCodigo = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -20,4 +22,13 @@ export function lerConvite() {
 }
 export function limparConvite() {
   try { localStorage.removeItem(CHAVE) } catch { /* ignore */ }
+}
+
+// Texto do erro ao entrar num grupo pelo código (L38, 19/11/2026): código errado, muitas
+// tentativas erradas (trava contra chute de código) ou grupo cheio (até 6 pessoas).
+export function mensagemErroConvite(error) {
+  const m = String(error?.message || error || '').toLowerCase()
+  if (m.includes('muitas_tentativas')) return copy.cadastro.erroMuitasTentativas
+  if (m.includes('grupo_cheio')) return copy.cadastro.erroGrupoCheio
+  return copy.cadastro.erroCodigoInvalido
 }
