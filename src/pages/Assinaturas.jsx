@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Plus, Repeat } from 'lucide-react'
@@ -16,6 +17,7 @@ const novoForm = () => ({ nome: '', valor: '', dia_cobranca: '', cartao_id: '', 
 
 export default function Assinaturas() {
   const { perfil } = useAuth()
+  const navigate = useNavigate()
   const run = useDb()
   const { toast } = useToast()
   const { categorias, emojiDe } = useCategorias()
@@ -40,7 +42,9 @@ export default function Assinaturas() {
     setLoading(false)
   }
 
-  function abrirNovo() { setEditando(null); setForm(novoForm()); setModal(true) }
+  // A3.6: a assinatura nasce no Novo gasto (☑ É uma assinatura); a aba é o painel.
+  // O "+ Nova" abre o Novo gasto já marcado e volta pra cá no fim.
+  function abrirNovo() { navigate('/gastos?novo=assinatura&voltar=assinaturas') }
   function editar(a) {
     setEditando(a.id)
     setForm({
@@ -93,6 +97,7 @@ export default function Assinaturas() {
           <Plus size={16} /> Nova
         </button>
       </div>
+      <p style={{ fontSize: 12, color: 'var(--text2)', margin: '-8px 0 16px', lineHeight: 1.45 }}>{copy.assinaturasCasa.comoCriar}</p>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>

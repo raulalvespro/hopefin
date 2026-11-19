@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Plus, Layers, CalendarCheck } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import BotaoVoz from '../components/BotaoVoz'
 import SwipeRow from '../components/SwipeRow'
 import { useCategorias } from '../hooks/useCategorias'
@@ -38,6 +38,10 @@ export default function Gastos() {
   const [cartoes, setCartoes] = useState([])
   const { pessoas, garantirPessoa } = usePessoas(perfil?.grupo_id) // da mais usada pra menos (A3.3)
   const [modal, setModal] = useState(false)
+  const [params, setParams] = useSearchParams()
+  const [cartoesProntos, setCartoesProntos] = useState(false)
+  const [voltarPara, setVoltarPara] = useState(null)
+  const abriuPeloLink = useRef(false)
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(novoForm())
   const [salvando, setSalvando] = useState(false)
@@ -96,6 +100,7 @@ export default function Gastos() {
     ])
     setCartoes(data || [])
     setFaturasPagas(pagas || [])
+    setCartoesProntos(true)
   }
 
   async function carregarAssinaturas() {
@@ -103,9 +108,19 @@ export default function Gastos() {
     setAssinaturas(data || [])
   }
 
+  // "+ Nova" da aba Assinaturas (A3.6): abre o Novo gasto já marcado como assinatura e, ao
+  // terminar ou cancelar, volta pra lá. Espera os cartões pra escolher o cartão como sempre.
+  useEffect(() => {
+    if (abriuPeloLink.current || params.get('novo') !== 'assinatura' || !cartoesProntos) return
+    abriuPeloLink.current = true
+    setVoltarPara(params.get('voltar') === 'assinaturas' ? '/assinaturas' : null) // só destino conhecido
+    setParams({}, { replace: true })
+    abrirNovo({ assinatura: true })
+  }, [params, cartoesProntos])
+
   // Novo gasto: sem cartão cadastrado já começa em PIX; com um cartão só, ele vem escolhido.
-  function abrirNovo() {
-    const f = novoForm()
+  function abrirNovo(extra = {}) {
+    const f = { ...novoForm(), ...extra }
     if (cartoes.length === 0) f.tipo_pagamento = 'pix'
     else if (cartoes.length === 1) f.cartao_id = cartoes[0].id
     setEditando(null); setFaltaCartao(false); setAvisoDispensado(null); setForm(f); setModal(true)
@@ -141,6 +156,7 @@ export default function Gastos() {
 
   function fecharModal() {
     setModal(false); setEditando(null); setForm(novoForm())
+    if (voltarPara) { const v = voltarPara; setVoltarPara(null); navigate(v) }
   }
 
   // Resolve a pessoa do "gasto de terceiro": usa uma já cadastrada (match por nome) ou cria.
@@ -370,7 +386,7 @@ export default function Gastos() {
       )}
 
       {/* Botão adicionar manual */}
-      <button onClick={abrirNovo} style={{ position: 'fixed', bottom: 88, left: 88, width: 44, height: 44, borderRadius: '50%', background: 'var(--bg3)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+      <button onClick={() => abrirNovo()} style={{ position: 'fixed', bottom: 88, left: 88, width: 44, height: 44, borderRadius: '50%', background: 'var(--bg3)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
         <Plus size={22} color="var(--text)" />
       </button>
 

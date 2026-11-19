@@ -314,9 +314,10 @@ export const copy = {
     cobradaDesde: 'Cobrada desde',
     dicaCobradaDesde: 'Ela entra nas faturas e nas contas a partir desta data. Já era cobrada antes e você não lançou à mão? Coloque a data da 1ª cobrança.',
     desde: (mesAno) => `desde ${mesAno}`,
+    // A3.6: a aba é o painel; a assinatura nasce no Novo gasto
+    comoCriar: 'Pra criar, toque em “Nova” (abre o Novo gasto já marcado como assinatura). Arraste uma linha pra editar ou excluir.',
   },
 
-  // Novo gasto — aviso de compra que parece uma assinatura já cadastrada (A0.7)
   // "Foi de outra pessoa" — escolher quem vai pagar (A3.3)
   pessoas: {
     quem: 'Quem vai pagar?',
@@ -326,6 +327,7 @@ export const copy = {
     erroSalvar: 'Não foi possível salvar a pessoa. Tente de novo.',
   },
 
+  // Novo gasto — aviso de compra que parece uma assinatura já cadastrada (A0.7)
   gastos: {
     // Parcelas criadas (A3.5)
     parcelasCriadas: (n, de, ate) => `${n} parcelas criadas (${de} → ${ate})`,
