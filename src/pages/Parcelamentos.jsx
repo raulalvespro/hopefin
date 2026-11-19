@@ -9,6 +9,9 @@ import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import SwipeRow from '../components/SwipeRow'
 import { fmt, fmtData, hojeISO, parseDataLocal } from '../lib/format'
+import { usePessoas } from '../hooks/usePessoas'
+import EscolherPessoa from '../components/EscolherPessoa'
+import { copy } from '../copy/pt-BR'
 
 const isoDe = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
@@ -92,7 +95,7 @@ export default function Parcelamentos() {
   const { toast } = useToast()
   const [parcelamentos, setParcelamentos] = useState([])
   const [cartoes, setCartoes] = useState([])
-  const [pessoas, setPessoas] = useState([])
+  const { pessoas, garantirPessoa } = usePessoas(perfil?.grupo_id) // da mais usada pra menos (A3.3)
   const [loading, setLoading] = useState(true)
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(novaEdicao())
@@ -100,7 +103,7 @@ export default function Parcelamentos() {
   const [params] = useSearchParams()
   const ver = params.get('ver') // "ver todas" vindo da lista de Gastos (A3.5)
 
-  useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes(); carregarPessoas() } }, [perfil])
+  useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes() } }, [perfil])
 
   // Rola até a compra pedida depois que a lista carregar.
   useEffect(() => {
@@ -124,19 +127,11 @@ export default function Parcelamentos() {
     const { data } = await supabase.from('cartoes').select('id, nome').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('nome')
     setCartoes(data || [])
   }
-  async function carregarPessoas() {
-    const { data } = await supabase.from('pessoas').select('id, nome').eq('grupo_id', perfil.grupo_id).order('nome')
-    setPessoas(data || [])
-  }
-
   async function resolverPessoaId(nome) {
-    const n = (nome || '').trim()
-    if (!n) return null
-    const existe = pessoas.find(p => p.nome.toLowerCase() === n.toLowerCase())
-    if (existe) return existe.id
-    const { data } = await run(supabase.from('pessoas').insert({ grupo_id: perfil.grupo_id, nome: n }).select('id').single(), { erro: 'Não foi possível salvar a pessoa' })
-    if (data?.id) carregarPessoas()
-    return data?.id || null
+    if (!(nome || '').trim()) return null
+    const id = await garantirPessoa(nome)
+    if (!id) toast(copy.pessoas.erroSalvar, 'erro')
+    return id
   }
 
   function abrirEdicao(p) {
@@ -301,8 +296,8 @@ export default function Parcelamentos() {
               </label>
               {form.de_terceiro && (
                 <div className="form-group" style={{ marginTop: 10 }}>
-                  <input list="pessoas-parc" value={form.pessoa_nome} onChange={e => setForm(p => ({ ...p, pessoa_nome: e.target.value }))} placeholder="Quem vai pagar (ex: Pai)" />
-                  <datalist id="pessoas-parc">{pessoas.map(p => <option key={p.id} value={p.nome} />)}</datalist>
+                  <EscolherPessoa pessoas={pessoas} valor={form.pessoa_nome} onCriar={garantirPessoa}
+                    onEscolher={nome => setForm(p => ({ ...p, pessoa_nome: nome }))} />
                   <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>Cada parcela vira um “A receber” no mês em que vence.</span>
                 </div>
               )}

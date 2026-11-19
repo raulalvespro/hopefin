@@ -317,6 +317,15 @@ export const copy = {
   },
 
   // Novo gasto — aviso de compra que parece uma assinatura já cadastrada (A0.7)
+  // "Foi de outra pessoa" — escolher quem vai pagar (A3.3)
+  pessoas: {
+    quem: 'Quem vai pagar?',
+    nova: 'Nova pessoa',
+    phNova: 'Nome (ex: Pai)',
+    adicionar: 'Adicionar',
+    erroSalvar: 'Não foi possível salvar a pessoa. Tente de novo.',
+  },
+
   gastos: {
     // Parcelas criadas (A3.5)
     parcelasCriadas: (n, de, ate) => `${n} parcelas criadas (${de} → ${ate})`,

@@ -16,6 +16,8 @@ import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
 import { assinaturaParecida } from '../lib/assinaturaParecida'
 import { periodoParcelas } from '../lib/parcelas'
+import { usePessoas } from '../hooks/usePessoas'
+import EscolherPessoa from '../components/EscolherPessoa'
 import { compDaCompra, faturaDoCartao, addMeses, hojeBRT, primeiroVencimentoParcelado } from '../lib/motor'
 
 const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO(), de_terceiro: false, pessoa_nome: '', reembolso_status: null, observacao: '', assinatura: false, fatura_ajuste: 0 })
@@ -34,7 +36,7 @@ export default function Gastos() {
   const [itens, setItens] = useState([])
   const [verTodos, setVerTodos] = useState(false)
   const [cartoes, setCartoes] = useState([])
-  const [pessoas, setPessoas] = useState([])
+  const { pessoas, garantirPessoa } = usePessoas(perfil?.grupo_id) // da mais usada pra menos (A3.3)
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(novoForm())
@@ -45,7 +47,7 @@ export default function Gastos() {
   const [avisoDispensado, setAvisoDispensado] = useState(null) // "É outra compra"
   const [faturasPagas, setFaturasPagas] = useState([])   // contas_pagas das faturas (aviso "já paga")
 
-  useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes(); carregarPessoas(); carregarAssinaturas() } }, [perfil, mes])
+  useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes(); carregarAssinaturas() } }, [perfil, mes])
 
   async function carregar() {
     setLoading(true)
@@ -94,11 +96,6 @@ export default function Gastos() {
     ])
     setCartoes(data || [])
     setFaturasPagas(pagas || [])
-  }
-
-  async function carregarPessoas() {
-    const { data } = await supabase.from('pessoas').select('id, nome').eq('grupo_id', perfil.grupo_id).order('nome')
-    setPessoas(data || [])
   }
 
   async function carregarAssinaturas() {
@@ -151,14 +148,9 @@ export default function Gastos() {
   async function resolverPessoaId() {
     const nome = (form.pessoa_nome || '').trim()
     if (!form.de_terceiro || !nome) return null
-    const existe = pessoas.find(p => p.nome.toLowerCase() === nome.toLowerCase())
-    if (existe) return existe.id
-    const { data } = await run(
-      supabase.from('pessoas').insert({ grupo_id: perfil.grupo_id, nome }).select('id').single(),
-      { erro: 'Não foi possível salvar a pessoa' }
-    )
-    if (data?.id) carregarPessoas()
-    return data?.id || null
+    const id = await garantirPessoa(nome)
+    if (!id) toast(copy.pessoas.erroSalvar, 'erro')
+    return id
   }
 
   async function salvar() {
@@ -486,8 +478,8 @@ export default function Gastos() {
                 </label>
                 {form.de_terceiro && (
                   <div className="form-group" style={{ marginTop: 10 }}>
-                    <input list="pessoas-lista" value={form.pessoa_nome} onChange={e => setForm(p => ({ ...p, pessoa_nome: e.target.value }))} placeholder="Quem vai pagar (ex: Pai)" />
-                    <datalist id="pessoas-lista">{pessoas.map(p => <option key={p.id} value={p.nome} />)}</datalist>
+                    <EscolherPessoa pessoas={pessoas} valor={form.pessoa_nome} onCriar={garantirPessoa}
+                      onEscolher={nome => setForm(p => ({ ...p, pessoa_nome: nome }))} />
                     <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
                       {form.parcelado
                         ? 'Cada parcela vira um “A receber” no mês em que vence — você marca o que já recebeu parcela a parcela.'
