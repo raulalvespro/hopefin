@@ -13,6 +13,8 @@ import AvisoOffline from './AvisoOffline'
 import Avatar from './Avatar'
 import Logo from './Logo'
 import BannerAssinatura from './BannerAssinatura'
+import Ajuda from './Ajuda'
+import { useFlags } from '../hooks/useFlags'
 import { useAlertas } from '../hooks/useAlertas'
 import { useAssinatura } from '../hooks/useAssinatura'
 import { fmtData } from '../lib/format'
@@ -68,6 +70,7 @@ export default function Layout() {
   const [mais, setMais] = useState(false)
   const [conta, setConta] = useState(false) // menu "Minha conta" (A8.12)
   const plano = useAssinatura()
+  const flags = useFlags() // botão de Ajuda só com a chave "ajuda" (L29), até o Raul liberar
   const [alertasAbertos, setAlertasAbertos] = useState(false)
   const { alertas, recarregar: recarregarAlertas, dispensar, snoozeAmanha, dispensarTodos } = useAlertas()
 
@@ -117,6 +120,8 @@ export default function Layout() {
           <Logo size={24} />
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Ajuda + perguntas frequentes da tela (L29) */}
+          {flags?.ajuda && <Ajuda />}
           {/* Sininho de alertas */}
           <div style={{ position: 'relative', display: 'flex' }}>
             <button onClick={abrirAlertas} title="Alertas" style={{ position: 'relative', color: alertasAbertos ? 'var(--accent)' : 'var(--text3)', display: 'flex', alignItems: 'center' }}>
