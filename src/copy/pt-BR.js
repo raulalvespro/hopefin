@@ -245,6 +245,7 @@ export const copy = {
     desmarcar: 'Desmarcar',
     tipoFixa: 'Conta fixa',
     tipoFatura: 'Cartão de crédito',
+    abrirFatura: (nome) => `Ver as compras da ${nome}`,
     tipoAssinatura: 'Assinatura',
     tipoParcela: (n, t) => `Parcela ${n}/${t}`,
     valorRealLabel: 'Valor real que veio',
@@ -1100,10 +1101,13 @@ export const copy = {
     ],
   },
 
-  // "Onde vejo a fatura que pago este mês?" (P17, 20/11/2026): bloco no Início e no topo de Cartões.
+  // "Onde vejo a fatura que pago este mês?" (P17, 20/11/2026): bloco no topo de Cartões. No alto só
+  // as que falta pagar; as pagas ficam em "Pagas" (fechado, abre com a setinha). Saiu do Início
+  // (20/11, pedido do Raul: repetia o "contas a vencer"; lá a fatura abre em Contas do mês).
   faturasMes: {
     titulo: (mes) => `Faturas que vencem em ${mes}`,
-    sub: 'O que você paga de cartão nesse mês. Toque numa fatura pra ver as compras e marcar como paga.',
+    sub: 'Toque numa fatura pra ver as compras e marcar como paga.',
+    pagas: (n) => (n === 1 ? 'Paga (1)' : `Pagas (${n})`),
     vence: (d) => `vence ${d}`,
     venceu: (d) => `venceu ${d}`,
     status: {
@@ -1117,46 +1121,111 @@ export const copy = {
     abrir: (cartao) => `Abrir a fatura do ${cartao}`,
   },
 
-  // Botão de Ajuda + perguntas frequentes (L29, 20/11/2026). Só aparece com a chave de recurso
-  // "ajuda" (Área de desenvolvimento do /admin) até o Raul liberar. Curadoria por tela: a chave é
-  // o caminho da tela; "gerais" aparece em todas.
+  // Botão de Ajuda + perguntas frequentes (L29, 20/11/2026) + chamados (20/11, 0081). Só aparece
+  // com a chave de recurso "ajuda" (Área de desenvolvimento do /admin) até o Raul liberar.
+  // Curadoria por tela: a chave é o caminho da tela; "gerais" aparece em todas. Pergunta com
+  // `chave` só aparece pra quem tem aquela chave de recurso (WhatsApp, busca, importar).
   ajuda: {
     botao: 'Ajuda',
+    botaoNovas: (n) => `Ajuda — ${n === 1 ? '1 resposta nova' : `${n} respostas novas`}`,
     titulo: 'Ajuda',
+    buscarPh: 'Procurar (ex.: fatura, convite)',
+    buscarLabel: 'Procurar nas perguntas',
+    resultados: (n) => (n === 1 ? '1 resposta encontrada' : `${n} respostas encontradas`),
+    semResultado: 'Não achei nada com essa palavra. Tente outra, ou abra um chamado que a gente responde.',
+    limparBusca: 'Limpar a busca',
     nestaTela: (tela) => `Dúvidas sobre ${tela}`,
     gerais: 'Dúvidas gerais',
     naoAchou: 'Não achou o que procurava?',
     falar: 'Fale com a gente',
-    falarSub: 'Respondemos por e-mail, em português, sem robô.',
     email: 'contato@hopefin.com.br',
+    porEmail: 'Prefere e-mail?',
     assuntoEmail: (tela) => `Ajuda no app — ${tela}`,
     passeio: 'Rever o passeio pelo app',
     fechar: 'Fechar a ajuda',
+    voltar: 'Voltar',
+    menuConta: 'Ajuda e atendimento',
+    menuContaSub: 'Dúvidas, abrir um chamado e ver as respostas',
+
+    // Chamados (Ajuda › Abrir um chamado / Meus chamados). O prazo vem do banco (prazo_em).
+    chamado: {
+      abrir: 'Abrir um chamado',
+      abrirSub: 'Conte o que houve. A resposta aparece aqui e chega no seu e-mail.',
+      prazo: 'Respondemos em até 2 dias úteis.',
+      meus: 'Meus chamados',
+      meusSub: 'Veja o que você enviou e as respostas',
+      tituloNovo: 'Abrir um chamado',
+      categoriaLabel: 'É sobre o quê?',
+      categorias: [
+        { id: 'duvida', rotulo: 'Dúvida' },
+        { id: 'problema', rotulo: 'Algo não funciona' },
+        { id: 'sugestao', rotulo: 'Sugestão' },
+        { id: 'assinatura', rotulo: 'Plano e pagamento' },
+        { id: 'outro', rotulo: 'Outro assunto' },
+      ],
+      assuntoLabel: 'Assunto (opcional)',
+      assuntoPh: 'Ex.: a fatura do Nubank não abre',
+      mensagemLabel: 'Conte pra gente',
+      mensagemPh: 'O que você estava fazendo, o que esperava e o que aconteceu. Quanto mais detalhe, mais rápido a gente resolve.',
+      contador: (n, max) => `${n} de ${max}`,
+      cuidado: 'Não mande senha nem número de cartão por aqui.',
+      enviar: 'Enviar chamado',
+      enviando: 'Enviando…',
+      enviadoTitulo: (cod) => `Chamado ${cod} aberto ✓`,
+      enviadoSub: (data) => `A gente responde até ${data} (em até 2 dias úteis). A resposta aparece aqui, em Meus chamados, e chega no seu e-mail.`,
+      verMeus: 'Ver meus chamados',
+      vazio: 'Você ainda não abriu nenhum chamado. Quando abrir, ele aparece aqui com a resposta.',
+      carregando: 'Carregando…',
+      erroLista: 'Não consegui carregar seus chamados agora. Tente de novo em instantes.',
+      situacao: { aberto: 'Aguardando resposta', respondido: 'Respondido', encerrado: 'Encerrado' },
+      abertoEm: (data) => `Aberto em ${data}`,
+      respostaAte: (data) => `Resposta até ${data}`,
+      respondidoEm: (data) => `Respondido em ${data}`,
+      suaMensagem: 'Sua mensagem',
+      respostaEquipe: 'Resposta da equipe HopeFin',
+      nova: 'Nova',
+      outro: 'Abrir outro chamado',
+      erros: {
+        mensagem_curta: 'Escreva um pouco mais (pelo menos 10 letras) pra gente entender.',
+        mensagem_longa: 'A mensagem ficou grande demais. Resuma em até 4.000 letras.',
+        muitos_chamados: 'Você já abriu 5 chamados nas últimas 24 horas. Aguarde a resposta, ou escreva pra contato@hopefin.com.br.',
+        generico: 'Não consegui enviar agora. Confira a internet e tente de novo.',
+      },
+    },
+
     telas: {
       '/': {
         nome: 'o Início',
         perguntas: [
           { p: 'O que é o "Saldo do mês"?', r: 'É o que já entrou na conta neste mês menos o que já foi pago neste mês (faturas marcadas como pagas, contas pagas, pix e débito). Toque no valor pra ver a conta item a item.' },
-          { p: 'E o "Quanto posso gastar"?', r: 'É o que sobra no mês: tudo que entra menos tudo que vence no mês (faturas, contas fixas, parcelas, assinaturas e o que já foi pago à vista). Toque em "De onde vem esse número?" pra ver a conta.' },
-          { p: 'Onde vejo a fatura que pago este mês?', r: 'Aqui no Início, no bloco "Faturas que vencem em…" (do mês que você está vendo): cada cartão com o valor, o dia e se já foi paga. Toque numa fatura pra abrir ela em Cartões.' },
-          { p: 'Como lanço um gasto rápido?', r: 'Toque no microfone verde e fale do seu jeito, tipo "mercado 87 no Nubank". Dá pra digitar também. Você confere o que o app entendeu antes de salvar.' },
+          { p: 'E o "vai sobrar no fim do mês"?', r: 'É o que deve sobrar: tudo que entra no mês menos tudo que vence no mês (faturas, contas fixas, parcelas, assinaturas e o que você já pagou à vista). Toque no valor pra ver de onde vem cada parte.' },
+          { p: 'Onde vejo a fatura que pago este mês?', r: 'Toque em "contas a vencer", logo abaixo do saldo: abre Contas do mês, com cada fatura que vence no mês. Toque no nome da fatura pra ver as compras dela em Cartões. Em Cartões, o alto da tela mostra as faturas do mês que ainda falta pagar.' },
+          { p: 'Como lanço um gasto rápido?', r: 'Toque no microfone verde e fale do seu jeito, tipo "mercado 87 no Nubank" ou "uber 23 ontem". Dá pra digitar também. Você confere o que o app entendeu antes de salvar.' },
+          { p: 'Como vejo outro mês?', r: 'Use as setas ‹ › dos lados do nome do mês. O Início inteiro passa a mostrar aquele mês.' },
+          { p: 'Onde vejo quanto cada um gastou?', r: 'Mais abaixo, em "Gastos por pessoa": quanto cada um do grupo lançou no mês. O que foi de outra pessoa (que vai te pagar) não entra aí.' },
           { p: 'O que acontece na virada do mês?', r: 'No começo do mês o app mostra como o mês anterior fechou e pergunta o que fazer com a sobra: levar pro mês novo, guardar num cofrinho ou deixar como está. Conta que ficou sem pagar vai pra "Em atraso", em Contas do mês.' },
+          { p: 'De quem são as fotos no alto?', r: 'São as pessoas do seu grupo. Quem coloca foto em Minha conta › Configurações aparece com a foto; quem não colocou aparece com as iniciais.' },
         ],
       },
       '/gastos': {
         nome: 'Gastos',
         perguntas: [
           { p: 'Gasto no cartão: em que mês ele conta?', r: 'No mês em que a fatura vence. A compra cai na fatura pela data e pelo dia de fechamento do cartão. O app mostra, ao lançar, em qual fatura ela vai cair.' },
-          { p: 'Como lanço uma compra parcelada?', r: 'No botão de novo gasto, escolha o cartão e informe o número de parcelas. A 1ª cai na mesma fatura em que a compra cairia e as outras vêm uma por mês.' },
-          { p: 'Paguei por outra pessoa (ou dividi a conta). E agora?', r: 'Ao lançar, ligue "Foi de outra pessoa" ou divida o valor com quem vai te devolver. A parte dela sai do seu gasto e fica em A receber até ela pagar.' },
+          { p: 'Como lanço uma compra parcelada?', r: 'No novo gasto, escolha o cartão e informe o número de parcelas. A 1ª cai na mesma fatura em que a compra cairia e as outras vêm uma por mês.' },
+          { p: 'Como lanço pela voz?', r: 'Toque no microfone verde (aqui ou no Início) e fale do seu jeito: "mercado 87 no Nubank", "farmácia 32 ontem", "tênis 300 em 3 vezes". O app mostra o que entendeu e você confere antes de salvar.' },
+          { p: 'Paguei por outra pessoa (ou dividi a conta). E agora?', r: 'Ao lançar, ligue "Foi de outra pessoa (vão me pagar)" ou divida o valor com quem vai te devolver. A parte dela sai do seu gasto e fica em A receber até ela pagar.' },
           { p: 'Como edito ou apago um gasto?', r: 'Arraste o gasto pra esquerda: aparece o lápis pra editar e a lixeira pra excluir. Parcelado excluído sai de todas as faturas e meses.' },
           { p: 'A compra caiu na fatura errada', r: 'Em Cartões, abra a fatura e use as setas ← → na compra pra jogar ela pra fatura anterior ou pra próxima. A data da compra não muda.' },
+          { p: 'O app avisou que a compra parece uma assinatura', r: 'Quando a compra tem o nome e o valor de uma assinatura que você já cadastrou, o app avisa pra ela não contar duas vezes. Se for outra compra mesmo, toque em "É outra compra".' },
+          { p: 'Como acho um gasto?', r: 'Digite na busca do alto (o gasto, o cartão ou a pessoa). Em Filtros dá pra escolher o período, a categoria, o cartão ou a forma de pagamento, a pessoa e o valor.', chave: 'busca_filtros' },
+          { p: 'Dá pra trazer gastos de um extrato?', r: 'Dá: em Minha conta › Configurações › Importar CSV. Você escolhe o arquivo do banco ou de uma planilha, confere as linhas e importa. O que já está no app vem desmarcado.', chave: 'importar' },
         ],
       },
       '/entradas': {
         nome: 'Entradas',
         perguntas: [
-          { p: 'Qual a diferença entre recebida e a receber?', r: 'Recebida já está na conta e entra no Saldo do mês. A receber ainda vai cair: entra no "Quanto posso gastar", mas só vai pro saldo quando você marcar como recebida.' },
+          { p: 'Como lanço uma entrada?', r: 'Toque no + no canto de baixo da tela: valor, descrição e o dia em que o dinheiro cai.' },
+          { p: 'Qual a diferença entre recebida e a receber?', r: 'Recebida já está na conta e entra no Saldo do mês. A receber ainda vai cair: entra no "vai sobrar" do mês, mas só vai pro saldo quando você marcar como recebida.' },
           { p: 'Meu salário cai todo mês. Preciso lançar sempre?', r: 'Não. Marque que a entrada repete todo mês e o app lança os próximos meses sozinho. Se um mês vier diferente, edite só aquele mês.' },
           { p: 'Como apago uma entrada que repete?', r: 'Ao excluir, o app pergunta se é só esta ou esta e as próximas.' },
           { p: 'Alguém me pagou o que devia', r: 'Vá em A receber e toque em "Receber de…". O app lança a entrada sozinho, então não precisa lançar aqui também.' },
@@ -1165,10 +1234,14 @@ export const copy = {
       '/cartoes': {
         nome: 'Cartões',
         perguntas: [
-          { p: 'Qual fatura eu pago este mês?', r: 'As do bloco "Faturas que vencem em…", no alto desta tela (e também no Início). Em cada cartão, a fatura desse mês ganha a etiqueta "você paga este mês". "A pagar" já fechou; "Aberta" ainda recebe compras.' },
+          { p: 'Qual fatura eu pago este mês?', r: 'As do bloco do alto, "Faturas que vencem em…": ali ficam só as que ainda falta pagar. As que você já pagou vão pra "Pagas" (toque na setinha pra ver). Em cada cartão, "A pagar" já fechou e "Aberta" ainda recebe compras.' },
           { p: 'Como marco a fatura como paga?', r: 'Toque em "Marcar como paga a fatura que vence…" no cartão, ou abra a fatura. As parcelas dela entram como pagas. Errou? Abra a fatura e toque em "Desfazer pagamento".' },
+          { p: 'Como cadastro um cartão?', r: 'Toque em Novo, no alto: nome, dia em que a fatura fecha e dia em que vence. Limite e cor são opcionais. Se o cartão já tem compras, informe o valor da fatura fechada e da aberta pra começar certo.' },
+          { p: 'Como edito ou excluo um cartão?', r: 'Arraste o cartão pra esquerda: aparece o lápis pra editar e a lixeira pra excluir.' },
           { p: 'Uma compra caiu na fatura errada', r: 'Abra a fatura e use as setas ← → na compra. Numa parcela, as seguintes da mesma compra vão junto.' },
           { p: 'O que é o "Limite disponível"?', r: 'É o limite do cartão menos tudo que ainda não foi pago: a fatura a pagar, a aberta e as parcelas que ainda vão cair.' },
+          { p: 'Pra que servem as barrinhas embaixo do cartão?', r: 'São as últimas faturas (paga, fechada, vencida ou aberta). Toque numa barrinha pra abrir aquela fatura.' },
+          { p: 'Apareceu "é de outras pessoas" na fatura', r: 'É a parte das compras que você fez por outras pessoas. A fatura continua com o total; essa parte fica em A receber até a pessoa te pagar.' },
           { p: 'Compra feita no dia do fechamento vai pra qual fatura?', r: 'Pra próxima, como na maioria dos bancos. Se no seu banco é diferente, edite o cartão e escolha "a fatura que está fechando".' },
         ],
       },
@@ -1176,8 +1249,10 @@ export const copy = {
         nome: 'Contas do mês',
         perguntas: [
           { p: 'Como marco uma conta como paga?', r: 'Toque na bolinha ao lado da conta. Se o valor veio diferente do previsto (luz, água), lance o valor real que veio.' },
+          { p: 'Marquei errado', r: 'Toque de novo na bolinha pra desmarcar, ou use "Desfazer" no aviso que aparece embaixo.' },
+          { p: 'A fatura do cartão aparece aqui?', r: 'Sim: cada fatura que vence no mês aparece como uma conta. Toque no nome dela pra ver as compras em Cartões. Marcar como paga aqui é o mesmo que marcar em Cartões.' },
           { p: 'O que é "Em atraso"?', r: 'São contas de meses anteriores que ficaram sem pagar. Elas ficam ali até você marcar "Já paguei".' },
-          { p: 'A fatura do cartão aparece aqui?', r: 'Sim: cada fatura que vence no mês aparece como uma conta. Marcar ela como paga aqui é o mesmo que marcar em Cartões.' },
+          { p: 'Como vejo outro mês?', r: 'Use as setas ‹ › dos lados do nome do mês.' },
         ],
       },
       '/contas-fixas': {
@@ -1185,6 +1260,7 @@ export const copy = {
         perguntas: [
           { p: 'Pra que servem as contas fixas?', r: 'Pras contas que vencem todo mês: aluguel, luz, internet, escola. Você cadastra uma vez e elas aparecem em Contas do mês, com lembrete antes de vencer.' },
           { p: 'O valor muda todo mês (luz, água)', r: 'Cadastre um valor médio. Quando a conta chegar, lance o valor real em Contas do mês.' },
+          { p: 'Como tiro uma conta fixa?', r: 'Arraste a conta pra esquerda e toque na lixeira. Ela para de aparecer em Contas do mês.' },
           { p: 'Alguém me ajuda a pagar uma conta fixa', r: 'Em A receber, lance a parte da pessoa e ligue à conta fixa (ex.: a parte de alguém no aluguel). A conta fixa em si não muda.' },
         ],
       },
@@ -1194,14 +1270,18 @@ export const copy = {
           { p: 'Parcelado no cartão ou no carnê?', r: 'No cartão, cada parcela entra na fatura do mês dela. Sem cartão (carnê, boleto, empréstimo), a parcela aparece em Contas do mês pra você marcar como paga.' },
           { p: 'Comprei antes de usar o app e já paguei algumas parcelas', r: 'Ao cadastrar, informe quantas já foram pagas: elas entram como pagas e só as que faltam contam nos próximos meses.' },
           { p: 'Como edito um parcelado?', r: 'Toque nele pra mudar valor, número de parcelas ou a data da 1ª. As parcelas são refeitas com o valor novo.' },
+          { p: 'Uma parcela caiu na fatura errada', r: 'Em Cartões, abra a fatura e use as setas ← → na parcela: as seguintes da mesma compra vão junto.' },
+          { p: 'Como acho uma compra parcelada?', r: 'Digite na busca do alto o nome da compra.', chave: 'busca_filtros' },
         ],
       },
       '/assinaturas': {
         nome: 'Assinaturas',
         perguntas: [
-          { p: 'Como funciona a assinatura?', r: 'Ela cobra todo mês no dia que você escolher. Se for no cartão, entra sozinha na fatura certa — não precisa lançar como gasto.' },
+          { p: 'Como funciona a assinatura?', r: 'Ela cobra todo mês no dia que você escolher. Se for no cartão, entra sozinha na fatura certa: não precisa lançar como gasto.' },
           { p: 'Cancelei um serviço', r: 'Marque a assinatura como cancelada e informe a data. As cobranças até ali continuam nos meses delas; as próximas param.' },
           { p: 'Divido uma assinatura com alguém', r: 'Ao editar, divida o valor com a pessoa: a parte dela aparece em A receber todo mês.' },
+          { p: 'Assinei agora, mas a cobrança começa depois', r: 'Em "Cobrada desde", coloque a data da 1ª cobrança. Antes dela, a assinatura não entra nas faturas nem nas contas.' },
+          { p: 'Como acho uma assinatura?', r: 'Digite na busca do alto o nome do serviço.', chave: 'busca_filtros' },
         ],
       },
       '/a-receber': {
@@ -1209,7 +1289,8 @@ export const copy = {
         perguntas: [
           { p: 'O que aparece aqui?', r: 'O que outras pessoas te devem, mês a mês: compras que você fez por elas, partes de contas divididas e valores que você lançou à mão.' },
           { p: 'A pessoa pagou só uma parte', r: 'Toque em "Receber de…" e informe quanto ela pagou. O app quita do mais antigo pro mais novo e o resto continua em aberto.' },
-          { p: 'Como cobro alguém?', r: 'Toque em Cobrar: o app monta a cobrança com o que a pessoa deve, pra você mandar no WhatsApp.' },
+          { p: 'Como cobro alguém?', r: 'Toque em Cobrar: o app monta a cobrança com o que a pessoa deve, com imagem e Pix copia e cola, pra você mandar no WhatsApp.' },
+          { p: 'O que recebi entra no meu saldo?', r: 'Entra: ao tocar em "Receber de…", o app lança a entrada sozinho. Não precisa lançar de novo em Entradas.' },
         ],
       },
       '/orcamento': {
@@ -1217,6 +1298,7 @@ export const copy = {
         perguntas: [
           { p: 'Como funciona o orçamento?', r: 'Você define um limite por categoria (mercado, lazer…) e acompanha quanto já foi gasto no mês.' },
           { p: 'O que é "pago com cartão" ou "à vista"?', r: 'Diz ao app como você costuma pagar aquela categoria. No automático, ele olha como você pagou nos últimos 60 dias.' },
+          { p: 'O app me avisa quando passo do limite?', r: 'Avisa, no sininho: quando uma categoria chega perto do limite ou passa dele. Dá pra desligar em Minha conta › Configurações › Notificações.' },
         ],
       },
       '/projecao': {
@@ -1236,33 +1318,41 @@ export const copy = {
       '/cofrinhos': {
         nome: 'Cofrinhos',
         perguntas: [
-          { p: 'Como funciona o cofrinho?', r: 'Crie uma meta (viagem, reserva, carro) e registre o que você guarda nela. O que vai pro cofrinho sai do "Quanto posso gastar"; se você tirar, volta.' },
+          { p: 'Como funciona o cofrinho?', r: 'Crie uma meta (viagem, reserva, carro) e registre o que você guarda nela. O que vai pro cofrinho sai do "vai sobrar" do mês; se você tirar, volta.' },
           { p: 'O HopeFin mexe no meu dinheiro?', r: 'Não. O cofrinho é um controle: você guarda o dinheiro onde quiser (poupança, conta) e registra aqui pra acompanhar a meta.' },
+          { p: 'O app avisa da meta?', r: 'Avisa quando a meta é atingida 🎉 e quando o prazo dela está chegando. Dá pra desligar em Notificações.' },
         ],
       },
       '/configuracoes': {
         nome: 'Configurações',
         perguntas: [
-          { p: 'Como convido quem divide as contas?', r: 'Em "Convidar para o grupo", mande o código. Cabem até 6 pessoas, cada uma no seu celular, todas vendo o mesmo painel.' },
-          { p: 'Como ativo os lembretes?', r: 'Ative as notificações aqui em Configurações. Você recebe aviso antes das contas e faturas vencerem.' },
+          { p: 'Como convido quem divide as contas?', r: 'Em "Convidar para o grupo": mande o link, mostre o QR code ou passe o código. Cabem até 6 pessoas, cada uma no seu celular, todas vendo o mesmo painel.' },
+          { p: 'Como tiro alguém do grupo?', r: 'Só quem criou o grupo consegue: em "Convidar para o grupo", toque em remover ao lado da pessoa. Ela recebe um e-mail avisando.' },
+          { p: 'Como coloco minha foto?', r: 'Em "Sua conta", no fim desta tela: Adicionar foto. Ela aparece no alto do app e no Início, pra todo o grupo.' },
+          { p: 'Como troco a senha?', r: 'Em "Alterar senha": digite a nova (pelo menos 8 caracteres) duas vezes.' },
+          { p: 'Como escolho os avisos?', r: 'Em Notificações: ligue ou desligue cada tipo (contas a vencer, fatura fechando, orçamento, metas, mês no vermelho e resumo do mês).' },
           { p: 'Como deixo o app no modo escuro?', r: 'Em Aparência, escolha Claro, Escuro ou Automático (segue o celular).' },
           { p: 'Como cancelo a assinatura?', r: 'Em "Minha assinatura". Nos 7 dias da primeira cobrança dá pra cancelar e pedir o reembolso; depois disso, cancelar vale pras próximas cobranças.' },
+          { p: 'Como conecto o WhatsApp?', r: 'Em "Conectar meu WhatsApp": o app mostra um código; mande esse código pro número do Joca. Depois é só mandar "mercado 120" que ele lança.', chave: 'whatsapp_app' },
         ],
       },
       '/planos': {
         nome: 'Meu plano',
         perguntas: [
           { p: 'O plano é por pessoa?', r: 'Não. É um plano só pra família toda, com até 6 pessoas no mesmo grupo.' },
+          { p: 'Quanto custa?', r: 'Tem o mensal e o anual (o anual sai mais em conta). Os valores certinhos estão aqui em Meu plano. Começa com 7 dias grátis, sem cartão.' },
+          { p: 'Como pago?', r: 'Pix ou cartão. No anual, Pix à vista ou cartão em 12x.' },
           { p: 'E se o teste acabar e eu não assinar?', r: 'Seus dados ficam guardados: dá pra ver e exportar quando quiser. Só os lançamentos novos ficam pausados até a assinatura.' },
           { p: 'Tenho um cupom', r: 'Use o link de parceiro que você recebeu ou digite o cupom aqui em Meu plano. É um cupom por grupo.' },
-          { p: 'Como cancelo?', r: 'Em Configurações › Minha assinatura. Nos 7 dias da primeira cobrança dá pra cancelar com reembolso.' },
+          { p: 'Como cancelo? Tem reembolso?', r: 'Em Minha conta › Configurações › Minha assinatura. Nos 7 dias da primeira cobrança, "Cancelar e pedir reembolso" devolve tudo; depois disso, cancelar vale pras próximas cobranças.' },
         ],
       },
       '/meus-dados': {
         nome: 'Meus dados',
         perguntas: [
           { p: 'Como baixo os meus dados?', r: 'Em Exportar: em planilha (CSV) pra abrir no Excel ou no Google Planilhas, ou o backup completo (JSON).' },
-          { p: 'Como apago os meus dados?', r: 'Em "Apagar meus dados": remove todos os lançamentos do grupo, mas a conta e o grupo continuam. Não dá pra desfazer — baixe o backup antes.' },
+          { p: 'Como apago os meus dados?', r: 'Em "Apagar meus dados": remove todos os lançamentos do grupo, mas a conta e o grupo continuam. Não dá pra desfazer: baixe o backup antes.' },
+          { p: 'Como excluo a minha conta?', r: 'Peça por um chamado aqui na Ajuda ou pelo e-mail privacidade@hopefin.com.br. A gente exclui e te confirma por e-mail.' },
         ],
       },
       '/pessoas': {
@@ -1276,20 +1366,42 @@ export const copy = {
         nome: 'Categorias',
         perguntas: [
           { p: 'Posso criar ou renomear categorias?', r: 'Pode. Renomear muda também os lançamentos que já usam aquela categoria.' },
+          { p: 'Posso escolher o emoji?', r: 'Pode: ao criar ou editar a categoria, escolha o emoji dela.' },
         ],
       },
       '/historico': {
         nome: 'Histórico',
         perguntas: [
           { p: 'O que fica no Histórico?', r: 'Tudo o que foi lançado no grupo, do mais novo pro mais antigo: gastos, entradas e o que foi pro cofrinho.' },
+          { p: 'Até quando aparece?', r: 'Os últimos 90 dias. Pra ver mais antigo, use as telas de Gastos e Entradas (mês a mês) ou exporte em Meus dados.' },
+        ],
+      },
+      '/notificacoes': {
+        nome: 'Notificações',
+        perguntas: [
+          { p: 'Quais avisos o app manda?', r: 'Contas vencidas e a vencer, fatura do cartão fechando, orçamento no limite, metas dos cofrinhos, mês fechando no vermelho e, no dia 1º, o resumo do mês que passou. Ligue só os que quiser.' },
+          { p: 'Como recebo os avisos no celular?', r: 'Toque no aviso "Ative as notificações", no alto do app, e permita no celular. No iPhone, coloque o HopeFin na tela de início antes (pelo botão de compartilhar).' },
+        ],
+      },
+      '/importar': {
+        nome: 'Importar',
+        perguntas: [
+          { p: 'Que arquivo dá pra importar?', r: 'Um CSV: o extrato do banco ou uma planilha salva em CSV. Você confere as linhas antes de importar.', chave: 'importar' },
+          { p: 'É fatura de cartão. E agora?', r: 'Escolha o cartão como destino: as compras entram na fatura certa. O que já está no app vem desmarcado, pra não duplicar.', chave: 'importar' },
         ],
       },
     },
     perguntasGerais: [
       { p: 'Todo mundo do grupo vê tudo?', r: 'Sim. O grupo é um painel só: todos veem os mesmos lançamentos e o mesmo saldo, e cada lançamento mostra quem lançou.' },
+      { p: 'Como convido alguém pro grupo?', r: 'Toque na sua foto no alto › Configurações › Convidar para o grupo. Mande o link, o QR code ou o código. Cabem até 6 pessoas.' },
+      { p: 'Quanto custa o HopeFin?', r: 'É um plano só pra família toda (até 6 pessoas), mensal ou anual, com 7 dias grátis pra testar, sem cartão. Os valores estão em Minha conta › Meu plano.' },
+      { p: 'Como cancelo?', r: 'Em Minha conta › Configurações › Minha assinatura. Nos 7 dias da primeira cobrança você recebe tudo de volta.' },
+      { p: 'Esqueci minha senha', r: 'Na tela de entrar, toque em "Esqueci minha senha": chega um link no seu e-mail pra criar outra. Não chegou? Olhe o spam ou peça de novo.' },
       { p: 'Meus dados estão seguros?', r: 'Cada família só vê os próprios dados. O HopeFin não guarda número de cartão nem senha de banco, e não mexe no seu dinheiro: é só controle.' },
-      { p: 'O app se conecta ao meu banco?', r: 'Ainda não. Você lança pela voz ou digitando — leva poucos segundos.' },
+      { p: 'O app se conecta ao meu banco?', r: 'Ainda não. Você lança pela voz ou digitando: leva poucos segundos.' },
+      { p: 'Dá pra lançar pelo WhatsApp?', r: 'Dá: conecte em Minha conta › Configurações › Conectar meu WhatsApp. Depois é só mandar "mercado 120" pro Joca.', chave: 'whatsapp_app' },
       { p: 'Como coloco o HopeFin na tela do celular?', r: 'Abra app.hopefin.com.br no navegador e toque em "Adicionar à tela inicial" (no iPhone, pelo botão de compartilhar). Ele vira um app no seu celular.' },
+      { p: 'Como falo com vocês?', r: 'Aqui mesmo: toque em "Abrir um chamado". Respondemos em até 2 dias úteis, aqui no app e no seu e-mail.' },
     ],
   },
 }

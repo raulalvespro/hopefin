@@ -1,20 +1,26 @@
-// admin-suporte-responder — responde um e-mail da caixa de suporte, acionado pelo
-// dono no painel. Envia a resposta pelo NOSSO Resend (avisos@, reply-to contato@),
-// com o layout da marca, e marca o e-mail como respondido.
+// admin-suporte-responder — responde um contato da caixa de suporte, acionado pelo dono no painel.
+//
+// • E-mail recebido (origem 'email'): envia a resposta pelo NOSSO Resend (avisos@, reply-to
+//   contato@), com o layout da marca, e marca como respondido (como sempre foi).
+// • Chamado aberto no app (origem 'app', migração 0081): GRAVA a resposta primeiro (ela aparece no
+//   app, em Ajuda › Meus chamados, mesmo se o e-mail falhar), depois avisa a pessoa por e-mail e por
+//   notificação no celular. Responder de novo acrescenta (o histórico não se perde).
 //
 // Segurança: roda com verify-jwt. O JWT diz QUEM chamou; validamos is_admin com o
 // service_role e a sessão com o código do celular (aal2) antes de enviar.
 // Auditoria em admin_log.
-// Segredos: SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY. (SUPABASE_URL/ANON injetados.)
+// Segredos: SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, VAPID_* (SUPABASE_URL/ANON injetados.)
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { layoutEmail, enviarEmail, esc } from '../_shared/email.ts'
 import { nivelDaSessao } from '../_shared/sessao.ts'
+import { pushParaGrupo } from '../_shared/push.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } })
+const LINK_CHAMADOS = 'https://app.hopefin.com.br/?ajuda=chamados'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -27,6 +33,16 @@ const json = (b: unknown, s = 200) =>
 // Transforma o texto digitado (quebras de linha) em parágrafos HTML seguros.
 const paraHtml = (t: string) =>
   String(t).split(/\n{2,}/).map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('')
+
+// Código curto do chamado (igual ao do app e do painel): HF- + 6 primeiros do id.
+const codChamado = (id: string) => 'HF-' + String(id || '').replace(/-/g, '').slice(0, 6).toUpperCase()
+
+// "21/11 às 14:30" no horário de Brasília (separador entre respostas do mesmo chamado).
+function quando(d: Date) {
+  const f = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  const p = Object.fromEntries(f.formatToParts(d).map((x) => [x.type, x.value]))
+  return `${p.day}/${p.month} às ${p.hour}:${p.minute}`
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -51,16 +67,74 @@ Deno.serve(async (req) => {
   const texto: string = (body?.texto || '').toString().trim()
   if (!id) return json({ erro: 'faltou id' }, 400)
   if (!texto) return json({ erro: 'faltou o texto da resposta' }, 400)
+  if (texto.length > 8000) return json({ erro: 'resposta grande demais' }, 400)
 
-  // Carrega o e-mail original (service_role; já validamos que é admin).
+  // Carrega o contato original (service_role; já validamos que é admin).
   const { data: msg } = await admin
     .from('suporte_emails')
-    .select('de_email, de_nome, assunto, grupo_id')
+    .select('de_email, de_nome, assunto, grupo_id, origem, usuario_id, resposta')
     .eq('id', id)
     .maybeSingle()
-  if (!msg?.de_email) return json({ erro: 'e-mail não encontrado' }, 404)
+  if (!msg) return json({ erro: 'contato não encontrado' }, 404)
 
   const nome = msg.de_nome ? esc(String(msg.de_nome).split(' ')[0]) : ''
+
+  // ───────────── Chamado aberto no app ─────────────
+  if (msg.origem === 'app') {
+    const agora = new Date()
+    const resposta = msg.resposta
+      ? `${msg.resposta}\n\n— Nova resposta (${quando(agora)}) —\n${texto}`
+      : texto
+    // 1) Grava primeiro: a resposta aparece no app mesmo se o e-mail ou a notificação falharem.
+    const { error: eUp } = await admin.from('suporte_emails')
+      .update({ status: 'respondido', respondido_em: agora.toISOString(), resposta })
+      .eq('id', id)
+    if (eUp) return json({ erro: 'não consegui gravar a resposta' }, 500)
+
+    const cod = codChamado(id)
+    // 2) E-mail pra quem abriu.
+    let email = 'sem e-mail'
+    let resendId: string | undefined
+    if (msg.de_email) {
+      const html = layoutEmail({
+        titulo: 'Respondemos seu chamado',
+        corpoHtml:
+          `${nome ? `<p>Oi ${nome},</p>` : ''}` +
+          `<p>Sobre o seu chamado <strong>${esc(cod)}</strong>${msg.assunto ? ` — “${esc(msg.assunto)}”` : ''}:</p>` +
+          `<div style="border-left:3px solid #10b981;padding-left:14px;margin:14px 0;">${paraHtml(texto)}</div>` +
+          `<p>A resposta também está no app, em <strong>Ajuda › Meus chamados</strong>.</p>`,
+        preheader: 'A equipe HopeFin respondeu o seu chamado.',
+        cta: { texto: 'Ver no app', url: LINK_CHAMADOS },
+      })
+      const env = await enviarEmail({ para: msg.de_email, assunto: `Respondemos seu chamado ${cod}`, html })
+      email = env.ok ? 'enviado' : `falhou: ${env.erro || 'erro'}`
+      resendId = env.id
+    }
+    // 3) Notificação no celular (só os aparelhos de quem abriu).
+    let push = 0
+    if (msg.usuario_id) {
+      try {
+        const r = await pushParaGrupo(admin, msg.grupo_id || '', {
+          title: 'Respondemos seu chamado 💬',
+          body: msg.assunto ? `Sobre “${String(msg.assunto).slice(0, 80)}”. Toque para ver.` : 'Toque para ver a resposta.',
+          url: '/?ajuda=chamados',
+          tag: `chamado-${id}`,
+        }, msg.usuario_id)
+        push = r.enviados || 0
+      } catch (e) {
+        console.error('push do chamado falhou', (e as Error).message)
+      }
+    }
+
+    await admin.from('admin_log').insert({
+      admin_id: uid, acao: 'suporte_responder', grupo_id: msg.grupo_id,
+      detalhe: { suporte_id: id, origem: 'app', email, push, resend_id: resendId },
+    })
+    return json({ ok: true, app: true, email, push })
+  }
+
+  // ───────────── E-mail recebido (como sempre foi) ─────────────
+  if (!msg.de_email) return json({ erro: 'e-mail não encontrado' }, 404)
   const assunto = `Re: ${msg.assunto || 'seu contato'}`
   const html = layoutEmail({
     titulo: 'Resposta do HopeFin',

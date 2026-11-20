@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar,
   LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat, ClipboardCheck, Bell, Clock, History, Coins,
-  ChevronRight, Database, Users, Sparkles,
+  ChevronRight, Database, Users, Sparkles, LifeBuoy,
 } from 'lucide-react'
 import { useState } from 'react'
 import InstalarApp from './InstalarApp'
@@ -13,7 +13,7 @@ import AvisoOffline from './AvisoOffline'
 import Avatar from './Avatar'
 import Logo from './Logo'
 import BannerAssinatura from './BannerAssinatura'
-import Ajuda from './Ajuda'
+import Ajuda, { EVENTO_ABRIR_AJUDA } from './Ajuda'
 import { useFlags } from '../hooks/useFlags'
 import { useAlertas } from '../hooks/useAlertas'
 import { useAssinatura } from '../hooks/useAssinatura'
@@ -120,16 +120,16 @@ export default function Layout() {
           <Logo size={24} />
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Ajuda + perguntas frequentes da tela (L29) */}
-          {flags?.ajuda && <Ajuda />}
+          {/* Ajuda + perguntas frequentes da tela + chamados (L29) */}
+          {flags?.ajuda && <Ajuda flags={flags} />}
           {/* Sininho de alertas */}
           <div style={{ position: 'relative', display: 'flex' }}>
-            <button onClick={abrirAlertas} title="Alertas" style={{ position: 'relative', color: alertasAbertos ? 'var(--accent)' : 'var(--text3)', display: 'flex', alignItems: 'center' }}>
+            <button onClick={abrirAlertas} title="Alertas" style={{ position: 'relative', color: alertasAbertos ? 'var(--accent-text)' : 'var(--text2)', display: 'flex', alignItems: 'center' }}>
               <Bell size={19} />
               {alertas.length > 0 && (
                 <span style={{
                   position: 'absolute', top: -5, right: -6, minWidth: 16, height: 16, padding: '0 4px',
-                  borderRadius: 8, background: temUrgente ? 'var(--red)' : 'var(--amber)', color: '#fff',
+                  borderRadius: 8, background: temUrgente ? '#dc2626' : '#b45309', color: '#fff',
                   fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>{alertas.length}</span>
               )}
@@ -153,7 +153,7 @@ export default function Layout() {
                     </div>
                   </div>
                   {alertas.length === 0 ? (
-                    <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
+                    <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
                       Tudo em dia por aqui 🎉
                     </div>
                   ) : (
@@ -172,11 +172,11 @@ export default function Layout() {
                         </button>
                         <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
                           <button onClick={() => snoozeAmanha(a.id)} title="Lembrar amanhã"
-                            style={{ flex: 1, padding: '0 11px', color: 'var(--text3)', display: 'flex', alignItems: 'center' }}>
+                            style={{ flex: 1, padding: '0 11px', color: 'var(--text2)', display: 'flex', alignItems: 'center' }}>
                             <Clock size={14} />
                           </button>
                           <button onClick={() => dispensar(a.id)} title="Dispensar"
-                            style={{ flex: 1, padding: '0 11px', color: 'var(--text3)', display: 'flex', alignItems: 'center' }}>
+                            style={{ flex: 1, padding: '0 11px', color: 'var(--text2)', display: 'flex', alignItems: 'center' }}>
                             <X size={15} />
                           </button>
                         </div>
@@ -220,7 +220,7 @@ export default function Layout() {
             style={({ isActive }) => ({
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
               fontSize: 10, fontWeight: 500, padding: '4px 8px',
-              color: isActive ? 'var(--accent)' : 'var(--text3)',
+              color: isActive ? 'var(--accent-text)' : 'var(--text2)',
               textDecoration: 'none', transition: 'color 0.15s', flex: 1,
             })}
           >
@@ -233,7 +233,7 @@ export default function Layout() {
           style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
             fontSize: 10, fontWeight: 500, padding: '4px 8px', flex: 1,
-            color: maisAtivo ? 'var(--accent)' : 'var(--text3)',
+            color: maisAtivo ? 'var(--accent-text)' : 'var(--text2)',
           }}
         >
           <MoreHorizontal size={20} strokeWidth={1.8} />
@@ -254,7 +254,7 @@ export default function Layout() {
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 17 }}>{perfil.nome}</p>
                 {user?.email && <p style={{ fontSize: 12.5, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</p>}
-                {perfil.grupos?.nome && <p style={{ fontSize: 12, color: 'var(--text3)' }}>{tmc.grupo(perfil.grupos.nome)}</p>}
+                {perfil.grupos?.nome && <p style={{ fontSize: 12, color: 'var(--text2)' }}>{tmc.grupo(perfil.grupos.nome)}</p>}
               </div>
             </div>
             {!plano.loading && (
@@ -283,6 +283,18 @@ export default function Layout() {
                 <ChevronRight size={16} color="var(--text3)" />
               </Link>
             ))}
+            {/* Ajuda e atendimento (mesma folha do botão "Ajuda" do topo) */}
+            {flags?.ajuda && (
+              <button type="button" onClick={() => { setConta(false); window.dispatchEvent(new CustomEvent(EVENTO_ABRIR_AJUDA, { detail: { vista: 'inicio' } })) }}
+                className="card" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, textAlign: 'left', color: 'var(--text)' }}>
+                <LifeBuoy size={18} color="var(--accent)" />
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontWeight: 600, fontFamily: 'Syne', fontSize: 14 }}>{copy.ajuda.menuConta}</span>
+                  <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>{copy.ajuda.menuContaSub}</span>
+                </span>
+                <ChevronRight size={16} color="var(--text3)" />
+              </button>
+            )}
             <button onClick={() => { setConta(false); handleLogout() }} className="btn-ghost" style={{ width: '100%', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--red-text)' }}>
               <LogOut size={16} /> {tmc.sair}
             </button>
@@ -300,7 +312,7 @@ export default function Layout() {
             </div>
             {navMais.map(({ secao, itens }) => (
               <div key={secao} style={{ marginBottom: 18 }}>
-                <p style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 2px 8px' }}>{secao}</p>
+                <p style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 2px 8px' }}>{secao}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {itens.map(({ to, label, icon: Icon }) => (
                     <Link

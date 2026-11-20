@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
@@ -29,11 +30,26 @@ function diasAte(ano, mesIdx, vencDia) {
 
 const ddmm = d => format(d, 'dd/MM')
 
+// Miolo da linha (nome + valor). Na fatura de cartão vira um botão que abre a fatura em
+// Cartões (as compras dela), com a setinha; nas outras contas é só texto.
+function LinhaCorpo({ abre, rotulo, children }) {
+  const estilo = { flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }
+  if (!abre) return <span style={estilo}>{children}</span>
+  return (
+    <button type="button" onClick={abre} aria-label={rotulo} title={rotulo}
+      style={{ ...estilo, padding: 0, background: 'none', border: 'none', textAlign: 'left', color: 'inherit', font: 'inherit', cursor: 'pointer' }}>
+      {children}
+      <ChevronRight size={18} color="var(--text2)" aria-hidden="true" style={{ flexShrink: 0 }} />
+    </button>
+  )
+}
+
 export default function ContasDoMes() {
   const { perfil } = useAuth()
   const { toast } = useToast()
   const { emojiDe } = useCategorias()
   const run = useDb()
+  const navigate = useNavigate()
   const [mes, setMes] = useState(startOfMonth(new Date()))
   const [dados, setDados] = useState(null)
   const [valores, setValores] = useState({})   // conta_fixa_id -> input de valor real
@@ -238,6 +254,7 @@ export default function ContasDoMes() {
         icone: <CreditCard size={22} strokeWidth={1.75} aria-hidden="true" />,
         vencDia, valor, pago: pg?.pago ?? false, dataPago: pg?.data_pagamento,
         sub: t.tipoFatura, onToggle: alvo => togglePaga('fatura', card.id, valor, alvo),
+        cartaoId: card.id, comp: f.comp, // tocar abre a fatura em Cartões (as compras dela)
       })
     })
 
@@ -304,14 +321,16 @@ export default function ContasDoMes() {
           <span style={{ width: 40, height: 40, borderRadius: 'var(--radius)', background: st.vencida ? 'var(--red-dim)' : 'var(--bg3)', color: st.vencida ? 'var(--red-text)' : 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             {l.icone}
           </span>
-          <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontWeight: 500, color: l.pago ? 'var(--text2)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.nome}</span>
-            <span style={{ fontSize: 13, color: st.vencida ? 'var(--red-text)' : 'var(--text2)' }}>{subtxt}</span>
-          </span>
-          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-            <span style={{ fontFamily: 'Syne', fontWeight: 700, color: l.pago ? 'var(--text2)' : 'var(--text)' }}>{fmt(l.valor)}</span>
-            {st.tag}
-          </span>
+          <LinhaCorpo abre={l.tipo === 'fatura' && l.cartaoId ? () => navigate(`/cartoes?cartao=${l.cartaoId}&comp=${l.comp}`) : null} rotulo={t.abrirFatura(l.nome)}>
+            <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontWeight: 500, color: l.pago ? 'var(--text2)' : 'var(--text)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflowWrap: 'anywhere' }}>{l.nome}</span>
+              <span style={{ fontSize: 13, color: st.vencida ? 'var(--red-text)' : 'var(--text2)' }}>{subtxt}</span>
+            </span>
+            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+              <span style={{ fontFamily: 'Syne', fontWeight: 700, color: l.pago ? 'var(--text2)' : 'var(--text)' }}>{fmt(l.valor)}</span>
+              {st.tag}
+            </span>
+          </LinhaCorpo>
         </div>
 
         {/* Fixa: valor real + diferença */}
@@ -362,10 +381,12 @@ export default function ContasDoMes() {
           <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>{t.emAtrasoSub}</p>
           {atraso.map((p, i) => (
             <div key={`${p.tipo}-${p.id}-${p.comp}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.descricao}{p.tipo === 'parcela' && p.numero ? ` (${p.numero}/${p.total})` : ''}</span>
-                <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>{t.atrasoSub(p.data ? ddmm(parseDataLocal(p.data)) : null, nomeMes(p.comp))}</span>
-              </span>
+              <LinhaCorpo abre={p.tipo === 'fatura' && p.id && p.comp ? () => navigate(`/cartoes?cartao=${p.id}&comp=${p.comp}`) : null} rotulo={t.abrirFatura(p.descricao)}>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.descricao}{p.tipo === 'parcela' && p.numero ? ` (${p.numero}/${p.total})` : ''}</span>
+                  <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>{t.atrasoSub(p.data ? ddmm(parseDataLocal(p.data)) : null, nomeMes(p.comp))}</span>
+                </span>
+              </LinhaCorpo>
               <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{fmt(p.valor)}</span>
               <button className="btn-ghost" onClick={() => pagarAtrasada(p)} style={{ padding: '6px 10px', fontSize: 12.5, whiteSpace: 'nowrap' }}>{t.jaPaguei}</button>
             </div>
@@ -390,7 +411,7 @@ export default function ContasDoMes() {
               <Meter valor={pct} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: 10 }}>
                 <span style={{ fontSize: 13, color: 'var(--text2)' }}>{t.faltaPagar}</span>
-                <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne', color: falta > 0 ? 'var(--red)' : 'var(--accent)' }}>{fmt(falta)}</span>
+                <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne', color: falta > 0 ? 'var(--red-text)' : 'var(--accent-text)' }}>{fmt(falta)}</span>
               </div>
             </section>
 

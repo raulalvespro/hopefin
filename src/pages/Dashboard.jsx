@@ -15,6 +15,7 @@ import Onboarding from '../components/Onboarding'
 import Explicacao from '../components/Explicacao'
 import ViradaMes from '../components/ViradaMes'
 import ResumoPronto from '../components/ResumoPronto'
+import Avatar from '../components/Avatar'
 import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { InfoDica } from '../components/ui'
 import { copy } from '../copy/pt-BR'
@@ -67,7 +68,7 @@ export default function Dashboard() {
     const gid = perfil.grupo_id
     const [{ data: g }, { data: ms }] = await Promise.all([
       supabase.from('grupos').select('nome').eq('id', gid).single(),
-      supabase.from('usuarios').select('id, nome').eq('grupo_id', gid),
+      supabase.from('usuarios').select('id, nome, foto_url').eq('grupo_id', gid).order('criado_em'),
     ])
     setGrupo(g || null)
     setMembros(ms || [])
@@ -140,7 +141,7 @@ export default function Dashboard() {
         <div className="ui-skel" style={{ height: 68, borderRadius: 'var(--radius)' }} />
       </div>
       <div className="ui-skel" style={{ height: 180, borderRadius: 'var(--radius)' }} />
-      <p style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 13, marginTop: 16 }}>{t.carregando}</p>
+      <p style={{ textAlign: 'center', color: 'var(--text2)', fontSize: 13, marginTop: 16 }}>{t.carregando}</p>
     </div>
   )
   if (!r) return <p style={{ textAlign: 'center', color: 'var(--text2)', padding: 24 }}>{erro || t.carregando}</p>
@@ -219,7 +220,10 @@ export default function Dashboard() {
         </div>
         {membros.length > 0 && (
           <div aria-label={`${membros.length} membros`} style={{ display: 'flex', flexShrink: 0 }}>
-            {membros.slice(0, 4).map((m, i) => (
+            {membros.slice(0, 4).map((m, i) => m.foto_url ? (
+              // Quem colocou foto (Minha conta › Configurações) aparece com a foto; o resto, com as iniciais.
+              <Avatar key={m.id} nome={m.nome} foto={m.foto_url} size={34} style={{ border: '2px solid var(--bg)', marginLeft: i ? -10 : 0 }} />
+            ) : (
               <span key={m.id} title={m.nome} style={{ width: 34, height: 34, borderRadius: 17, background: AVCOR[i % AVCOR.length].bg, color: AVCOR[i % AVCOR.length].fg, fontFamily: 'Syne', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--bg)', marginLeft: i ? -10 : 0 }}>
                 {iniciais(m.nome)}
               </span>
@@ -283,7 +287,7 @@ export default function Dashboard() {
           <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 500, color: vencerCount > 0 ? 'var(--amber-text)' : 'var(--accent-text)' }}>
             <CalendarClock size={16} style={{ flexShrink: 0 }} /> {vencerCount > 0 ? t.aVencer(vencerCount) : t.emDia}
           </span>
-          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{vencerCount > 0 ? t.contasVencerSub : t.emDiaSub}</span>
+          <span style={{ fontSize: 12, color: 'var(--text2)' }}>{vencerCount > 0 ? t.contasVencerSub : t.emDiaSub}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {vencerCount > 0 && <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20 }}>{fmt(vencerTotal)}</span>}
@@ -296,8 +300,8 @@ export default function Dashboard() {
         <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 14 }}>{t.mesAteAgora}</p>
         <div style={{ marginBottom: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, fontSize: 13, marginBottom: 6 }}>
-            <span>{t.entrou} <strong style={{ fontFamily: 'Syne' }}>{fmt(r.entradasRecebidas)}</strong> <span style={{ color: 'var(--text3)', fontSize: 12 }}>{t.de(fmt(r.entradasPrevistas))}</span></span>
-            {r.aReceber > 0.005 && <span style={{ color: 'var(--text3)', fontSize: 12, whiteSpace: 'nowrap' }}>{t.aReceberLabel} {fmt(r.aReceber)}</span>}
+            <span>{t.entrou} <strong style={{ fontFamily: 'Syne' }}>{fmt(r.entradasRecebidas)}</strong> <span style={{ color: 'var(--text2)', fontSize: 12 }}>{t.de(fmt(r.entradasPrevistas))}</span></span>
+            {r.aReceber > 0.005 && <span style={{ color: 'var(--text2)', fontSize: 12, whiteSpace: 'nowrap' }}>{t.aReceberLabel} {fmt(r.aReceber)}</span>}
           </div>
           <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
             <div style={{ width: `${pctEntrou}%`, height: '100%', background: 'var(--accent)', borderRadius: 4, transition: 'width 0.4s' }} />
@@ -305,8 +309,8 @@ export default function Dashboard() {
         </div>
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, fontSize: 13, marginBottom: 6 }}>
-            <span>{t.saiu} <strong style={{ fontFamily: 'Syne' }}>{fmt(r.pago)}</strong> <span style={{ color: 'var(--text3)', fontSize: 12 }}>{t.de(fmt(r.totalSaidas))}</span></span>
-            {r.aPagar > 0.005 && <span style={{ color: 'var(--text3)', fontSize: 12, whiteSpace: 'nowrap' }}>{t.aPagarLabel} {fmt(r.aPagar)}</span>}
+            <span>{t.saiu} <strong style={{ fontFamily: 'Syne' }}>{fmt(r.pago)}</strong> <span style={{ color: 'var(--text2)', fontSize: 12 }}>{t.de(fmt(r.totalSaidas))}</span></span>
+            {r.aPagar > 0.005 && <span style={{ color: 'var(--text2)', fontSize: 12, whiteSpace: 'nowrap' }}>{t.aPagarLabel} {fmt(r.aPagar)}</span>}
           </div>
           <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
             <div style={{ width: `${pctSaiu}%`, height: '100%', background: 'var(--red)', borderRadius: 4, transition: 'width 0.4s' }} />
@@ -323,11 +327,11 @@ export default function Dashboard() {
             </div>
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 12, color: 'var(--text2)' }}>{t.possoGastar}</p>
-              <p style={{ fontSize: 22, fontFamily: 'Syne', fontWeight: 700, color: r.sobraDoMes >= 0 ? 'var(--accent)' : 'var(--red)' }}>
+              <p style={{ fontSize: 22, fontFamily: 'Syne', fontWeight: 700, color: r.sobraDoMes >= 0 ? 'var(--accent-text)' : 'var(--red-text)' }}>
                 {fmt(r.sobraDoMes)}
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text2)' }}>{t.possoGastarLivres}</span>
               </p>
-              <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+              <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
                 {r.sobraDoMes > 0 ? t.possoGastarPorDia(fmt(r.porDia), r.diasRestantes) : t.possoGastarNegativo}
               </p>
             </div>
@@ -362,7 +366,7 @@ export default function Dashboard() {
               <div key={categoria} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
                   <span>{emojiDe(categoria)} {rotuloCategoria(categoria)}</span>
-                  <span style={{ fontWeight: 500 }}>{fmt(realizado)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>de {fmt(teto)} ({pct}%)</span></span>
+                  <span style={{ fontWeight: 500 }}>{fmt(realizado)} <span style={{ color: 'var(--text2)', fontSize: 11 }}>de {fmt(teto)} ({pct}%)</span></span>
                 </div>
                 <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 7, overflow: 'hidden' }}>
                   <div style={{ width: `${Math.min(100, pct)}%`, height: '100%', background: corBarra(pct), borderRadius: 4, transition: 'width 0.4s' }} />
@@ -380,7 +384,7 @@ export default function Dashboard() {
             <PieIcon size={18} color="var(--accent)" />
             <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Para onde vai a renda</p>
           </div>
-          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
+          <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
             O que é seu, por categoria (gasto, conta fixa, parcela e assinatura juntos — sem o que é de outras pessoas)
           </p>
           <ResponsiveContainer width="100%" height={210}>
@@ -405,7 +409,7 @@ export default function Dashboard() {
                     <span style={{ width: 10, height: 10, borderRadius: 3, background: d.sobra ? 'var(--border2)' : CORES[i % CORES.length], display: 'inline-block' }} />
                     {d.rotulo}
                   </span>
-                  <span style={{ fontWeight: 500 }}>{fmt(d.valor)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pct}%)</span></span>
+                  <span style={{ fontWeight: 500 }}>{fmt(d.valor)} <span style={{ color: 'var(--text2)', fontSize: 11 }}>({pct}%)</span></span>
                 </div>
               )
             })}
@@ -457,7 +461,7 @@ export default function Dashboard() {
             <div key={label} style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
                 <span>{label}</span>
-                <span style={{ fontWeight: 500 }}>{fmt(valor)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pct}%)</span></span>
+                <span style={{ fontWeight: 500 }}>{fmt(valor)} <span style={{ color: 'var(--text2)', fontSize: 11 }}>({pct}%)</span></span>
               </div>
               <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
                 <div style={{ width: `${pct}%`, height: '100%', background: cor, borderRadius: 4, transition: 'width 0.4s' }} />
@@ -477,12 +481,12 @@ export default function Dashboard() {
               <div key={nome} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ width: 28, height: 28, borderRadius: '50%', background: CORES[i % CORES.length] + '33', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: CORES[i % CORES.length] }}>
+                    <span style={{ width: 28, height: 28, borderRadius: '50%', background: CORES[i % CORES.length] + '33', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
                       {nome[0].toUpperCase()}
                     </span>
                     {nome}
                   </span>
-                  <span style={{ fontWeight: 500 }}>{fmt(valor)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>({pct}%)</span></span>
+                  <span style={{ fontWeight: 500 }}>{fmt(valor)} <span style={{ color: 'var(--text2)', fontSize: 11 }}>({pct}%)</span></span>
                 </div>
                 <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
                   <div style={{ width: `${pct}%`, height: '100%', background: CORES[i % CORES.length], borderRadius: 4 }} />
@@ -511,7 +515,7 @@ export default function Dashboard() {
                 <div style={{ textAlign: 'right' }}>
                   <p style={{ fontSize: 14, fontWeight: 500, fontFamily: 'Syne' }}>{fmt(atual)}</p>
                   {Math.abs(diff) > 0.004 && (
-                    <p style={{ fontSize: 11, color: bom ? 'var(--accent)' : 'var(--red)' }}>
+                    <p style={{ fontSize: 11, color: bom ? 'var(--accent-text)' : 'var(--red-text)' }}>
                       {diff > 0 ? '+' : ''}{fmt(diff)} vs ant.
                     </p>
                   )}
