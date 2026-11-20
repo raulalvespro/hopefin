@@ -168,3 +168,46 @@ definir **frequência máxima por pessoa** e, idealmente, deixar a pessoa **opta
 4. **Contabilizar Whisper no /admin** — pra enxergar o custo real antes de escalar.
 5. **P1/P3 lembretes e alertas (opt-in)** — só depois de definir frequência e custo em escala.
 6. **R8 perguntas em linguagem natural** — potencial gancho premium; exige teto firme.
+
+---
+
+# Joca inteligente (A8.23, 19/11/2026) — custo e se vale a pena
+
+> Pedido do Raul: o WhatsApp tão esperto quanto o do concorrente que usa muito o WhatsApp (o
+> Meu Assessor, do Felipe Titto: ~300 mil usuários e mais de R$ 60 milhões de faturamento em 2025,
+> segundo a imprensa) — entender "paguei a fatura", responder perguntas e até dar orientação
+> financeira — sem pesar no preço (Plano Família R$ 24,90/mês).
+
+**Preço da IA (tabela oficial de 03/11/2026, por milhão de tokens):** Haiku 5.5 (o que o Joca já usa)
+US$ 0,10 entrada / US$ 0,50 saída · Sonnet 5.5 (mais caprichado) US$ 2 / US$ 10 · leitura de cache
+custa ~1/10 da entrada. Conta abaixo com US$ 1 ≈ R$ 5,80 (ordem de grandeza).
+
+| O que o Joca faz | Modelo | Custo por vez |
+|---|---|---|
+| Lançar por texto ("mercado 120") | Haiku | ~R$ 0,001 |
+| Pergunta com os números do app ("quanto gastei com comida fora?") | Haiku + resumo do mês | ~R$ 0,003 |
+| "Paguei a fatura do Nubank" (confirma e marca paga) | Haiku | ~R$ 0,002 |
+| Orientação financeira (resposta mais longa, com os dados do mês) | Sonnet | ~R$ 0,09 (Haiku: ~R$ 0,005) |
+| Áudio de até 60 s (transcrição Whisper) | — | ~R$ 0,035 (o mais caro hoje) |
+| Fatura em PDF lida pela IA (A4.2, ~3 páginas) | Sonnet | ~R$ 0,30 por fatura |
+| Mensagem que o Joca INICIA (resumo semanal, lembrete) | template da Meta | ~R$ 0,04–0,35 cada |
+
+**Pior caso por grupo assinante (teto de 200 mensagens/mês):** 150 lançamentos + 30 áudios + 20
+orientações no Sonnet ≈ **R$ 3/mês** (12% do preço). Uso típico fica bem abaixo (~R$ 0,50). Com as
+orientações no Haiku, o pior caso cai pra ~R$ 1,30.
+
+**Vale a pena?** Sim, com 4 travas: (1) Haiku pra lançar e perguntar; Sonnet só quando a pessoa
+pede orientação; (2) teto de orientações por mês (ex.: 30) dentro do teto de 200; (3) instruções do
+Joca em cache (barateia ~90% da parte fixa); (4) mensagem que o Joca inicia só com opt-in e
+frequência máxima — é o único custo que cresce sozinho com o número de clientes.
+
+**Cuidado legal (não é parecer jurídico):** orientação de **organização financeira** (gastar menos
+que ganha, reserva de emergência, quitar a dívida mais cara primeiro, como usar o cartão) pode. O que
+NÃO pode sem registro na CVM é **recomendar investimento específico** ("compre a ação X", "aplique
+no fundo Y") — isso é consultoria de valores mobiliários. O Joca precisa ter essa regra escrita nas
+instruções e responder "isso é com um assessor de investimentos registrado". Vale uma olhada de um
+advogado antes de anunciar "orientação financeira".
+
+**Ordem sugerida (A8.23):** "paguei a fatura do X" e "apaga o último / o valor era 50" → perguntas
+com os números do app → orientação (Sonnet, com teto) → fatura em PDF (A4.2). Tudo testado sem
+mandar WhatsApp de verdade (prévia), e o custo de cada coisa aparecendo no /admin (consumo_ia).
