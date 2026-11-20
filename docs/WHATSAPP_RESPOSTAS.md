@@ -1,5 +1,13 @@
 # WhatsApp — respostas do Joca
 
+> **Atualização 20/11/2026 (tarde) — mensagens com uma informação por linha (aprovado pelo Raul):**
+> valor em *negrito* e linha em branco entre a frase e os detalhes ("💸 *R$ 12,00* · Pão" / "🏷️ Alimentação" /
+> "💳 Itaú · 3x de R$ 33,33" ou "💵 Pix" / "💵 Dinheiro" / "📅 19/11" quando não é hoje). O Joca agora entende
+> "dinheiro" no gasto sem cartão (migração 0082; o resto continua Pix, igual ao app). Referência dos textos
+> pro Raul editar: nota do Obsidian Projetos/HopeFin/"Joca - mensagens do WhatsApp". Perfil do número de
+> teste: foto do Joca e recado "Joca do HopeFin 💚 …" (o nome "Test Number" a Meta não deixa trocar; o
+> nome "Joca do HopeFin" vai no número de produção, com revisão da Meta).
+>
 > **Atualização 20/11/2026 (Joca parte 1, A8.23 + A8.24) — NO AR (só o grupo do Raul usa hoje):**
 > os textos aprovados pelo Raul estão aplicados e TODOS os textos do Joca agora moram em
 > `supabase/functions/whatsapp-webhook/joca.js` (os aprovados marcados "(aprovado)"; os novos esperam

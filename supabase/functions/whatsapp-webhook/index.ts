@@ -210,28 +210,39 @@ async function interpretar(u: any, texto: string, pendente?: Record<string, unkn
   const system = J.instrucoesIA({ hoje, semana: semanaSP(), categorias })
   const userMsg = JSON.stringify({ texto, cartoes: (cartoes || []).map((c: any) => ({ id: c.id, nome: c.nome })), ...(pendente ? { pendente } : {}) })
 
-  let tokensIn = 0, tokensOut = 0
-  const t0 = Date.now()
-  try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: MODELO, max_tokens: 400, system, messages: [{ role: 'user', content: userMsg }] }),
-    })
-    const out = await r.json()
-    if (!r.ok) throw new Error(out?.error?.message || `Anthropic HTTP ${r.status}`)
-    tokensIn = Number(out?.usage?.input_tokens) || 0
-    tokensOut = Number(out?.usage?.output_tokens) || 0
-    // O Haiku pode devolver um bloco "thinking" antes do texto — pegue o de texto.
-    const textoResp = Array.isArray(out?.content) ? (out.content.find((b: any) => b.type === 'text')?.text || '') : ''
-    const dados = J.limparIA(J.extrairJson(textoResp), { texto, hoje, categorias, cartoes: cartoes || [] })
-    await registrarIA(u, 'whatsapp_interpretar', MODELO, { tokensIn, tokensOut, ms: Date.now() - t0 })
-    return { dados, cartoes: cartoes || [] }
-  } catch (e) {
-    await registrarIA(u, 'whatsapp_interpretar', MODELO, {
-      tokensIn, tokensOut, ms: Date.now() - t0, sucesso: false, erro: String((e as Error)?.message || '').slice(0, 300),
-    })
-    throw e
+  // Às vezes (raro) a IA responde sem o JSON — viu-se em 20/11 ("janta 100 no itaú" deu "não
+  // entendi" e na 2ª vez lançou). Nesse caso tenta de novo UMA vez; erro de rede/HTTP não repete.
+  for (let tentativa = 1; ; tentativa++) {
+    let tokensIn = 0, tokensOut = 0
+    const t0 = Date.now()
+    let semJson = false
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: MODELO, max_tokens: 700, system, messages: [{ role: 'user', content: userMsg }] }),
+      })
+      const out = await r.json()
+      if (!r.ok) throw new Error(out?.error?.message || `Anthropic HTTP ${r.status}`)
+      tokensIn = Number(out?.usage?.input_tokens) || 0
+      tokensOut = Number(out?.usage?.output_tokens) || 0
+      // O Haiku pode devolver um bloco "thinking" antes do texto — pegue o de texto.
+      const textoResp = Array.isArray(out?.content) ? (out.content.find((b: any) => b.type === 'text')?.text || '') : ''
+      let bruto
+      try { bruto = J.extrairJson(textoResp) } catch (e) {
+        semJson = true
+        throw new Error(`sem JSON (stop: ${out?.stop_reason || '?'}, ${String(textoResp).length} letras)`)
+      }
+      const dados = J.limparIA(bruto, { texto, hoje, categorias, cartoes: cartoes || [] })
+      await registrarIA(u, 'whatsapp_interpretar', MODELO, { tokensIn, tokensOut, ms: Date.now() - t0 })
+      return { dados, cartoes: cartoes || [] }
+    } catch (e) {
+      await registrarIA(u, 'whatsapp_interpretar', MODELO, {
+        tokensIn, tokensOut, ms: Date.now() - t0, sucesso: false,
+        erro: `${tentativa > 1 ? '2ª tentativa: ' : ''}${String((e as Error)?.message || '')}`.slice(0, 300),
+      })
+      if (!semJson || tentativa >= 2) throw e
+    }
   }
 }
 

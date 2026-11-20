@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
 import {
   TEXTOS, brl, ddmm, rotuloCategoria, resumoLancamento, msgLancado, ehSim, ehNao, normalizar,
   respostaRapida, limparIA, emDuvida, instrucoesIA, extrairJson, paraSalvar, comoVaiSalvar,
-  custoAudioUsd, LIMIAR_CONFIANCA, pendenteParaIA,
+  custoAudioUsd, LIMIAR_CONFIANCA, pendenteParaIA, formaDoGasto, resumoUltimo,
 } from '../supabase/functions/whatsapp-webhook/joca.js'
 
 const HOJE = '2026-11-20'
@@ -25,22 +25,26 @@ describe('formatação', () => {
   })
 })
 
-describe('textos aprovados (20/11/2026)', () => {
+describe('textos aprovados (20/11/2026) — uma informação por linha', () => {
   const gasto = { tipo: 'gasto', valor: 100, descricao: 'Janta', categoria: 'alimentacao', cartao_id: 'c1', cartao_nome: 'Itaú azul', data: HOJE, parcelas: 1 }
 
-  it('gasto lançado hoje: sem data e sem parcelas', () => {
-    expect(msgLancado('Raul Erickson', gasto, HOJE)).toBe('Prontinho, Raul! Lancei aqui 👇\nR$ 100,00 · Janta · 🏷️ Alimentação · 💳 Itaú azul')
+  it('gasto no cartão lançado hoje: sem data e sem parcelas', () => {
+    expect(msgLancado('Raul Erickson', gasto, HOJE)).toBe('Prontinho, Raul! Lancei aqui 👇\n\n💸 *R$ 100,00* · Janta\n🏷️ Alimentação\n💳 Itaú azul')
   })
-  it('data só quando não é hoje; parcelas só quando parcelado no cartão', () => {
+  it('data só quando não é hoje; parcelas só quando parcelado no cartão (na linha do cartão)', () => {
     const m = msgLancado('Raul', { ...gasto, valor: 100, parcelas: 3, data: '2026-11-18' }, HOJE)
-    expect(m).toBe('Prontinho, Raul! Lancei aqui 👇\nR$ 100,00 · Janta · 🏷️ Alimentação · 💳 Itaú azul · 3x de R$ 33,33 · 📅 18/11')
-    // sem cartão o banco salva à vista (wa_salvar_lancamento): não mostra parcelas
+    expect(m).toBe('Prontinho, Raul! Lancei aqui 👇\n\n💸 *R$ 100,00* · Janta\n🏷️ Alimentação\n💳 Itaú azul · 3x de R$ 33,33\n📅 18/11')
+    // sem cartão o banco salva à vista (wa_salvar_lancamento): não mostra parcelas, mostra Pix
     const pix = msgLancado('Raul', { ...gasto, cartao_id: null, cartao_nome: null, parcelas: 3 }, HOJE)
-    expect(pix).toBe('Prontinho, Raul! Lancei aqui 👇\nR$ 100,00 · Janta · 🏷️ Alimentação')
+    expect(pix).toBe('Prontinho, Raul! Lancei aqui 👇\n\n💸 *R$ 100,00* · Janta\n🏷️ Alimentação\n💵 Pix')
+  })
+  it('gasto em dinheiro mostra "💵 Dinheiro"', () => {
+    const m = msgLancado('Raul', { ...gasto, cartao_id: null, cartao_nome: null, forma: 'dinheiro' }, HOJE)
+    expect(m).toBe('Prontinho, Raul! Lancei aqui 👇\n\n💸 *R$ 100,00* · Janta\n🏷️ Alimentação\n💵 Dinheiro')
   })
   it('entrada lançada', () => {
     const m = msgLancado('Raul', { tipo: 'entrada', valor: 2000, descricao: 'Salário', categoria: 'outros', data: HOJE, parcelas: 1 }, HOJE)
-    expect(m).toBe('Oba, entrou dinheiro! 💰\nR$ 2.000,00 · Salário\nJá está nas suas entradas.')
+    expect(m).toBe('Oba, entrou dinheiro! 💰\n\n💰 *R$ 2.000,00* · Salário\nJá está nas suas entradas.')
   })
   it('demais textos aprovados, palavra por palavra', () => {
     expect(TEXTOS.naoEntendi).toBe('Hmm, esse eu não entendi 😅 Me manda assim: *farmácia 48,90* ou *uber 23,50 ontem*.')
@@ -57,8 +61,7 @@ describe('textos aprovados (20/11/2026)', () => {
 describe('"tá certo?" e confirmações', () => {
   it('pergunta mostra o tipo e o que vai ser salvo', () => {
     const t = TEXTOS.taCerto({ tipo: 'gasto', valor: 50, descricao: 'Aquilo', categoria: 'outros', cartao_id: null, data: HOJE, parcelas: 1 }, HOJE)
-    expect(t).toContain('💸 Gasto de R$ 50,00 · Aquilo · 🏷️ Outros')
-    expect(t).toContain('Responde *sim*')
+    expect(t).toBe('Deixa eu conferir antes de lançar 🤔\n\n💸 *R$ 50,00* · Aquilo\n🏷️ Outros\n💵 Pix\n\nTá certo? Responde *sim* pra eu lançar, ou me manda do jeito certo.')
   })
   it('lê sim', () => {
     for (const s of ['sim', 'Sim!', 'SIM.', 's', 'pode', 'pode lançar', 'isso mesmo', 'tá certo', 'ok', 'Ok 👍', '👍', '👍🏽', '✅', 'sim, por favor', 'Beleza', 'tá bom', 'isso aí']) {
@@ -131,8 +134,26 @@ describe('resposta da IA (nunca confiar cegamente)', () => {
   })
   it('vai pro banco só o que o banco usa', () => {
     const d = limparIA({ acao: 'lancar', tipo: 'gasto', valor: 30, descricao: 'Uber', categoria: 'transporte', confianca: 0.9 }, ctx)
-    expect(Object.keys(paraSalvar(d)).sort()).toEqual(['cartao_id', 'categoria', 'data', 'descricao', 'parcelas', 'tipo', 'valor'])
-    expect(pendenteParaIA(d)).toEqual({ tipo: 'gasto', valor: 30, descricao: 'Uber', categoria: 'transporte', cartao_id: null, data: HOJE, parcelas: 1 })
+    expect(Object.keys(paraSalvar(d)).sort()).toEqual(['cartao_id', 'categoria', 'data', 'descricao', 'parcelas', 'tipo', 'tipo_pagamento', 'valor'])
+    expect(pendenteParaIA(d)).toEqual({ tipo: 'gasto', valor: 30, descricao: 'Uber', categoria: 'transporte', cartao_id: null, data: HOJE, parcelas: 1, forma: 'pix' })
+  })
+  it('forma do gasto sem cartão: dinheiro só quando dito; o resto é Pix (igual ao app)', () => {
+    expect(formaDoGasto('dinheiro', '')).toBe('dinheiro')
+    expect(formaDoGasto(null, 'pão 12 em dinheiro')).toBe('dinheiro')
+    expect(formaDoGasto(null, 'feira 30 em espécie')).toBe('dinheiro')
+    expect(formaDoGasto('debito', 'farmácia 40 no débito')).toBe('pix')
+    expect(formaDoGasto(null, 'uber 23')).toBe('pix')
+    const din = limparIA({ acao: 'lancar', tipo: 'gasto', valor: 12, descricao: 'Pão', categoria: 'outros', forma: 'dinheiro', confianca: 0.9 }, ctx)
+    expect(din.forma).toBe('dinheiro')
+    expect(paraSalvar(din).tipo_pagamento).toBe('dinheiro')
+    // com cartão ou entrada: sem forma (o banco grava "cartao" / não se aplica)
+    const card = limparIA({ acao: 'lancar', tipo: 'gasto', valor: 12, cartao_id: 'c1', forma: 'dinheiro', confianca: 0.9 }, ctx)
+    expect(card.forma).toBe(null)
+    expect(paraSalvar(card).tipo_pagamento).toBe(null)
+    expect(limparIA({ acao: 'lancar', tipo: 'entrada', valor: 12, forma: 'dinheiro' }, ctx).forma).toBe(null)
+  })
+  it('a IA sabe que só existe pix ou dinheiro no gasto sem cartão', () => {
+    expect(instrucoesIA({ hoje: HOJE, semana: 'sexta', categorias: CATS })).toMatch(/forma: só em gasto SEM cartão/)
   })
   it('parcela igual ao banco (total ÷ parcelas, no centavo)', () => {
     expect(comoVaiSalvar({ tipo: 'gasto', valor: 100, cartao_id: 'c1', parcelas: 3 }).valor_parcela).toBe(33.33)
@@ -159,17 +180,17 @@ describe('regras do Joca nas instruções da IA', () => {
 describe('fatura e último lançamento', () => {
   it('pergunta da fatura com valor diferente do que a pessoa falou', () => {
     const t = TEXTOS.faturaPergunta({ cartao: 'Nubank', fatura: { vencimento: '2026-12-10', total: 1234.56, status: 'fechada' }, valorDito: 1200, temParcelas: true })
-    expect(t).toBe('Achei a fatura do Nubank que vence 10/12: R$ 1.234,56 💳\n(Você falou R$ 1.200,00. Se tiver compra faltando ou sobrando nela, ajusta no app em Cartões.)\nMarco como paga? As parcelas dela entram como pagas também.\nResponde *sim* pra confirmar.')
+    expect(t).toBe('Achei a fatura do *Nubank* 💳\n\n📅 Vence 10/12\n💰 *R$ 1.234,56*\n(Você falou R$ 1.200,00. Se tiver compra faltando ou sobrando nela, ajusta no app em Cartões.)\n\nMarco como paga? As parcelas dela entram como pagas também.\nResponde *sim* pra confirmar.')
     const atrasada = TEXTOS.faturaPergunta({ cartao: 'Itaú', fatura: { vencimento: '2026-11-08', total: 50, status: 'atrasada' }, valorDito: 50, temParcelas: false })
-    expect(atrasada).toBe('Achei a fatura do Itaú que venceu 08/11: R$ 50,00 💳\nMarco como paga?\nResponde *sim* pra confirmar.')
+    expect(atrasada).toBe('Achei a fatura do *Itaú* 💳\n\n📅 Venceu 08/11\n💰 *R$ 50,00*\n\nMarco como paga?\nResponde *sim* pra confirmar.')
   })
   it('fatura paga com e sem parcelas', () => {
     expect(TEXTOS.faturaPaga('Raul', { cartao: 'Nubank', vencimento: '2026-12-10', total: 300, parcelas: 2 }))
-      .toBe('Prontinho, Raul! Fatura do Nubank (vence 10/12) marcada como paga ✅\nR$ 300,00 · 2 parcelas entraram como pagas')
+      .toBe('Prontinho, Raul! Fatura paga ✅\n\n💳 Nubank · vence 10/12\n💰 *R$ 300,00*\n2 parcelas entraram como pagas')
     expect(TEXTOS.faturaPaga('Raul', { cartao: 'Nubank', vencimento: '2026-12-10', total: 300, parcelas: 1 })).toContain('1 parcela entrou como paga')
-    expect(TEXTOS.faturaPaga('Raul', { cartao: 'Nubank', vencimento: '2026-12-10', total: 300, parcelas: 0 })).toMatch(/R\$ 300,00$/)
+    expect(TEXTOS.faturaPaga('Raul', { cartao: 'Nubank', vencimento: '2026-12-10', total: 300, parcelas: 0 })).toMatch(/\*R\$ 300,00\*$/)
     // data que já passou: "venceu"
-    expect(TEXTOS.faturaPaga('Raul', { cartao: 'Itaú', vencimento: '2026-11-08', total: 10, parcelas: 0 }, HOJE)).toContain('(venceu 08/11)')
+    expect(TEXTOS.faturaPaga('Raul', { cartao: 'Itaú', vencimento: '2026-11-08', total: 10, parcelas: 0 }, HOJE)).toContain('💳 Itaú · venceu 08/11')
     expect(TEXTOS.faturaJaPaga('Itaú', '2026-11-08', HOJE)).toBe('A fatura do Itaú que venceu 08/11 já está paga 👍')
     expect(TEXTOS.faturaJaPaga('Nubank', '2026-12-10', HOJE)).toBe('A fatura do Nubank que vence 10/12 já está paga 👍')
   })
@@ -179,9 +200,14 @@ describe('fatura e último lançamento', () => {
   })
   it('apagar e corrigir mostram o que muda', () => {
     const u = { tipo: 'parcelamento', valor: 300, descricao: 'Tênis', categoria: 'vestuario', cartao_nome: 'Nubank', num_parcelas: 3, valor_parcela: 100, data: null }
-    expect(TEXTOS.apagarPergunta(u, HOJE)).toBe('Apago este lançamento? 🗑️\nR$ 300,00 · Tênis · 🏷️ Vestuário · 💳 Nubank · 3x de R$ 100,00\nResponde *sim* pra apagar.')
+    expect(TEXTOS.apagarPergunta(u, HOJE)).toBe('Apago este lançamento? 🗑️\n\n💸 *R$ 300,00* · Tênis\n🏷️ Vestuário\n💳 Nubank · 3x de R$ 100,00\n\nResponde *sim* pra apagar.')
     expect(TEXTOS.corrigido({ ...u, valor: 150, valor_parcela: 50, valor_antes: 300 }, HOJE))
-      .toBe('Arrumei ✅ Agora ficou assim 👇\nR$ 150,00 · Tênis · 🏷️ Vestuário · 💳 Nubank · 3x de R$ 50,00 (antes R$ 300,00)')
+      .toBe('Arrumei ✅ Agora ficou assim 👇\n\n💸 *R$ 150,00* · Tênis\n🏷️ Vestuário\n💳 Nubank · 3x de R$ 50,00\n(antes: R$ 300,00)')
+    expect(TEXTOS.corrigirPergunta({ descricao: 'Janta', valor: 100 }, 50)).toBe('Corrijo o último lançamento? ✏️\n\nJanta: de R$ 100,00 pra *R$ 50,00*\n\nResponde *sim* pra confirmar.')
+    expect(TEXTOS.apagado({ tipo: 'gasto', valor: 100, descricao: 'Janta' })).toBe('Apaguei ✅\n\n💸 R$ 100,00 · Janta\nSe precisar, é só me mandar de novo.')
+    expect(TEXTOS.apagado({ tipo: 'entrada', valor: 50, descricao: 'Freela' })).toContain('💰 R$ 50,00 · Freela')
+    // gasto do banco em dinheiro: o último mostra "💵 Dinheiro"
+    expect(resumoUltimo({ tipo: 'gasto', valor: 12, descricao: 'Pão', categoria: 'outros', cartao_nome: null, tipo_pagamento: 'dinheiro', data: HOJE }, HOJE)).toBe('💸 *R$ 12,00* · Pão\n🏷️ Outros\n💵 Dinheiro')
     expect(TEXTOS.bloqueio('dividido')).toMatch(/dividido/)
     expect(TEXTOS.bloqueio('xyz')).toMatch(/pelo app/)
   })

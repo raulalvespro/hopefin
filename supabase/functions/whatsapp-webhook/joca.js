@@ -39,17 +39,26 @@ export const venceOuVenceu = (vencimento, hoje) => (hoje && vencimento && String
 const comNome = (prefixo, nome) => (primeiroNome(nome) ? `${prefixo}, ${primeiroNome(nome)}!` : `${prefixo}!`)
 const maiuscula = (s) => { const t = String(s || '').trim(); return t ? t.charAt(0).toUpperCase() + t.slice(1) : t }
 
-// "R$ 100,00 · Janta · 🏷️ Alimentação · 💳 Itaú azul · 3x de R$ 33,33 · 📅 18/11"
-// Data só quando não é hoje; parcelas só quando é parcelado; cartão só quando tem.
+// Forma de pagamento sem cartão, do jeito que o app mostra (o app só tem Cartão, Pix e Dinheiro).
+export const rotuloForma = (forma) => (forma === 'dinheiro' ? 'Dinheiro' : 'Pix')
+
+// Uma informação por linha (aprovado pelo Raul em 20/11/2026, tarde — nota do Obsidian
+// "Joca - mensagens do WhatsApp"):
+//   💸 *R$ 100,00* · Janta
+//   🏷️ Alimentação
+//   💳 Itaú azul · 3x de R$ 33,33      (ou 💵 Pix / 💵 Dinheiro, sem cartão)
+//   📅 18/11                            (só quando não é hoje)
+// Entrada: 💰 *valor* · descrição (+ data quando não é hoje).
 export function resumoLancamento(d, hoje) {
-  const partes = [`${brl(d.valor)} · ${d.descricao}`]
-  if (d.tipo !== 'entrada') {
-    if (d.categoria) partes.push(`🏷️ ${rotuloCategoria(d.categoria)}`)
-    if (d.cartao_nome) partes.push(`💳 ${d.cartao_nome}`)
-    if (d.parcelas > 1) partes.push(`${d.parcelas}x de ${brl(d.valor_parcela ?? d.valor / d.parcelas)}`)
+  const entrada = d.tipo === 'entrada'
+  const linhas = [`${entrada ? '💰' : '💸'} *${brl(d.valor)}* · ${d.descricao}`]
+  if (!entrada) {
+    if (d.categoria) linhas.push(`🏷️ ${rotuloCategoria(d.categoria)}`)
+    if (d.cartao_nome) linhas.push(`💳 ${d.cartao_nome}${d.parcelas > 1 ? ` · ${d.parcelas}x de ${brl(d.valor_parcela ?? d.valor / d.parcelas)}` : ''}`)
+    else linhas.push(`💵 ${rotuloForma(d.forma)}`)
   }
-  if (d.data && d.data !== hoje) partes.push(`📅 ${ddmm(d.data)}`)
-  return partes.join(' · ')
+  if (d.data && d.data !== hoje) linhas.push(`📅 ${ddmm(d.data)}`)
+  return linhas.join('\n')
 }
 
 // O último lançamento como o banco devolve (wa_ultimo_lancamento) -> mesmo resumo.
@@ -58,15 +67,16 @@ export function resumoUltimo(u, hoje) {
     tipo: u.tipo === 'entrada' ? 'entrada' : 'gasto', valor: Number(u.valor), descricao: u.descricao,
     categoria: u.categoria, cartao_nome: u.cartao_nome, parcelas: Number(u.num_parcelas) || 1,
     valor_parcela: u.valor_parcela != null ? Number(u.valor_parcela) : undefined, data: u.data,
+    forma: u.tipo_pagamento === 'dinheiro' ? 'dinheiro' : 'pix',
   }, hoje)
 }
 
 // ---------------------------------------------------------------- textos
 export const TEXTOS = {
-  // (aprovado) gasto lançado
-  gastoLancado: (nome, d, hoje) => `${comNome('Prontinho', nome)} Lancei aqui 👇\n${resumoLancamento(d, hoje)}`,
+  // (aprovado) gasto lançado — uma informação por linha (20/11, tarde)
+  gastoLancado: (nome, d, hoje) => `${comNome('Prontinho', nome)} Lancei aqui 👇\n\n${resumoLancamento(d, hoje)}`,
   // (aprovado) entrada lançada
-  entradaLancada: (d, hoje) => `Oba, entrou dinheiro! 💰\n${resumoLancamento(d, hoje)}\nJá está nas suas entradas.`,
+  entradaLancada: (d, hoje) => `Oba, entrou dinheiro! 💰\n\n${resumoLancamento(d, hoje)}\nJá está nas suas entradas.`,
   // (aprovado) não entendeu
   naoEntendi: 'Hmm, esse eu não entendi 😅 Me manda assim: *farmácia 48,90* ou *uber 23,50 ontem*.',
   // (aprovado) faltou o valor
@@ -105,10 +115,12 @@ export const TEXTOS = {
     'Eu entendo sozinho o valor, a data ("ontem", "sexta", "dia 3"), a categoria, o cartão e as parcelas. Manda um lançamento de cada vez. 💙',
   ].join('\n'),
 
-  // --- novos (esperam o ok do Raul) ---
+  // --- novos (organização aprovada em 20/11, tarde; textos na nota do Obsidian) ---
   taCerto: (d, hoje) => [
     'Deixa eu conferir antes de lançar 🤔',
-    `${d.tipo === 'entrada' ? '💰 Entrada de' : '💸 Gasto de'} ${resumoLancamento(comoVaiSalvar(d), hoje)}`,
+    '',
+    resumoLancamento(comoVaiSalvar(d), hoje),
+    '',
     'Tá certo? Responde *sim* pra eu lançar, ou me manda do jeito certo.',
   ].join('\n'),
   cancelado: 'Beleza, deixei pra lá 👍 Se quiser, me manda de novo do jeito certo.',
@@ -132,29 +144,34 @@ export const TEXTOS = {
 
   // fatura ("paguei a fatura do X")
   faturaPergunta: ({ cartao, fatura, valorDito, temParcelas }) => {
-    const verbo = fatura.status === 'atrasada' ? 'venceu' : 'vence'
-    const linhas = [`Achei a fatura do ${cartao} que ${verbo} ${ddmm(fatura.vencimento)}: ${brl(fatura.total)} 💳`]
+    const verbo = fatura.status === 'atrasada' ? 'Venceu' : 'Vence'
+    const linhas = [`Achei a fatura do *${cartao}* 💳`, '', `📅 ${verbo} ${ddmm(fatura.vencimento)}`, `💰 *${brl(fatura.total)}*`]
     if (valorDito && Math.abs(Number(valorDito) - Number(fatura.total)) >= 0.01) {
       linhas.push(`(Você falou ${brl(valorDito)}. Se tiver compra faltando ou sobrando nela, ajusta no app em Cartões.)`)
     }
-    linhas.push(`Marco como paga?${temParcelas ? ' As parcelas dela entram como pagas também.' : ''}`)
+    linhas.push('', `Marco como paga?${temParcelas ? ' As parcelas dela entram como pagas também.' : ''}`)
     linhas.push('Responde *sim* pra confirmar.')
     return linhas.join('\n')
   },
-  faturaPaga: (nome, { cartao, vencimento, total, parcelas }, hoje) =>
-    `${comNome('Prontinho', nome)} Fatura do ${cartao} (${venceOuVenceu(vencimento, hoje)} ${ddmm(vencimento)}) marcada como paga ✅\n${brl(total)}${parcelas ? ` · ${parcelas} ${parcelas === 1 ? 'parcela entrou' : 'parcelas entraram'} como paga${parcelas === 1 ? '' : 's'}` : ''}`,
+  faturaPaga: (nome, { cartao, vencimento, total, parcelas }, hoje) => [
+    `${comNome('Prontinho', nome)} Fatura paga ✅`,
+    '',
+    `💳 ${cartao} · ${venceOuVenceu(vencimento, hoje)} ${ddmm(vencimento)}`,
+    `💰 *${brl(total)}*`,
+    ...(parcelas ? [`${parcelas} ${parcelas === 1 ? 'parcela entrou' : 'parcelas entraram'} como paga${parcelas === 1 ? '' : 's'}`] : []),
+  ].join('\n'),
   faturaJaPaga: (cartao, vencimento, hoje) => `A fatura do ${cartao} que ${venceOuVenceu(vencimento, hoje)} ${ddmm(vencimento)} já está paga 👍`,
   faturaNada: (cartao, aberta) => `Não tem fatura do ${cartao} pra pagar agora 👍 A aberta fecha ${ddmm(aberta.fechamento)} e vence ${ddmm(aberta.vencimento)}.`,
-  faturaMudou: (cartao, total) => `O valor da fatura do ${cartao} mudou desde a pergunta: agora está em ${brl(total)}. Marco como paga? Responde *sim*.`,
+  faturaMudou: (cartao, total) => `O valor da fatura do ${cartao} mudou desde a pergunta: agora está em *${brl(total)}*.\n\nMarco como paga? Responde *sim*.`,
   faturaQualCartao: (nomes) => (nomes.length
     ? `De qual cartão? Me manda assim: *paguei a fatura do ${nomes[0]}*.\nSeus cartões: ${nomes.join(', ')}.`
     : 'Você ainda não tem cartão cadastrado no app. Cadastra em Cartões › Novo e me chama de novo 😉'),
 
   // último lançamento ("apaga o último", "o valor era 50")
-  apagarPergunta: (u, hoje) => `Apago este lançamento? 🗑️\n${resumoUltimo(u, hoje)}\nResponde *sim* pra apagar.`,
-  apagado: (u) => `Apaguei ✅ ${brl(u.valor)} · ${u.descricao}. Se precisar, é só me mandar de novo.`,
-  corrigirPergunta: (u, novo) => `Corrijo o último lançamento? ✏️\n${u.descricao}: de ${brl(u.valor)} pra ${brl(novo)}\nResponde *sim* pra confirmar.`,
-  corrigido: (r, hoje) => `Arrumei ✅ Agora ficou assim 👇\n${resumoUltimo({ ...r, valor: r.valor, valor_parcela: r.valor_parcela }, hoje)} (antes ${brl(r.valor_antes)})`,
+  apagarPergunta: (u, hoje) => `Apago este lançamento? 🗑️\n\n${resumoUltimo(u, hoje)}\n\nResponde *sim* pra apagar.`,
+  apagado: (u) => `Apaguei ✅\n\n${u.tipo === 'entrada' ? '💰' : '💸'} ${brl(u.valor)} · ${u.descricao}\nSe precisar, é só me mandar de novo.`,
+  corrigirPergunta: (u, novo) => `Corrijo o último lançamento? ✏️\n\n${u.descricao}: de ${brl(u.valor)} pra *${brl(novo)}*\n\nResponde *sim* pra confirmar.`,
+  corrigido: (r, hoje) => `Arrumei ✅ Agora ficou assim 👇\n\n${resumoUltimo({ ...r, valor: r.valor, valor_parcela: r.valor_parcela }, hoje)}\n(antes: ${brl(r.valor_antes)})`,
   nenhumUltimo: 'Não achei nenhum lançamento seu feito por aqui pra mexer 🤔 Pelo app dá pra mudar qualquer um: Gastos › toque nele.',
   sumiu: 'Esse último lançamento não existe mais (talvez já tenha sido apagado no app) 🤔',
   mudou: 'O último lançamento mudou desde a pergunta. Me manda de novo que eu confiro 😉',
@@ -258,6 +275,7 @@ export function instrucoesIA({ hoje, semana, categorias }) {
     '- cartao_id: id de um cartão da lista (em "lancar", se foi no cartão; em "pagar_fatura", o cartão da fatura), ou null',
     `- data: "YYYY-MM-DD". Hoje é ${hoje} (${semana}, America/Sao_Paulo). Entenda "ontem", "sexta", "dia 3". (só em "lancar")`,
     '- parcelas: inteiro >= 1 (1 = à vista) (só em "lancar")',
+    '- forma: só em gasto SEM cartão: "dinheiro" quando a pessoa disser dinheiro ou espécie; "pix" em todo o resto (Pix, débito, transferência, boleto ou quando não disser). Com cartão ou em entrada: null.',
     '- confianca: de 0 a 1, o quanto você tem certeza da ação e dos campos principais (valor e tipo). Se faltar o valor ou a frase for ambígua, use confiança baixa (abaixo de 0.6).',
     '',
     'Se vier "pendente" (um lançamento que o Joca perguntou "tá certo?" e ainda NÃO foi salvo) e a mensagem corrigir algo dele (valor, cartão, data, categoria, parcelas ou descrição), use acao "lancar" e devolva o lançamento COMPLETO já corrigido.',
@@ -267,7 +285,14 @@ export function instrucoesIA({ hoje, semana, categorias }) {
 // O lançamento que espera o "sim", do jeito que vai pra IA como "pendente".
 export function pendenteParaIA(d) {
   if (!d) return undefined
-  return { tipo: d.tipo, valor: d.valor, descricao: d.descricao, categoria: d.categoria, cartao_id: d.cartao_id, data: d.data, parcelas: d.parcelas }
+  return { tipo: d.tipo, valor: d.valor, descricao: d.descricao, categoria: d.categoria, cartao_id: d.cartao_id, data: d.data, parcelas: d.parcelas, forma: d.forma }
+}
+
+// Pix ou dinheiro (gasto sem cartão). A IA diz; a frase também vale ("50 em dinheiro" sem a IA
+// marcar). Débito, transferência e boleto ficam como Pix, igual ao app (que só tem Pix e Dinheiro).
+export function formaDoGasto(formaIA, texto) {
+  if (normalizar(formaIA) === 'dinheiro') return 'dinheiro'
+  return /\b(dinheiro|especie|em maos|cash)\b/.test(normalizar(texto)) ? 'dinheiro' : 'pix'
 }
 
 // Tira o JSON da resposta da IA (às vezes vem embrulhado em ```json).
@@ -288,9 +313,11 @@ export function limparIA(dados, { texto, hoje, categorias, cartoes }) {
   const acao = ACOES.includes(d.acao) ? d.acao : (d.tipo === 'gasto' || d.tipo === 'entrada' ? 'lancar' : 'outro')
   const conf = Number(d.confianca)
   const parcelas = Number(d.parcelas)
+  const tipo = d.tipo === 'entrada' ? 'entrada' : 'gasto'
   return {
     acao,
-    tipo: d.tipo === 'entrada' ? 'entrada' : 'gasto',
+    tipo,
+    forma: tipo === 'gasto' && !cartao ? formaDoGasto(d.forma, texto) : null,
     valor: Number.isFinite(valor) && valor > 0 && valor <= 10_000_000 ? Math.round(valor * 100) / 100 : null,
     descricao: maiuscula(String(d.descricao || texto || '').slice(0, 120)) || 'Lançamento',
     categoria: (categorias || []).includes(d.categoria) ? d.categoria : 'outros',
@@ -310,6 +337,7 @@ export function paraSalvar(d) {
   return {
     tipo: d.tipo, valor: d.valor, descricao: d.descricao, categoria: d.categoria,
     cartao_id: d.cartao_id, data: d.data, parcelas: d.parcelas,
+    tipo_pagamento: d.tipo !== 'entrada' && !d.cartao_id ? (d.forma === 'dinheiro' ? 'dinheiro' : 'pix') : null,
   }
 }
 

@@ -722,6 +722,9 @@ alter table public.suporte_emails
   add column if not exists prazo_em          timestamptz,
   add column if not exists resposta_vista_em timestamptz;
 
+-- 0082 (20/11, tarde): Joca — wa_salvar_lancamento aceita tipo_pagamento 'dinheiro' no gasto sem
+-- cartão (o resto continua 'pix'); wa_ultimo_lancamento devolve tipo_pagamento. Só service_role.
+
 -- ============================================================
 -- FIM
 -- ============================================================
