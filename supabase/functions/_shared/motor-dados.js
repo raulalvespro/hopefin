@@ -23,7 +23,7 @@ export async function carregarDadosMotor(cliente, grupoId, { compIni, compFim, p
   const cpIni = addMeses(compIni, -3)
   const cpFim = addMeses(compFim, 1)
 
-  const [cartoes, gastos, parcelas, assinaturas, fixas, fixasLanc, entradas, contasPagas, transferencias, orcamentos, grupo, aReceber] = await Promise.all([
+  const [cartoes, gastos, parcelas, assinaturas, fixas, fixasLanc, entradas, contasPagas, transferencias, orcamentos, grupo, aReceber, partes] = await Promise.all([
     cliente.from('cartoes').select('id, nome, bandeira, cor, dia_fechamento, dia_vencimento, limite, alerta_dias, ativo, compra_no_fechamento').eq('grupo_id', grupoId),
     cliente.from('gastos').select('id, descricao, valor, data, cartao_id, tipo_pagamento, pessoa_id, fatura_ajuste, categoria, reembolso_status, reembolso_entrada_id, observacao, usuario_id, origem, criado_em, pessoas(nome)')
       .eq('grupo_id', grupoId).gte('data', gIni).lte('data', gFim),
@@ -39,8 +39,13 @@ export async function carregarDadosMotor(cliente, grupoId, { compIni, compFim, p
     cliente.from('orcamentos').select('categoria, valor, pago_com').eq('grupo_id', grupoId),
     cliente.from('grupos').select('criado_em').eq('id', grupoId).maybeSingle(),
     // A receber lançado à mão (reembolso previsto e origem "conta fixa" — A1.14/A1.15)
-    cliente.from('a_receber').select('id, pessoa_id, descricao, valor, data, recebido, entrada_id, recorrente, serie_id, conta_fixa_id, pessoas(nome), contas_fixas(nome)')
+    cliente.from('a_receber').select('id, pessoa_id, descricao, valor, data, recebido, entrada_id, recorrente, serie_id, conta_fixa_id, parcela_num, parcela_total, gasto_id, parcelamento_id, por_conta, pessoas(nome), contas_fixas(nome)')
       .eq('grupo_id', grupoId).gte('data', inicioDe(compIni)).lte('data', fimDe(compFim)),
+    // Partes de outras pessoas em contas divididas (A8.6) numa janela maior: a parte de uma compra
+    // no cartão fica no mês da fatura, que pode ser depois do mês da compra.
+    cliente.from('a_receber').select('gasto_id, parcelamento_id, parcela_num, conta_fixa_id, valor, data')
+      .eq('grupo_id', grupoId).gt('valor', 0).or('gasto_id.not.is.null,parcelamento_id.not.is.null,conta_fixa_id.not.is.null')
+      .gte('data', gIni).lte('data', fimDe(addMeses(compDe(pFim), 2))),
   ])
 
   return {
@@ -61,6 +66,7 @@ export async function carregarDadosMotor(cliente, grupoId, { compIni, compFim, p
     transferencias: checar('cofrinhos', transferencias),
     orcamentos: checar('orçamento', orcamentos),
     aReceber: checar('a receber', aReceber).map((m) => ({ ...m, pessoa_nome: m.pessoas?.nome || null, conta_fixa_nome: m.contas_fixas?.nome || null })),
+    partes: checar('partes divididas', partes),
     inicioComp: grupo.data?.criado_em ? compDe(grupo.data.criado_em) : null,
   }
 }

@@ -13,6 +13,8 @@ export function rotuloOrigem(o) {
     case 'parcelado': return 'Parcelado sem cartão'
     case 'conta_fixa': return o.contaFixaNome ? `Conta fixa: ${o.contaFixaNome}` : 'Conta fixa'
     case 'todo_mes': return 'Todo mês'
+    case 'dividida': return 'Contas divididas' // A8.6: a parte da pessoa numa conta sua
+    case 'por_conta': return 'Já pago por conta' // A8.4: pagou só uma parte
     default: return 'Lançado à mão'
   }
 }

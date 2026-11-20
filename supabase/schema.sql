@@ -669,6 +669,17 @@ alter table public.assinaturas add column if not exists cancelada_em date;
 -- 0075 (19/11 noite, A8.14): preferência "Resumo do mês" (push do dia 1º + cartão no Início).
 alter table public.preferencias_notificacao add column if not exists alertar_resumo boolean not null default true;
 
+-- 0076 (19/11 noite, A8.4 + A8.6): a_receber ganha gasto_id / parcelamento_id (on delete cascade) =
+-- parte de outra pessoa numa conta dividida (sai do SEU gasto no motor, a fatura segue com o total);
+-- por_conta + credito_de (entrada, on delete cascade) = "Pago por conta" (valor NEGATIVO) quando a
+-- pessoa paga só uma parte. valor_check: valor > 0 or (por_conta and valor < 0). parcela_chk até 600.
+-- receber_parte_de_pessoa(p_pessoa, p_valor, p_itens jsonb, p_criar_entrada, p_data) (authenticated).
+-- desfazer_recebimento apaga o "pago por conta" que criou (recusa 'credito_ja_usado').
+alter table public.a_receber add column if not exists gasto_id uuid references public.gastos(id) on delete cascade;
+alter table public.a_receber add column if not exists parcelamento_id uuid references public.parcelamentos(id) on delete cascade;
+alter table public.a_receber add column if not exists por_conta boolean not null default false;
+alter table public.a_receber add column if not exists credito_de uuid references public.entradas(id) on delete cascade;
+
 -- ============================================================
 -- FIM
 -- ============================================================

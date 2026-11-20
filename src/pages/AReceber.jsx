@@ -16,6 +16,7 @@ import SwipeRow from '../components/SwipeRow'
 import { dividirEmParcelas, periodoParcelas, problemaParcelas } from '../lib/parcelas'
 import { copy } from '../copy/pt-BR'
 import { pessoasParecidas } from '../lib/pessoas'
+import { simularRecebimento } from '../lib/receber'
 
 const t = copy.aReceber
 
@@ -38,6 +39,13 @@ const novoManual = () => ({ id: null, serieId: null, dataOriginal: null, aplicar
 const maisDias = (iso, n) => { const d = new Date(`${iso}T12:00:00`); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 const mesAno = (comp) => { const m = nomeMes(comp); return `${m.charAt(0).toUpperCase()}${m.slice(1)} de ${comp.slice(0, 4)}` }
 const primeiroNome = (nome) => String(nome || '').trim().split(/\s+/)[0] || nome
+// "Quanto pagou?" (A8.4): em branco = tudo o que está marcado; senão o número (aceita vírgula)
+const valorPago = (v) => {
+  const s = String(v ?? '').trim()
+  if (!s) return null
+  const n = parseFloat(s.replace(',', '.'))
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : null
+}
 
 export default function AReceber() {
   const { perfil } = useAuth()
@@ -78,7 +86,7 @@ export default function AReceber() {
         .select('id, numero, valor, data_vencimento, recebido, reembolso_entrada_id, parcelamentos!inner(descricao, num_parcelas, pessoa_id, cartao_id, pessoas(nome))')
         .eq('grupo_id', gid).not('parcelamentos.pessoa_id', 'is', null),
       supabase.from('a_receber')
-        .select('id, descricao, valor, data, recebido, recebido_em, entrada_id, recorrente, serie_id, parcela_num, parcela_total, pessoa_id, conta_fixa_id, pessoas(nome), contas_fixas(nome)')
+        .select('id, descricao, valor, data, recebido, recebido_em, entrada_id, recorrente, serie_id, parcela_num, parcela_total, pessoa_id, conta_fixa_id, gasto_id, parcelamento_id, por_conta, pessoas(nome), contas_fixas(nome)')
         .eq('grupo_id', gid),
       supabase.from('pessoas').select('id, nome').eq('grupo_id', gid).order('nome'),
       supabase.from('contas_fixas').select('id, nome').eq('grupo_id', gid).eq('ativo', true).order('nome'),
@@ -134,6 +142,22 @@ export default function AReceber() {
   async function confirmarRecebimento() {
     const sel = itens.filter(i => receber.selecionados.has(i.chave))
     if (!sel.length) { toast('Escolha o que a pessoa pagou.', 'erro'); return }
+    // A8.4: pagou só uma parte (ou um valor diferente do marcado) → quita do mais antigo pro mais
+    // novo e o resto fica "pago por conta" (receber_parte_de_pessoa, 0076).
+    const pago = valorPago(receber.valor)
+    if (pago !== null && Math.abs(pago - soma(sel)) > 0.005) {
+      if (!(pago > 0)) { toast(t.valorInvalido, 'erro'); return }
+      const sim = simularRecebimento(sel, pago)
+      setSalvando(true)
+      const { data, error } = await run(supabase.rpc('receber_parte_de_pessoa', {
+        p_pessoa: receber.pessoaId, p_valor: pago, p_itens: sim.ordem.map(i => ({ t: i.tipo, id: i.id })),
+        p_criar_entrada: receber.criarEntrada, p_data: receber.data || hojeISO(),
+      }))
+      setSalvando(false)
+      if (error) return
+      toast(data?.por_conta > 0 ? t.okParte(fmt(pago), fmt(data.por_conta)) : t.okPagouTudo(fmt(pago)), 'ok')
+      setReceber(null); carregar(); return
+    }
     setSalvando(true)
     const { data, error } = await run(supabase.rpc('receber_de_pessoa', {
       p_pessoa: receber.pessoaId,
@@ -152,8 +176,9 @@ export default function AReceber() {
   async function reabrir(it) {
     if (it.entradaId) {
       if (!confirm('Esse valor foi recebido junto com outros itens. Reabrir desfaz o recebimento inteiro e apaga a entrada de reembolso. Continuar?')) return
-      const { error } = await run(supabase.rpc('desfazer_recebimento', { p_entrada: it.entradaId }), { ok: 'Recebimento desfeito' })
-      if (!error) carregar()
+      const { error } = await supabase.rpc('desfazer_recebimento', { p_entrada: it.entradaId })
+      if (error) { toast(String(error.message).includes('credito_ja_usado') ? t.creditoJaUsado : 'Não foi possível desfazer agora. Tente de novo.', 'erro'); return }
+      toast('Recebimento desfeito', 'ok'); carregar()
       return
     }
     // Recebidos sem entrada (antigos ou marcados à mão): só desmarca
@@ -245,7 +270,7 @@ export default function AReceber() {
   }
 
   function abrirReceber(gp) {
-    setReceber({ pessoaId: gp.id, nome: gp.nome, selecionados: new Set(gp.itens.map(i => i.chave)), criarEntrada: true, data: hojeISO() })
+    setReceber({ pessoaId: gp.id, nome: gp.nome, selecionados: new Set(gp.itens.map(i => i.chave)), criarEntrada: true, data: hojeISO(), valor: '' })
   }
 
   // ---------------------------------------------------------- cobrança (A1.16)
@@ -358,6 +383,11 @@ export default function AReceber() {
   ] : []
 
   const selTotal = receber ? soma(itens.filter(i => receber.selecionados.has(i.chave))) : 0
+  // A8.4: quanto a pessoa pagou (em branco = tudo o que está marcado)
+  const pagoDigitado = receber ? valorPago(receber.valor) : null
+  const simParte = receber && pagoDigitado !== null && pagoDigitado > 0 && Math.abs(pagoDigitado - selTotal) > 0.005
+    ? simularRecebimento(itens.filter(i => receber.selecionados.has(i.chave)), pagoDigitado) : null
+  const valorDaEntrada = simParte ? pagoDigitado : selTotal
   const itensDaPessoa = receber ? itens.filter(i => !i.recebido && (i.pessoaId || i.pessoaNome) === (receber.pessoaId || receber.nome))
     .sort((a, b) => a.comp.localeCompare(b.comp) || String(a.dataSaida).localeCompare(String(b.dataSaida))) : []
 
@@ -480,16 +510,27 @@ export default function AReceber() {
               <span style={{ fontSize: 20, fontWeight: 700, fontFamily: 'Syne', color: 'var(--accent-text)' }}>{fmt(selTotal)}</span>
             </div>
             <div className="form-group">
+              <label>{t.quantoPagou(primeiroNome(receber.nome))}</label>
+              <input type="number" inputMode="decimal" min="0" step="0.01" value={receber.valor} placeholder={fmt(selTotal)}
+                onChange={e => setReceber(r => ({ ...r, valor: e.target.value }))} />
+              <span style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>{t.quantoPagouSub}</span>
+              {simParte && (
+                <p style={{ fontSize: 12.5, marginTop: 6, padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--amber-dim)', color: 'var(--text)', lineHeight: 1.45 }}>
+                  {t.previaParte(simParte.quitados.filter(i => i.valor > 0).length, fmt(simParte.porConta), fmt(simParte.faltam))}
+                </p>
+              )}
+            </div>
+            <div className="form-group">
               <label>{t.dataRecebeu}</label>
               <input type="date" value={receber.data} onChange={e => setReceber(r => ({ ...r, data: e.target.value }))} />
             </div>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--text2)', marginBottom: 16, cursor: 'pointer', lineHeight: 1.4 }}>
               <input type="checkbox" checked={receber.criarEntrada} onChange={e => setReceber(r => ({ ...r, criarEntrada: e.target.checked }))} style={{ marginTop: 2 }} />
-              <span>{t.lancarEntrada(fmt(selTotal))}</span>
+              <span>{t.lancarEntrada(fmt(valorDaEntrada))}</span>
             </label>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-ghost" style={{ flex: 1 }} onClick={() => setReceber(null)}>Cancelar</button>
-              <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} disabled={salvando || selTotal <= 0} onClick={confirmarRecebimento}>
+              <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} disabled={salvando || (selTotal <= 0 && !(pagoDigitado > 0))} onClick={confirmarRecebimento}>
                 {salvando ? 'Salvando...' : 'Confirmar'}
               </button>
             </div>

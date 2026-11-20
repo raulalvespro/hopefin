@@ -269,7 +269,8 @@ export function resumoMes(comp, dados, opcoes = {}) {
     ...(dados.entradas || []).filter((e) => compDe(e.data) === comp)
       .map((e) => ({ tipo: 'entrada', id: e.id, descricao: e.descricao, valor: num(e.valor), data: e.data, recebida: !!e.recebido, origem: e.origem || 'manual' })),
     ...reembolsosPrevistos(comp, dados).map((p) => ({
-      tipo: 'entrada', id: `previsto:${p.pessoaId || p.pessoaNome}`, descricao: `A receber de ${p.pessoaNome}`,
+      tipo: 'entrada', id: `previsto:${p.pessoaId || p.pessoaNome}`,
+      descricao: p.total < 0 ? `Pago por conta · ${p.pessoaNome}` : `A receber de ${p.pessoaNome}`,
       valor: p.total, data: p.data, recebida: false, origem: 'reembolso_previsto',
       pessoaId: p.pessoaId, pessoaNome: p.pessoaNome, qtd: p.itens.length, itens: p.itens,
     })),
@@ -377,12 +378,34 @@ export function pendentesDoMes(comp, dados, opcoes = {}) {
   ].sort((a, b) => String(a.data || '9').localeCompare(String(b.data || '9')))
 }
 
+// Partes de outras pessoas (A8.6): "a receber" ligado a uma compra (gasto_id), a uma parcela
+// de um parcelado (parcelamento_id + parcela_num) ou a uma conta fixa num mês (conta_fixa_id).
+// Saem do SEU gasto; a fatura/o pagamento continuam com o total. "Pago por conta" (negativo)
+// não entra aqui. `dados.partes` (motor-dados) traz as ligadas de uma janela maior; sem ela,
+// usa dados.aReceber.
+export function partesDeOutros(dados) {
+  const gasto = new Map(), parcela = new Map(), fixa = new Map()
+  const somar = (m, k, v) => m.set(k, arred((m.get(k) || 0) + v))
+  for (const m of dados.partes || dados.aReceber || []) {
+    const v = num(m.valor)
+    if (!(v > 0)) continue
+    if (m.gasto_id) somar(gasto, m.gasto_id, v)
+    else if (m.parcelamento_id && m.parcela_num) somar(parcela, `${m.parcelamento_id}|${m.parcela_num}`, v)
+    else if (m.conta_fixa_id) somar(fixa, `${m.conta_fixa_id}|${compDe(m.data)}`, v)
+  }
+  return { gasto, parcela, fixa }
+}
+
 // Consumo do mês por categoria (data da compra / da parcela / da cobrança), sem o
 // que é de outra pessoa. Base das categorias, do orçamento e do "para onde foi".
+// Conta dividida (A8.6): só a SUA parte entra.
 export function meuGastoDoMes(comp, dados) {
   const porCategoria = {}
   const itens = []
+  const partes = partesDeOutros(dados)
+  const minhaParte = (valor, parte) => arred(Math.max(0, num(valor) - (parte || 0)))
   const add = (cat, item) => {
+    if (!(item.valor > 0.004)) return
     const c = cat || 'outros'
     porCategoria[c] ||= { total: 0, itens: [] }
     porCategoria[c].total = arred(porCategoria[c].total + num(item.valor))
@@ -391,16 +414,16 @@ export function meuGastoDoMes(comp, dados) {
   }
   for (const g of dados.gastos || []) {
     if (g.pessoa_id || compDe(g.data) !== comp) continue
-    add(g.categoria, { tipo: 'gasto', id: g.id, descricao: g.descricao, valor: num(g.valor), data: g.data, cartaoId: g.cartao_id || null })
+    add(g.categoria, { tipo: 'gasto', id: g.id, descricao: g.descricao, valor: minhaParte(g.valor, partes.gasto.get(g.id)), data: g.data, cartaoId: g.cartao_id || null })
   }
   for (const p of dados.parcelas || []) {
     if (p.pessoa_id || compDe(p.data_vencimento) !== comp) continue
-    add(p.categoria, { tipo: 'parcela', id: p.id, descricao: p.descricao, valor: num(p.valor), data: p.data_vencimento, numero: p.numero, total: p.num_parcelas, cartaoId: p.cartao_id || null })
+    add(p.categoria, { tipo: 'parcela', id: p.id, descricao: p.descricao, valor: minhaParte(p.valor, partes.parcela.get(`${p.parcelamento_id}|${p.numero}`)), data: p.data_vencimento, numero: p.numero, total: p.num_parcelas, cartaoId: p.cartao_id || null })
   }
   for (const f of dados.fixas || []) {
     if (f.ativo === false || (f.criado_em && compDe(f.criado_em) > comp)) continue
     const l = (dados.fixasLanc || []).find((x) => x.conta_fixa_id === f.id && x.competencia === comp)
-    add(f.categoria, { tipo: 'fixa', id: f.id, descricao: f.nome, valor: l?.valor_real != null ? num(l.valor_real) : num(f.valor), data: f.dia_vencimento ? dataNoMes(comp, f.dia_vencimento) : null })
+    add(f.categoria, { tipo: 'fixa', id: f.id, descricao: f.nome, valor: minhaParte(l?.valor_real != null ? l.valor_real : f.valor, partes.fixa.get(`${f.id}|${comp}`)), data: f.dia_vencimento ? dataNoMes(comp, f.dia_vencimento) : null })
   }
   for (const a of dados.assinaturas || []) {
     if (!assinaturaConta(a)) continue
@@ -452,9 +475,12 @@ export function itensDeTerceiros(dados) {
       descricao: m.descricao, valor: num(m.valor), data: m.data, comp: compDe(m.data), dataSaida: m.data,
       recebido: !!m.recebido, entradaId: m.entrada_id || null, recorrente: !!m.recorrente, serieId: m.serie_id || null,
       numero: m.parcela_num || null, deTotal: m.parcela_total || null, // a receber parcelado (A8.17)
-      origem: m.conta_fixa_id
-        ? { tipo: 'conta_fixa', contaFixaId: m.conta_fixa_id, contaFixaNome: m.conta_fixa_nome || null }
-        : { tipo: m.recorrente ? 'todo_mes' : 'manual' },
+      porConta: !!m.por_conta, gastoId: m.gasto_id || null, parcelamentoId: m.parcelamento_id || null,
+      origem: m.por_conta ? { tipo: 'por_conta' } // A8.4: pagou só uma parte
+        : m.gasto_id || m.parcelamento_id ? { tipo: 'dividida' } // A8.6: parte de uma conta dividida
+        : m.conta_fixa_id
+          ? { tipo: 'conta_fixa', contaFixaId: m.conta_fixa_id, contaFixaNome: m.conta_fixa_nome || null }
+          : { tipo: m.recorrente ? 'todo_mes' : 'manual' },
     })
   }
   return out
@@ -465,7 +491,8 @@ export function itensDeTerceiros(dados) {
 export function reembolsosPrevistos(comp, dados) {
   const porPessoa = new Map()
   for (const i of itensDeTerceiros(dados)) {
-    if (i.recebido || i.comp !== comp || i.valor <= 0.004) continue
+    // "Pago por conta" (negativo, A8.4) abate o que a pessoa deve no mês em que pagou
+    if (i.recebido || i.comp !== comp || Math.abs(i.valor) <= 0.004) continue
     const k = i.pessoaId || i.pessoaNome || '?'
     if (!porPessoa.has(k)) porPessoa.set(k, { pessoaId: i.pessoaId, pessoaNome: i.pessoaNome || 'Alguém', itens: [], total: 0, data: i.dataSaida })
     const p = porPessoa.get(k)
@@ -473,7 +500,7 @@ export function reembolsosPrevistos(comp, dados) {
     p.total = arred(p.total + i.valor)
     if (i.dataSaida > p.data) p.data = i.dataSaida
   }
-  return [...porPessoa.values()].sort((a, b) => b.total - a.total)
+  return [...porPessoa.values()].filter((p) => Math.abs(p.total) > 0.004).sort((a, b) => b.total - a.total)
 }
 
 // ---------------------------------------------------------------- contas a vencer

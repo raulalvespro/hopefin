@@ -7,7 +7,7 @@ import {
   compDaCompra, cobrancaNoMes, faturaDoCartao, faturasDoCartaoAgora, limiteComprometido,
   resumoMes, meuGastoDoMes, addMeses, dataNoMes, pagoComResolvido, contasAVencer,
   itensDeTerceiros, reembolsosPrevistos, compDe, dataDeCompraNaFatura, primeiroVencimentoParcelado,
-  planoMoverParcelas, assinaturaConta, pendentesDoMes,
+  planoMoverParcelas, assinaturaConta, pendentesDoMes, partesDeOutros,
 } from '../supabase/functions/_shared/motor.js'
 
 const HOJE = '2026-11-16'
@@ -386,5 +386,38 @@ describe('contas que ficaram sem pagar (A8.13)', () => {
     d.contasPagas.push({ tipo: 'fatura', referencia_id: 'B', competencia: '2026-11', pago: true })
     d.parcelas.find((x) => x.id === 'p3').paga = true
     expect(pendentesDoMes('2026-11', d, { hoje: '2026-12-02' })).toEqual([])
+  })
+})
+
+describe('conta dividida e pago por conta (A8.6 / A8.4)', () => {
+  it('só a SUA parte entra no seu gasto; a fatura continua com o total', () => {
+    const d = dados()
+    d.parcelas.find((p) => p.id === 'p3').parcelamento_id = 'pm3'
+    d.partes = [
+      { gasto_id: 'g8', valor: 50, data: '2026-11-09' },                                 // pix de 200: 50 é do Jack
+      { parcelamento_id: 'pm3', parcela_num: 10, valor: 97, data: '2026-11-20' },         // 1/3 da parcela 10
+      { conta_fixa_id: 'f2', valor: 150, data: '2026-11-30' },                            // metade do plano
+    ]
+    const antes = meuGastoDoMes('2026-11', dados())
+    const depois = meuGastoDoMes('2026-11', d)
+    expect(antes.porCategoria.transporte.total).toBe(200)
+    expect(depois.porCategoria.transporte.total).toBe(150)
+    expect(depois.porCategoria.moradia.total).toBe(antes.porCategoria.moradia.total - 97)
+    expect(depois.porCategoria.saude.total).toBe(antes.porCategoria.saude.total - 150)
+    // o dinheiro do mês (caixa) não muda: a fatura e o pagamento são o total
+    expect(resumoMes('2026-11', d, { hoje: HOJE }).totalSaidas).toBe(resumoMes('2026-11', dados(), { hoje: HOJE }).totalSaidas)
+    expect(partesDeOutros({ partes: [{ gasto_id: 'x', valor: -30 }] }).gasto.size).toBe(0) // "pago por conta" não conta
+  })
+
+  it('"pago por conta" abate o previsto da pessoa no mês em que ela pagou', () => {
+    const d = dados()
+    d.aReceber = [
+      { id: 'm1', pessoa_id: 'P9', pessoa_nome: 'Jack', descricao: 'Lanche (parte)', valor: 100, data: '2026-11-10', recebido: false, gasto_id: 'g8' },
+      { id: 'm2', pessoa_id: 'P9', pessoa_nome: 'Jack', descricao: 'Pago por conta', valor: -60, data: '2026-11-15', recebido: false, por_conta: true },
+    ]
+    const jack = reembolsosPrevistos('2026-11', d).find((p) => p.pessoaId === 'P9')
+    expect(jack.total).toBe(40)
+    const itens = itensDeTerceiros(d).filter((i) => i.pessoaId === 'P9')
+    expect(itens.map((i) => i.origem.tipo).sort()).toEqual(['dividida', 'por_conta'])
   })
 })

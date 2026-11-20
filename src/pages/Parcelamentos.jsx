@@ -13,6 +13,8 @@ import SwipeRow from '../components/SwipeRow'
 import { fmt, fmtData, hojeISO, parseDataLocal } from '../lib/format'
 import { usePessoas } from '../hooks/usePessoas'
 import EscolherPessoa from '../components/EscolherPessoa'
+import DividirConta from '../components/DividirConta'
+import { resumoPartes, salvarPartes, partesDoBanco } from '../lib/dividir'
 import { copy } from '../copy/pt-BR'
 import { useFlags } from '../hooks/useFlags'
 import BuscaFiltros from '../components/BuscaFiltros'
@@ -138,7 +140,7 @@ export default function Parcelamentos() {
     setLoading(false)
   }
   async function carregarCartoes() {
-    const { data } = await supabase.from('cartoes').select('id, nome').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('nome')
+    const { data } = await supabase.from('cartoes').select('id, nome, dia_fechamento, dia_vencimento, compra_no_fechamento').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('nome')
     setCartoes(data || [])
   }
   async function resolverPessoaId(nome) {
@@ -155,7 +157,23 @@ export default function Parcelamentos() {
       valor_total: String(p.valor_total), num_parcelas: String(p.num_parcelas),
       data_primeira_parcela: p.data_primeira_parcela, parcelas_pagas: String(p.parcelas_pagas || 0),
       de_terceiro: !!p.pessoa_id, pessoa_nome: p.pessoas?.nome || '',
+      // Conta dividida (A8.6): por padrão, a partir da parcela deste mês
+      dividir: false, partes: [],
+      aPartirDe: Math.min(...[...(p.parcelas || []).filter(x => String(x.data_vencimento).slice(0, 7) >= hojeISO().slice(0, 7)).map(x => x.numero), p.num_parcelas || 1]),
     })
+    if (!p.pessoa_id) {
+      supabase.from('a_receber').select('pessoa_id, valor, parcela_num, parcela_total, recebido, pessoas(nome)').eq('parcelamento_id', p.id).gt('valor', 0).order('parcela_num')
+        .then(({ data }) => {
+          if (!data?.length) return
+          const valorDe = (n) => Number((p.parcelas || []).find(x => x.numero === n)?.valor || p.valor_parcela || 0)
+          const abertas = data.filter(l => !l.recebido).map(l => l.parcela_num)
+          setForm(f => ({
+            ...f, dividir: true,
+            partes: partesDoBanco(data.map(l => ({ ...l, valor_parcela: valorDe(l.parcela_num) })), { total: Number(p.valor_total), parcelado: true }),
+            aPartirDe: abertas.length ? Math.min(...abertas) : f.aPartirDe,
+          }))
+        })
+    }
   }
   function fecharEdicao() {
     setEditando(null); setForm(novaEdicao())
@@ -182,8 +200,20 @@ export default function Parcelamentos() {
     if (pagas < 0) pagas = 0
     if (pagas > n) pagas = n
     if (!form.data_primeira_parcela) { toast('Informe a data da 1ª parcela.', 'erro'); return }
+    // Conta dividida (A8.6): cada parte com pessoa e valor, sem passar do total
+    let partesOk = []
+    if (form.dividir && !form.de_terceiro) {
+      const rp = resumoPartes(valor, form.partes)
+      if (!rp.ok.length || rp.vazias) { toast(copy.dividir.faltaPessoa, 'erro'); return }
+      if (rp.excede) { toast(copy.dividir.passou, 'erro'); return }
+      partesOk = rp.ok
+    }
 
     setSalvando(true)
+    for (const p of partesOk) {
+      p.pessoaId = await garantirPessoa(p.nome)
+      if (!p.pessoaId) { setSalvando(false); toast(copy.pessoas.erroSalvar, 'erro'); return }
+    }
     const pessoaId = form.de_terceiro ? await resolverPessoaId(form.pessoa_nome) : null
     const vParcela = parseFloat((valor / n).toFixed(2))
     const { error } = await run(
@@ -212,6 +242,13 @@ export default function Parcelamentos() {
       }
     })
     await supabase.from('parcelas').insert(rows)
+
+    // Partes da divisão: refaz as em aberto (ou apaga, se deixou de dividir / virou de outra pessoa)
+    const okPartes = await salvarPartes(supabase, {
+      grupoId: perfil.grupo_id, parcelamento: { id: editando, descricao: form.descricao.trim(), valor_total: valor, num_parcelas: n },
+      partes: pessoaId ? [] : partesOk, cartao: cartoes.find(c => c.id === form.cartao_id) || null, aPartirDe: form.aPartirDe || 1,
+    })
+    if (!okPartes) toast(copy.dividir.erroSalvar, 'erro')
 
     setSalvando(false)
     fecharEdicao(); carregar()
@@ -341,7 +378,7 @@ export default function Parcelamentos() {
             </div>
             <div style={{ marginBottom: 14 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
-                <input type="checkbox" checked={form.de_terceiro} onChange={e => setForm(p => ({ ...p, de_terceiro: e.target.checked }))} />
+                <input type="checkbox" checked={form.de_terceiro} onChange={e => setForm(p => ({ ...p, de_terceiro: e.target.checked, dividir: e.target.checked ? false : p.dividir }))} />
                 É de outra pessoa (vão me pagar)
               </label>
               {form.de_terceiro && (
@@ -350,6 +387,17 @@ export default function Parcelamentos() {
                     onEscolher={nome => setForm(p => ({ ...p, pessoa_nome: nome }))} />
                   <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>Cada parcela vira um “A receber” no mês em que vence.</span>
                 </div>
+              )}
+              {/* Dividir com outras pessoas (A8.6) */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)', marginTop: 10 }}>
+                <input type="checkbox" checked={!!form.dividir} onChange={e => setForm(p => ({ ...p, dividir: e.target.checked, de_terceiro: e.target.checked ? false : p.de_terceiro }))} />
+                {copy.dividir.marcar}
+              </label>
+              {form.dividir && (
+                <DividirConta total={parseFloat(String(form.valor_total).replace(',', '.')) || 0} partes={form.partes || []}
+                  onChange={partes => setForm(p => ({ ...p, partes }))} pessoas={pessoas} onCriar={garantirPessoa}
+                  parcelado numParcelas={parseInt(form.num_parcelas) || 0} aPartirDe={form.aPartirDe || 1}
+                  onAPartirDe={n => setForm(p => ({ ...p, aPartirDe: n }))} />
               )}
             </div>
             <p style={{ fontSize: 11.5, color: 'var(--text3)', margin: '0 0 16px', lineHeight: 1.4 }}>

@@ -20,12 +20,14 @@ import { assinaturaParecida } from '../lib/assinaturaParecida'
 import { periodoParcelas } from '../lib/parcelas'
 import { usePessoas } from '../hooks/usePessoas'
 import EscolherPessoa from '../components/EscolherPessoa'
+import DividirConta from '../components/DividirConta'
+import { resumoPartes, salvarPartes, partesDoBanco } from '../lib/dividir'
 import { useFlags } from '../hooks/useFlags'
 import BuscaFiltros from '../components/BuscaFiltros'
 import { filtrar, filtroVazio, temFiltro, distintos } from '../lib/busca'
 import { compDaCompra, faturaDoCartao, addMeses, hojeBRT, primeiroVencimentoParcelado } from '../lib/motor'
 
-const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO(), de_terceiro: false, pessoa_nome: '', reembolso_status: null, observacao: '', assinatura: false, fatura_ajuste: 0 })
+const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO(), de_terceiro: false, pessoa_nome: '', reembolso_status: null, observacao: '', assinatura: false, fatura_ajuste: 0, dividir: false, partes: [] })
 const tg = copy.gastos
 // Vencimento curto: "09/12" no ano corrente, "09/01/2027" em outro ano
 const vencCurto = (iso, hoje) => fmtData(iso, iso.slice(0, 4) === hoje.slice(0, 4) ? 'dd/MM' : 'dd/MM/yyyy')
@@ -182,8 +184,14 @@ export default function Gastos() {
       de_terceiro: !!it.terceiro, pessoa_nome: it.terceiro && it.terceiro !== 'alguém' ? it.terceiro : '',
       reembolso_status: it.reembolso_status || null,
       observacao: it.observacao || '', assinatura: false, fatura_ajuste: it.fatura_ajuste || 0,
+      dividir: false, partes: [],
     })
     setModal(true)
+    // Conta dividida (A8.6): traz as partes de cada pessoa pro formulário
+    if (!it.terceiro) {
+      supabase.from('a_receber').select('pessoa_id, valor, pessoas(nome)').eq('gasto_id', it.rawId).gt('valor', 0)
+        .then(({ data }) => { if (data?.length) setForm(f => ({ ...f, dividir: true, partes: partesDoBanco(data, { total: Number(it.valor) }) })) })
+    }
   }
 
   function fecharModal() {
@@ -211,7 +219,19 @@ export default function Gastos() {
       toast(cartoes.length ? 'Escolha qual cartão — ou mude o pagamento para PIX ou Dinheiro.' : 'Você ainda não tem cartão cadastrado. Mude o pagamento para PIX ou Dinheiro, ou cadastre o cartão em Cartões.', 'erro')
       return
     }
+    // Conta dividida (A8.6): cada parte com pessoa e valor, sem passar do total
+    let partesOk = []
+    if (form.dividir && !form.de_terceiro && !form.assinatura) {
+      const rp = resumoPartes(valor, form.partes)
+      if (!rp.ok.length || rp.vazias) { toast(copy.dividir.faltaPessoa, 'erro'); return }
+      if (rp.excede) { toast(copy.dividir.passou, 'erro'); return }
+      partesOk = rp.ok
+    }
     setSalvando(true)
+    for (const p of partesOk) {
+      p.pessoaId = await garantirPessoa(p.nome)
+      if (!p.pessoaId) { setSalvando(false); toast(copy.pessoas.erroSalvar, 'erro'); return }
+    }
     // Fatura escolhida no ‹ › (A2.5): só vale pra compra no cartão
     const cartaoSel = form.cartao_id ? cartoes.find(c => c.id === form.cartao_id) : null
     const ajuste = form.cartao_id ? (Number(form.fatura_ajuste) || 0) : 0
@@ -251,8 +271,11 @@ export default function Gastos() {
         supabase.from('gastos').update(patch).eq('id', editando),
         { ok: 'Gasto atualizado' }
       )
+      if (error) { setSalvando(false); return }
+      // partes da divisão: refaz as em aberto (ou apaga, se deixou de dividir / virou de outra pessoa)
+      const okPartes = await salvarPartes(supabase, { grupoId: perfil.grupo_id, gasto: { id: editando, descricao: form.descricao, data: form.data }, partes: pessoaId ? [] : partesOk, cartao: cartaoSel, data: form.data, ajuste })
       setSalvando(false)
-      if (error) return
+      if (!okPartes) toast(copy.dividir.erroSalvar, 'erro')
       fecharModal(); carregar(); return
     }
 
@@ -276,31 +299,39 @@ export default function Gastos() {
         dataPrimeira = `${prim.getFullYear()}-${String(prim.getMonth() + 1).padStart(2, '0')}-${String(prim.getDate()).padStart(2, '0')}`
       }
       const pessoaId = await resolverPessoaId()
-      const { error } = await run(
+      const { data: novoParc, error } = await run(
         supabase.from('parcelamentos').insert({
           descricao: form.descricao, valor_total: valor, num_parcelas: n, valor_parcela: vParcela,
           cartao_id: form.cartao_id || null, categoria: form.categoria,
           data_primeira_parcela: dataPrimeira, parcelas_pagas: pagas,
           grupo_id: perfil.grupo_id, usuario_id: perfil.id, pessoa_id: pessoaId,
-        }),
+        }).select('id, descricao, valor_total, num_parcelas').single(),
         { ok: (() => { const { de, ate } = periodoParcelas(n, dataPrimeira); return copy.gastos.parcelasCriadas(n, de, ate) })() }
       )
+      if (error) { setSalvando(false); return }
+      if (partesOk.length && !pessoaId && novoParc?.id) {
+        const okPartes = await salvarPartes(supabase, { grupoId: perfil.grupo_id, parcelamento: novoParc, partes: partesOk, cartao: cartaoSel, aPartirDe: pagas + 1 })
+        if (!okPartes) toast(copy.dividir.erroSalvar, 'erro')
+      }
       setSalvando(false)
-      if (error) return
     } else {
       const pessoaId = await resolverPessoaId()
-      const { error } = await run(
+      const { data: novoGasto, error } = await run(
         supabase.from('gastos').insert({
           descricao: form.descricao, valor, categoria: form.categoria,
           tipo_pagamento: form.tipo_pagamento, cartao_id: form.cartao_id || null,
           data: form.data, grupo_id: perfil.grupo_id, usuario_id: perfil.id,
           pessoa_id: pessoaId, reembolso_status: pessoaId ? 'pendente' : null,
           observacao: form.observacao || null, fatura_ajuste: ajuste,
-        }),
+        }).select('id, descricao, data').single(),
         { ok: 'Gasto adicionado' }
       )
+      if (error) { setSalvando(false); return }
+      if (partesOk.length && !pessoaId && novoGasto?.id) {
+        const okPartes = await salvarPartes(supabase, { grupoId: perfil.grupo_id, gasto: novoGasto, partes: partesOk, cartao: cartaoSel, data: form.data, ajuste })
+        if (!okPartes) toast(copy.dividir.erroSalvar, 'erro')
+      }
       setSalvando(false)
-      if (error) return
     }
     fecharModal(); carregar()
   }
@@ -571,7 +602,7 @@ export default function Gastos() {
             {!form.assinatura && (
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
-                  <input type="checkbox" checked={form.de_terceiro} onChange={e => setForm(p => ({ ...p, de_terceiro: e.target.checked }))} />
+                  <input type="checkbox" checked={form.de_terceiro} onChange={e => setForm(p => ({ ...p, de_terceiro: e.target.checked, dividir: e.target.checked ? false : p.dividir }))} />
                   Foi de outra pessoa (vão me pagar)
                 </label>
                 {form.de_terceiro && (
@@ -584,6 +615,15 @@ export default function Gastos() {
                         : 'Esse valor não entra nos seus gastos — fica em “A receber” até você marcar como recebido.'}
                     </span>
                   </div>
+                )}
+                {/* Dividir com outras pessoas (A8.6): uma parte é sua, outra de quem vai te pagar */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)', marginTop: 10 }}>
+                  <input type="checkbox" checked={form.dividir} onChange={e => setForm(p => ({ ...p, dividir: e.target.checked, de_terceiro: e.target.checked ? false : p.de_terceiro }))} />
+                  {copy.dividir.marcar}
+                </label>
+                {form.dividir && (
+                  <DividirConta total={parseFloat(form.valor) || 0} partes={form.partes} onChange={partes => setForm(p => ({ ...p, partes }))}
+                    pessoas={pessoas} onCriar={garantirPessoa} parcelado={form.parcelado} />
                 )}
               </div>
             )}

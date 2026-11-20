@@ -15,7 +15,8 @@ const estiloChip = (marcado) => ({
   color: marcado ? 'var(--accent-text)' : 'var(--text2)',
 })
 
-export default function EscolherPessoa({ pessoas, valor, onEscolher, onCriar }) {
+// `marcados` (opcional): várias pessoas marcadas (dividir conta, A8.6). `titulo` troca o "Quem?".
+export default function EscolherPessoa({ pessoas, valor, onEscolher, onCriar, marcados = null, titulo = null }) {
   const [nova, setNova] = useState(false)
   const [nome, setNome] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -38,12 +39,12 @@ export default function EscolherPessoa({ pessoas, valor, onEscolher, onCriar }) 
 
   return (
     <div>
-      <p style={{ fontSize: 12, color: 'var(--text2)', margin: '0 0 8px' }}>{t.quem}</p>
+      <p style={{ fontSize: 12, color: 'var(--text2)', margin: '0 0 8px' }}>{titulo || t.quem}</p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {pessoas.map((p) => {
-          const marcado = p.nome.toLowerCase() === atual
+          const marcado = marcados ? marcados.some((n) => n.toLowerCase() === p.nome.toLowerCase()) : p.nome.toLowerCase() === atual
           return (
-            <button key={p.id} type="button" aria-pressed={marcado} onClick={() => onEscolher(marcado ? '' : p.nome)} style={estiloChip(marcado)}>
+            <button key={p.id} type="button" aria-pressed={marcado} onClick={() => onEscolher(marcado && !marcados ? '' : p.nome)} style={estiloChip(marcado)}>
               {marcado && <Check size={13} aria-hidden="true" />}{p.nome}
             </button>
           )

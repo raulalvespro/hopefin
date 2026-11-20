@@ -323,6 +323,14 @@ export const copy = {
     reabrir: 'reabrir',
     // Receber
     receberTitulo: (nome) => `Receber de ${nome}`,
+    // A8.4: receber só uma parte
+    quantoPagou: (nome) => `Quanto ${nome} pagou?`,
+    quantoPagouSub: 'Em branco = pagou tudo o que está marcado. Se pagou só uma parte, o app quita do mais antigo pro mais novo e o resto fica "pago por conta", abatendo o que falta.',
+    previaParte: (n, porConta, faltam) => `${n ? `Quita ${n} ${n === 1 ? 'item' : 'itens'} inteiro${n === 1 ? '' : 's'}` : 'Não cobre nenhum item inteiro'}${porConta !== 'R$ 0,00' ? ` e ${porConta} fica pago por conta` : ''}. Faltam ${faltam}.`,
+    okParte: (v, porConta) => `Recebido ${v} — ${porConta} ficou pago por conta`,
+    okPagouTudo: (v) => `Recebido ${v}`,
+    valorInvalido: 'Informe quanto a pessoa pagou.',
+    creditoJaUsado: 'O "pago por conta" desse recebimento já foi usado num recebimento depois. Desfaça aquele primeiro.',
     receberSub: 'Marque o que a pessoa pagou (os do mês já vêm marcados).',
     totalRecebido: 'Total recebido',
     dataRecebeu: 'Data em que recebeu',
@@ -503,6 +511,24 @@ export const copy = {
     pessoas: 'Pessoas',
     pessoasSub: 'Quem divide contas com você ou te deve',
     sair: 'Sair',
+  },
+
+  // Dividir uma conta com outras pessoas (A8.6)
+  dividir: {
+    marcar: 'Dividir com outras pessoas',
+    marcarSub: 'Uma parte é sua e outra de alguém que vai te pagar',
+    comQuem: 'Com quem?',
+    parteDe: (nome) => `Parte de ${nome}`,
+    iguais: (n) => `Dividir em partes iguais (${n})`,
+    suaParte: (v) => `Sua parte: ${v}`,
+    passou: 'A soma das partes passou do total',
+    parceladoExplica: 'Cada parcela é dividida na mesma proporção e a parte de cada pessoa fica em A receber no mês da parcela.',
+    aPartirDe: 'A partir da parcela',
+    deN: (n) => `de ${n}`,
+    explica: 'A fatura (ou o pagamento) continua com o total. Nos seus gastos e no orçamento entra só a sua parte; a de cada pessoa vai pro A receber dela.',
+    faltaPessoa: 'Escolha a pessoa e o valor de cada parte.',
+    erroSalvar: 'A compra foi salva, mas não deu pra salvar a divisão. Abra de novo e confira.',
+    dividida: (n) => `dividida com ${n} ${n === 1 ? 'pessoa' : 'pessoas'}`,
   },
 
   // Categorias (A8.20): renomear leva junto os lançamentos
