@@ -44,7 +44,7 @@ export default function DividirConta({ total, partes, onChange, pessoas, onCriar
       )}
       {parcelado && partes.length > 0 && (
         <div style={{ marginTop: 8 }}>
-          <p style={{ fontSize: 11.5, color: 'var(--text3)', lineHeight: 1.45 }}>{t.parceladoExplica}</p>
+          <p style={{ fontSize: 11.5, color: 'var(--text2)', lineHeight: 1.45 }}>{t.parceladoExplica}</p>
           {numParcelas > 1 && onAPartirDe && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text2)', marginTop: 6 }}>
               {t.aPartirDe}
@@ -56,7 +56,7 @@ export default function DividirConta({ total, partes, onChange, pessoas, onCriar
           )}
         </div>
       )}
-      <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6, lineHeight: 1.45 }}>{t.explica}</p>
+      <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 6, lineHeight: 1.45 }}>{t.explica}</p>
     </div>
   )
 }

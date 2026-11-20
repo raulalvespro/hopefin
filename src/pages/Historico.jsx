@@ -78,7 +78,7 @@ export default function Historico() {
         <div className="empty-state">
           <p style={{ fontSize: 28, marginBottom: 8 }}>🗒️</p>
           <p>Nada por aqui nos últimos {DIAS} dias.</p>
-          <p style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>Gastos, entradas e aportes vão aparecer nesta linha do tempo.</p>
+          <p style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>Gastos, entradas e aportes vão aparecer nesta linha do tempo.</p>
         </div>
       ) : (
         grupos.map(({ dia, itens }) => {
@@ -87,7 +87,7 @@ export default function Historico() {
             <div key={dia} style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8, padding: '0 2px' }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', textTransform: 'capitalize' }}>{rotuloDia(dia)}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: total >= 0 ? 'var(--accent)' : 'var(--text3)' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: total >= 0 ? 'var(--accent-text)' : 'var(--text2)' }}>
                   {total >= 0 ? '+' : ''}{fmt(total)}
                 </span>
               </div>
@@ -97,11 +97,11 @@ export default function Historico() {
                     <span style={{ fontSize: 20, flexShrink: 0 }}>{ev.emoji}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.titulo}</p>
-                      <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 1, textTransform: 'capitalize' }}>
+                      <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 1, textTransform: 'capitalize' }}>
                         {ev.sub}{ev.quem ? ` · ${ev.quem.split(' ')[0]}` : ''}
                       </p>
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Syne', flexShrink: 0, color: ev.valor >= 0 ? 'var(--accent)' : 'var(--text)' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Syne', flexShrink: 0, color: ev.valor >= 0 ? 'var(--accent-text)' : 'var(--text)' }}>
                       {ev.valor >= 0 ? '+' : '−'}{fmt(Math.abs(ev.valor))}
                     </span>
                   </div>

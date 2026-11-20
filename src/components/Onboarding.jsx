@@ -53,7 +53,7 @@ export default function Onboarding() {
           <Sparkles size={18} color="var(--accent)" />
           <p style={{ fontWeight: 700, fontFamily: 'Syne', fontSize: 15 }}>Comece por aqui</p>
         </div>
-        <button onClick={dispensar} aria-label="Dispensar" style={{ color: 'var(--text3)', display: 'flex' }}><X size={16} /></button>
+        <button onClick={dispensar} aria-label="Dispensar" style={{ color: 'var(--text2)', display: 'flex' }}><X size={16} /></button>
       </div>
       <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 14 }}>
         Em 3 passos o HopeFin já mostra o retrato da sua família ({concluidos}/{passos.length} feitos).

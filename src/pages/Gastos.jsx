@@ -432,7 +432,7 @@ export default function Gastos() {
           resumo={tb.resumoItens(lista.length, fmt(lista.reduce((s, i) => s + Number(i.valor || 0), 0)))} />
       )}
       {periodoFiltro && (
-        <p style={{ fontSize: 12, color: 'var(--text3)', margin: '-4px 0 12px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <p style={{ fontSize: 12, color: 'var(--text2)', margin: '-4px 0 12px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           {tb.periodoAtivo(periodoFiltro.de ? fmtData(periodoFiltro.de, 'dd/MM/yy') : '', periodoFiltro.ate ? fmtData(periodoFiltro.ate, 'dd/MM/yy') : '')}
           <button type="button" onClick={() => setFiltro(f => ({ ...f, de: '', ate: '' }))} style={{ fontSize: 12, color: 'var(--accent-text)', fontWeight: 600 }}>{tb.tirarPeriodo}</button>
         </p>
@@ -472,18 +472,18 @@ export default function Gastos() {
                   </button>
                 )}
               </p>
-              <p style={{ fontSize: 11, color: 'var(--text3)' }}>
+              <p style={{ fontSize: 11, color: 'var(--text2)' }}>
                 {fmtData(it.data, 'dd/MM')} · {it.origem} · {it.pessoa}
               </p>
               {it.observacao && (
-                <p style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
+                <p style={{ fontSize: 11, color: 'var(--text2)', fontStyle: 'italic', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
                   {it.observacao}
                 </p>
               )}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ color: it.terceiro ? 'var(--text3)' : 'var(--red-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(it.valor)}</span>
+            <span style={{ color: it.terceiro ? 'var(--text2)' : 'var(--red-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(it.valor)}</span>
             {it.tipo === 'parcela' && <Layers size={15} color="var(--text3)" />}
           </div>
         </div>
@@ -553,7 +553,7 @@ export default function Gastos() {
                     </button>
                     <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
                       <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{textoFatura}</p>
-                      <p style={{ fontSize: 11, color: COR_FATURA[faturaForm.status] || 'var(--text3)' }}>
+                      <p style={{ fontSize: 11, color: COR_FATURA[faturaForm.status] || 'var(--text2)' }}>
                         {statusFatura}{ajusteForm ? ` · ${tg.voceTrocou}` : ''}
                       </p>
                     </div>
@@ -591,7 +591,7 @@ export default function Gastos() {
                   É uma assinatura (repete todo mês)
                 </label>
                 {form.assinatura && (
-                  <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
                     Vai pra tela de Assinaturas e, a partir do mês desta data, entra sozinha todo mês (na fatura, se for no cartão) — não precisa lançar de novo.
                   </span>
                 )}
@@ -609,7 +609,7 @@ export default function Gastos() {
                   <div className="form-group" style={{ marginTop: 10 }}>
                     <EscolherPessoa pessoas={pessoas} valor={form.pessoa_nome} onCriar={garantirPessoa}
                       onEscolher={nome => setForm(p => ({ ...p, pessoa_nome: nome }))} />
-                    <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
+                    <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
                       {form.parcelado
                         ? 'Cada parcela vira um “A receber” no mês em que vence — você marca o que já recebeu parcela a parcela.'
                         : 'Esse valor não entra nos seus gastos — fica em “A receber” até você marcar como recebido.'}
@@ -634,7 +634,7 @@ export default function Gastos() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   {[['À vista', false], ['Parcelado', true]].map(([label, val]) => (
                     <button key={label} onClick={() => setForm(p => ({ ...p, parcelado: val }))}
-                      style={{ flex: 1, padding: '9px', borderRadius: 'var(--radius-sm)', border: `1px solid ${form.parcelado === val ? 'var(--accent)' : 'var(--border)'}`, background: form.parcelado === val ? 'var(--accent-dim)' : 'transparent', color: form.parcelado === val ? 'var(--accent2)' : 'var(--text2)', fontSize: 13, fontWeight: 600 }}>
+                      style={{ flex: 1, padding: '9px', borderRadius: 'var(--radius-sm)', border: `1px solid ${form.parcelado === val ? 'var(--accent)' : 'var(--border)'}`, background: form.parcelado === val ? 'var(--accent-dim)' : 'transparent', color: form.parcelado === val ? 'var(--accent-text)' : 'var(--text2)', fontSize: 13, fontWeight: 600 }}>
                       {label}
                     </button>
                   ))}
@@ -652,14 +652,14 @@ export default function Gastos() {
                       </div>
                     </div>
                     {form.valor && nParcelas >= 2 && (
-                      <p style={{ fontSize: 13, color: 'var(--accent2)', marginTop: -4 }}>
+                      <p style={{ fontSize: 13, color: 'var(--accent-text)', marginTop: -4 }}>
                         {nParcelas}x de {fmt(parseFloat(form.valor) / nParcelas)}
-                        {(parseInt(form.parcelas_pagas) || 0) > 0 && <span style={{ color: 'var(--text3)' }}> · faltam {nParcelas - (parseInt(form.parcelas_pagas) || 0)}</span>}
-                        {!ehCartao && <span style={{ color: 'var(--text3)' }}> · via {form.tipo_pagamento}</span>}
+                        {(parseInt(form.parcelas_pagas) || 0) > 0 && <span style={{ color: 'var(--text2)' }}> · faltam {nParcelas - (parseInt(form.parcelas_pagas) || 0)}</span>}
+                        {!ehCartao && <span style={{ color: 'var(--text2)' }}> · via {form.tipo_pagamento}</span>}
                       </p>
                     )}
                     {(parseInt(form.parcelas_pagas) || 0) > 0 && (
-                      <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 4, lineHeight: 1.4 }}>
+                      <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 4, lineHeight: 1.4 }}>
                         {ehCartao ? tg.dicaJaPagasCartao(parseInt(form.parcelas_pagas) || 0, nParcelas || '—') : (
                           <>Já pagou {parseInt(form.parcelas_pagas) || 0} de {nParcelas || '—'}? Informe acima a data da <strong>próxima</strong> parcela — as já pagas entram marcadas.</>
                         )}

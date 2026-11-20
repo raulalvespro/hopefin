@@ -87,7 +87,7 @@ export default function Guard2FA({ children }) {
             autoFocus style={{ letterSpacing: 6, fontSize: 18, textAlign: 'center' }} />
         </div>
 
-        {erro && <p style={{ color: 'var(--red)', fontSize: 13, margin: '0 0 12px' }}>{erro}</p>}
+        {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, margin: '0 0 12px' }}>{erro}</p>}
 
         <button className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} disabled={enviando || codigo.length < 6}>
           {enviando ? <><Loader size={18} className="spin" /> Verificando…</> : <><KeyRound size={18} /> {ehEnroll ? 'Ativar e entrar' : 'Entrar'}</>}

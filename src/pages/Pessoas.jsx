@@ -153,7 +153,7 @@ export default function Pessoas() {
                 <Users size={15} /> {t.juntar}
               </button>
             )}
-            <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 10, lineHeight: 1.45 }}>{t.dicaArrastar}</p>
+            <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 10, lineHeight: 1.45 }}>{t.dicaArrastar}</p>
           </>
         )}
 
@@ -172,7 +172,7 @@ export default function Pessoas() {
                     return { ...j, marcadas, manter: marcadas.includes(j.manter) ? j.manter : marcadas[0] || null }
                   })} />
                   <span style={{ flex: 1, fontSize: 14 }}>{p.nome}</span>
-                  <span style={{ fontSize: 11.5, color: 'var(--text3)' }}>{t.usos(p.usos)}</span>
+                  <span style={{ fontSize: 11.5, color: 'var(--text2)' }}>{t.usos(p.usos)}</span>
                 </label>
               )
             })}

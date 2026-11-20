@@ -42,6 +42,8 @@ function faturasIniciais(form, hoje) {
 
 // Cores do histórico: paga (verde), fechada no prazo (âmbar), atrasada (vermelho), aberta (azul claro)
 const COR_STATUS = { paga: 'var(--accent)', fechada: 'var(--amber)', atrasada: 'var(--red)', aberta: 'var(--blue)' }
+// Mesmas situações, na cor "de texto" do tokens.json (rótulos escritos; as de cima ficam pra barras e bordas)
+const COR_STATUS_TEXTO = { paga: 'var(--accent-text)', fechada: 'var(--amber-text)', atrasada: 'var(--red-text)', aberta: 'var(--blue-text)' }
 const ROTULO_STATUS = { paga: 'paga ✓', fechada: 'fechada · a pagar', atrasada: 'vencida · não paga', aberta: 'aberta' }
 const ddmm = iso => fmtData(iso, 'dd/MM')
 
@@ -242,7 +244,7 @@ export default function Cartoes() {
         style={{ width: '100%', textAlign: 'left', marginTop: 10, padding: destaque ? '12px 14px' : '10px 14px', borderRadius: 'var(--radius-sm)', background: destaque ? 'var(--bg3)' : 'transparent', border: destaque ? `1px solid ${cor}` : '1px solid var(--border)', color: 'var(--text)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
           <span style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <strong style={{ color: cor, fontWeight: 700, textTransform: 'uppercase', fontSize: 10.5, letterSpacing: '.04em' }}>{rotulo}</strong>
+            <strong style={{ color: COR_STATUS_TEXTO[f.status], fontWeight: 700, textTransform: 'uppercase', fontSize: 10.5, letterSpacing: '.04em' }}>{rotulo}</strong>
             {f.status === 'aberta' ? `fecha ${ddmm(f.fechamento)} · vence ${ddmm(f.vencimento)}` : `vence ${ddmm(f.vencimento)}`}
             {vencEsteMes && !f.paga && f.status !== 'atrasada' && <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--bg2)', color: 'var(--amber-text)', padding: '1px 7px', borderRadius: 10 }}>você paga este mês</span>}
           </span>
@@ -305,7 +307,7 @@ export default function Cartoes() {
                   <div style={{ background: 'var(--border2)', borderRadius: 4, height: 5, overflow: 'hidden', marginBottom: 4 }}>
                     <div style={{ width: `${usoPct}%`, height: '100%', background: usoPct >= 90 ? 'var(--red)' : usoPct >= 70 ? 'var(--amber)' : 'var(--accent)', borderRadius: 4 }} />
                   </div>
-                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text2)' }}>
                     {tc.limiteUso(usoPct, fmt(c.limite), fmt(comprometido))}
                   </span>
                 </div>
@@ -322,7 +324,7 @@ export default function Cartoes() {
 
               {barras.length > 0 && (
                 <div style={{ marginTop: 12 }}>
-                  <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>Histórico de faturas · toque pra abrir</p>
+                  <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 6 }}>Histórico de faturas · toque pra abrir</p>
                   <div style={{ display: 'flex', gap: 5, alignItems: 'flex-end', height: 34 }}>
                     {barras.map(h => (
                       <button key={h.comp} onClick={() => setDetalhe({ cardId: c.id, comp: h.comp })} title={`vence ${ddmm(h.vencimento)} · ${fmt(h.total)} · ${ROTULO_STATUS[h.status]}`}
@@ -330,9 +332,9 @@ export default function Cartoes() {
                     ))}
                   </div>
                   <div style={{ display: 'flex', gap: 5, marginTop: 3 }}>
-                    {barras.map(h => <span key={h.comp} style={{ flex: 1, textAlign: 'center', fontSize: 9, color: 'var(--text3)' }}>{nomeMesCurto(h.comp)}</span>)}
+                    {barras.map(h => <span key={h.comp} style={{ flex: 1, textAlign: 'center', fontSize: 9, color: 'var(--text2)' }}>{nomeMesCurto(h.comp)}</span>)}
                   </div>
-                  <p style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text3)', marginTop: 6 }}>
+                  <p style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text2)', marginTop: 6 }}>
                     {['paga', 'fechada', 'atrasada', 'aberta'].map(s => (
                       <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         <span style={{ width: 8, height: 8, borderRadius: 2, background: COR_STATUS[s], opacity: s === 'aberta' ? 0.55 : 1 }} />{ROTULO_STATUS[s]}
@@ -364,7 +366,7 @@ export default function Cartoes() {
                 <button onClick={() => irMes(-1)} aria-label="Fatura anterior"><ChevronLeft size={20} color="var(--text2)" /></button>
                 <div style={{ textAlign: 'center' }}>
                   <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Syne' }}>Fatura que vence {fmtData(f.vencimento, 'dd/MM/yyyy')}</p>
-                  <p style={{ fontSize: 11, color: COR_STATUS[f.status] }}>fecha {ddmm(f.fechamento)} · {ROTULO_STATUS[f.status]}</p>
+                  <p style={{ fontSize: 11, color: COR_STATUS_TEXTO[f.status] }}>fecha {ddmm(f.fechamento)} · {ROTULO_STATUS[f.status]}</p>
                 </div>
                 <button onClick={() => irMes(1)} aria-label="Próxima fatura"><ChevronRight size={20} color="var(--text2)" /></button>
               </div>
@@ -375,9 +377,9 @@ export default function Cartoes() {
               </div>
               {f.totalTerceiros > 0 && <p style={{ fontSize: 11.5, color: 'var(--amber-text)', marginBottom: 8 }}>{fmt(f.totalTerceiros)} desta fatura é de outras pessoas (está em A Receber)</p>}
 
-              {f.itens.length > 0 && <p style={{ fontSize: 11, color: 'var(--text3)', margin: '0 0 2px' }}>{tc.dicaTocarItem}</p>}
+              {f.itens.length > 0 && <p style={{ fontSize: 11, color: 'var(--text2)', margin: '0 0 2px' }}>{tc.dicaTocarItem}</p>}
               {f.itens.length === 0 ? (
-                <p style={{ fontSize: 12.5, color: 'var(--text3)', padding: '10px 0' }}>Nada lançado nesta fatura.</p>
+                <p style={{ fontSize: 12.5, color: 'var(--text2)', padding: '10px 0' }}>Nada lançado nesta fatura.</p>
               ) : f.itens.map((it, i) => (
                 <div key={`${it.tipo}-${it.id}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
                   <button type="button" onClick={() => abrirItemFatura(it)} title={tc.tocarEditar} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1, textAlign: 'left', padding: 0, color: 'var(--text)' }}>
@@ -389,11 +391,11 @@ export default function Cartoes() {
                         {it.tipo === 'assinatura' && <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--bg3)', color: 'var(--purple-text)', padding: '1px 6px', borderRadius: 10 }}>assinatura</span>}
                         {it.pessoaId && <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--amber-dim)', color: 'var(--amber-text)', padding: '1px 6px', borderRadius: 10 }}>de {it.pessoaNome || 'outra pessoa'}</span>}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--text3)' }}>{ddmm(it.data)}{it.ajuste ? ` · movida ${it.ajuste > 0 ? '+' : ''}${it.ajuste} fatura` : ''}</p>
+                      <p style={{ fontSize: 11, color: 'var(--text2)' }}>{ddmm(it.data)}{it.ajuste ? ` · movida ${it.ajuste > 0 ? '+' : ''}${it.ajuste} fatura` : ''}</p>
                     </div>
                   </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: it.pessoaId ? 'var(--text3)' : 'var(--red-text)' }}>{fmt(it.valor)}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: it.pessoaId ? 'var(--text2)' : 'var(--red-text)' }}>{fmt(it.valor)}</span>
                     {(it.tipo === 'parcela' || it.tipo === 'gasto') && (
                       <div style={{ display: 'flex', gap: 2 }}>
                         <button onClick={() => it.tipo === 'parcela' ? moverParcela(it.id, -1) : moverGasto(it.id, it.ajuste, -1)} title="Jogar pra fatura anterior"
@@ -470,7 +472,7 @@ export default function Cartoes() {
             {!editando && (() => {
               // Valor inicial (A2.7): a fatura fechada que ainda vai ser paga + o que já está na aberta
               const ini = faturasIniciais(form, hoje)
-              const dica = { fontSize: 11, color: 'var(--text3)', marginTop: 4, marginBottom: 14, display: 'block', lineHeight: 1.4 }
+              const dica = { fontSize: 11, color: 'var(--text2)', marginTop: 4, marginBottom: 14, display: 'block', lineHeight: 1.4 }
               return (
                 <div style={{ marginBottom: 4 }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 8 }}>{tc.inicialTitulo}</p>

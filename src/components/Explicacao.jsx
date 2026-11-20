@@ -29,7 +29,7 @@ export default function Explicacao({ titulo, subtitulo, blocos, resultado, onFec
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.descricao}</p>
                   {(it.detalhe || it.data) && (
-                    <p style={{ fontSize: 11, color: 'var(--text3)' }}>{[it.data ? fmtData(it.data, 'dd/MM') : null, it.detalhe].filter(Boolean).join(' · ')}</p>
+                    <p style={{ fontSize: 11, color: 'var(--text2)' }}>{[it.data ? fmtData(it.data, 'dd/MM') : null, it.detalhe].filter(Boolean).join(' · ')}</p>
                   )}
                 </div>
                 <span style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmt(it.valor)}</span>

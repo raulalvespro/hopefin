@@ -106,7 +106,7 @@ export default function BuscaFiltros({ filtro, onChange, opcoes = {}, periodo = 
             aria-label={placeholder || t.buscar} style={{ paddingLeft: 36, paddingRight: filtro.texto ? 36 : 12, marginBottom: 0 }} />
           {filtro.texto && (
             <button type="button" aria-label={t.limparBusca} onClick={() => set('texto', '')}
-              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', display: 'flex', padding: 4, color: 'var(--text3)' }}>
+              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', display: 'flex', padding: 4, color: 'var(--text2)' }}>
               <X size={15} />
             </button>
           )}
@@ -131,10 +131,10 @@ export default function BuscaFiltros({ filtro, onChange, opcoes = {}, periodo = 
               </select>
               {modo === 'datas' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <label style={{ fontSize: 11, color: 'var(--text3)' }}>{t.de}
+                  <label style={{ fontSize: 11, color: 'var(--text2)' }}>{t.de}
                     <input type="date" value={rascunho.de} onChange={(e) => setR('de', e.target.value)} style={{ marginTop: 4 }} />
                   </label>
-                  <label style={{ fontSize: 11, color: 'var(--text3)' }}>{t.ate}
+                  <label style={{ fontSize: 11, color: 'var(--text2)' }}>{t.ate}
                     <input type="date" value={rascunho.ate} onChange={(e) => setR('ate', e.target.value)} style={{ marginTop: 4 }} />
                   </label>
                 </div>

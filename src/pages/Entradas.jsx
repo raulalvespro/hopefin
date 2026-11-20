@@ -269,7 +269,7 @@ export default function Entradas() {
           </div>
         )}
         {totalPrevisto > 0.004 && (
-          <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>{t.incluiPrevisto(fmt(totalPrevisto))}</p>
+          <p style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6 }}>{t.incluiPrevisto(fmt(totalPrevisto))}</p>
         )}
       </div>
 
@@ -302,10 +302,10 @@ export default function Entradas() {
             <span style={{ fontSize: 22 }}>🤝</span>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: 14, fontWeight: 500 }}>{t.previstoDe(p.pessoaNome)}</p>
-              <p style={{ fontSize: 11, color: 'var(--text3)' }}>{fmtData(p.data, 'dd/MM')} · {t.previstoSub(p.itens.length)}</p>
+              <p style={{ fontSize: 11, color: 'var(--text2)' }}>{fmtData(p.data, 'dd/MM')} · {t.previstoSub(p.itens.length)}</p>
             </div>
           </div>
-          <span style={{ color: 'var(--amber)', fontWeight: 700, fontFamily: 'Syne', flexShrink: 0 }}>{fmt(p.total)}</span>
+          <span style={{ color: 'var(--amber-text)', fontWeight: 700, fontFamily: 'Syne', flexShrink: 0 }}>{fmt(p.total)}</span>
         </button>
       ))}
 
@@ -313,7 +313,7 @@ export default function Entradas() {
         previstos.length === 0 && <EmptyState ilustracao={<Joca pose="base" tamanho={150} />} titulo={copy.mascote.vazios.entradasTitulo} texto={copy.mascote.vazios.entradasTexto} />
       ) : entradas.map(e => (
         <SwipeRow key={e.id} style={{ marginBottom: 8 }} onEdit={() => editar(e)} onDelete={() => excluir(e)}>
-        <div className="card" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: e.recebido ? 1 : 0.85 }}>
+        <div className="card" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>{/* sem esmaecer a entrada a receber: o texto ficava abaixo de 4,5:1 (o "A receber" já avisa) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <button onClick={() => toggleRecebido(e)} title={e.recebido ? 'Recebido — desfazer' : 'Marcar como recebido'}
               style={{ width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${e.recebido ? 'var(--accent)' : 'var(--amber)'}`, background: e.recebido ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -322,7 +322,7 @@ export default function Entradas() {
             <span style={{ fontSize: 22 }}>{e.tipo === 'fixo' ? '💼' : '💰'}</span>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: 14, fontWeight: 500 }}>{e.descricao}</p>
-              <p style={{ fontSize: 11, color: 'var(--text3)' }}>
+              <p style={{ fontSize: 11, color: 'var(--text2)' }}>
                 {fmtData(e.data, 'dd/MM')} · {e.recebido ? 'Recebido' : 'A receber'} · {e.usuarios?.nome?.split(' ')[0]}
                 {e.recorrente && <span style={{ marginLeft: 6, verticalAlign: 'middle' }}><RefreshCw size={10} /></span>}
                 {e.parcela_total && (
@@ -334,7 +334,7 @@ export default function Entradas() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            <span style={{ color: e.recebido ? 'var(--accent)' : 'var(--amber)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(e.valor)}</span>
+            <span style={{ color: e.recebido ? 'var(--accent-text)' : 'var(--amber-text)', fontWeight: 700, fontFamily: 'Syne' }}>{fmt(e.valor)}</span>
           </div>
         </div>
         </SwipeRow>
@@ -363,7 +363,7 @@ export default function Entradas() {
                     return (
                       <button key={v} type="button" role="radio" aria-checked={marcado}
                         onClick={() => setForm(p => ({ ...p, recorrente: v === 'mes', parcelada: v === 'parcelada' }))}
-                        style={{ flex: 1, padding: '9px 6px', borderRadius: 'var(--radius-sm)', border: `1px solid ${marcado ? 'var(--accent)' : 'var(--border)'}`, background: marcado ? 'var(--accent-dim)' : 'transparent', color: marcado ? 'var(--accent2)' : 'var(--text2)', fontSize: 13, fontWeight: 600 }}>
+                        style={{ flex: 1, padding: '9px 6px', borderRadius: 'var(--radius-sm)', border: `1px solid ${marcado ? 'var(--accent)' : 'var(--border)'}`, background: marcado ? 'var(--accent-dim)' : 'transparent', color: marcado ? 'var(--accent-text)' : 'var(--text2)', fontSize: 13, fontWeight: 600 }}>
                         {label}
                       </button>
                     )
@@ -376,7 +376,7 @@ export default function Entradas() {
                 <label>{t.numParcelas}</label>
                 <input type="number" inputMode="numeric" min="2" max="120" value={form.num_parcelas} onChange={e => setForm(p => ({ ...p, num_parcelas: e.target.value }))} placeholder="Ex: 3" />
                 {parseInt(form.num_parcelas) >= 2 && parseFloat(form.valor) > 0 && (
-                  <span style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6, display: 'block', lineHeight: 1.4 }}>
+                  <span style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 6, display: 'block', lineHeight: 1.4 }}>
                     {t.dicaParcelada(parseInt(form.num_parcelas), fmt(parseFloat(form.valor) / parseInt(form.num_parcelas)))}
                   </span>
                 )}
@@ -406,12 +406,12 @@ export default function Entradas() {
                 <div role="radiogroup" aria-label={t.aplicarEm} style={{ display: 'flex', gap: 8 }}>
                   {[['esta', t.soEsta], ['proximas', t.estaEProximas]].map(([v, label]) => (
                     <button key={v} type="button" role="radio" aria-checked={escopo === v} onClick={() => setEscopo(v)}
-                      style={{ flex: 1, padding: '9px', borderRadius: 'var(--radius-sm)', border: `1px solid ${escopo === v ? 'var(--accent)' : 'var(--border)'}`, background: escopo === v ? 'var(--accent-dim)' : 'transparent', color: escopo === v ? 'var(--accent2)' : 'var(--text2)', fontSize: 13, fontWeight: 600 }}>
+                      style={{ flex: 1, padding: '9px', borderRadius: 'var(--radius-sm)', border: `1px solid ${escopo === v ? 'var(--accent)' : 'var(--border)'}`, background: escopo === v ? 'var(--accent-dim)' : 'transparent', color: escopo === v ? 'var(--accent-text)' : 'var(--text2)', fontSize: 13, fontWeight: 600 }}>
                       {label}
                     </button>
                   ))}
                 </div>
-                <span style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6, display: 'block', lineHeight: 1.4 }}>
+                <span style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 6, display: 'block', lineHeight: 1.4 }}>
                   {escopo === 'proximas' ? t.dicaProximas : t.dicaSoEsta} {editando.parcela_total ? '' : t.dicaParar}
                 </span>
               </div>
@@ -440,12 +440,12 @@ export default function Entradas() {
               <button className="btn-ghost" onClick={() => apagarSerie('esta')} disabled={salvando}
                 style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 2, opacity: salvando ? 0.6 : 1 }}>
                 <span style={{ fontWeight: 600, color: 'var(--text)' }}>{t.apagarSoEsta}</span>
-                <span style={{ fontSize: 12, color: 'var(--text3)' }}>{apagando.entrada.parcela_total ? t.apagarSoEstaParcelaDica : t.apagarSoEstaDica}</span>
+                <span style={{ fontSize: 12, color: 'var(--text2)' }}>{apagando.entrada.parcela_total ? t.apagarSoEstaParcelaDica : t.apagarSoEstaDica}</span>
               </button>
               <button className="btn-ghost" onClick={() => apagarSerie('proximas')} disabled={salvando}
                 style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 2, opacity: salvando ? 0.6 : 1 }}>
                 <span style={{ fontWeight: 600, color: 'var(--red-text)' }}>{apagando.entrada.parcela_total ? t.apagarProximasParcela(apagando.proximas) : t.apagarProximas(apagando.proximas)}</span>
-                <span style={{ fontSize: 12, color: 'var(--text3)' }}>{apagando.entrada.parcela_total ? t.apagarProximasParcelaDica : t.apagarProximasDica}</span>
+                <span style={{ fontSize: 12, color: 'var(--text2)' }}>{apagando.entrada.parcela_total ? t.apagarProximasParcelaDica : t.apagarProximasDica}</span>
               </button>
               <button onClick={() => setApagando(null)} disabled={salvando}
                 style={{ padding: '10px', fontSize: 14, color: 'var(--text2)', minHeight: 44 }}>

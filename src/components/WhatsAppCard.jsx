@@ -59,7 +59,7 @@ export default function WhatsAppCard() {
 
       {conectado ? (
         <>
-          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:'var(--radius-sm)', background:'var(--accent-dim)', color:'var(--accent2)', marginBottom:12 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:'var(--radius-sm)', background:'var(--accent-dim)', color:'var(--accent-text)', marginBottom:12 }}>
             <CheckCircle2 size={20} />
             <div>
               <p style={{ fontSize:14, fontWeight:600 }}>WhatsApp conectado</p>
@@ -81,7 +81,7 @@ export default function WhatsAppCard() {
             <div style={{ padding:'14px', borderRadius:'var(--radius-sm)', background:'var(--bg3)', border:'1.5px dashed var(--accent)', marginBottom:12 }}>
               <p style={{ fontSize:12, color:'var(--text2)', marginBottom:6 }}>Seu código (vale 15 minutos):</p>
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <span style={{ fontFamily:'Syne', fontWeight:700, fontSize:26, letterSpacing:'0.12em', color:'var(--accent)' }}>{codigo}</span>
+                <span style={{ fontFamily:'Syne', fontWeight:700, fontSize:26, letterSpacing:'0.12em', color:'var(--accent-text)' }}>{codigo}</span>
                 <button onClick={copiar} title="Copiar" style={{ display:'flex', alignItems:'center', gap:4, fontSize:12, fontWeight:600, color:'var(--accent-text)' }}>
                   {copiado ? <><CheckCircle2 size={14} /> Copiado</> : <><Copy size={14} /> Copiar</>}
                 </button>

@@ -128,7 +128,7 @@ export default function Notificacoes() {
             <Icon size={19} color="var(--accent)" style={{ flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 14, fontWeight: 500 }}>{titulo}</p>
-              <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2, lineHeight: 1.4 }}>{desc}</p>
+              <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 }}>{desc}</p>
             </div>
             <Toggle ativo={prefs[campo]} onChange={v => setCampo(campo, v)} />
           </div>
@@ -149,7 +149,7 @@ export default function Notificacoes() {
                   flex: 1, padding: '10px 0', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600,
                   border: `1.5px solid ${ativo ? 'var(--accent)' : 'var(--border2)'}`,
                   background: ativo ? 'var(--accent-dim)' : 'var(--bg3)',
-                  color: ativo ? 'var(--accent)' : 'var(--text2)',
+                  color: ativo ? 'var(--accent-text)' : 'var(--text2)',
                 }}>{d}d</button>
             )
           })}
@@ -161,7 +161,7 @@ export default function Notificacoes() {
           <Smartphone size={19} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 14, fontWeight: 500 }}>Notificação no celular</p>
-            <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2, lineHeight: 1.4 }}>
+            <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 }}>
               Receba os alertas como push no celular, mesmo com o app fechado.
             </p>
           </div>
@@ -180,7 +180,7 @@ export default function Notificacoes() {
         )}
 
         {!push.suportado && (
-          <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 12, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 12, lineHeight: 1.5 }}>
             Este navegador não suporta notificações push. No iPhone, instale o app na tela de início
             (Compartilhar → Adicionar à Tela de Início) e abra por lá.
           </p>
@@ -195,7 +195,7 @@ export default function Notificacoes() {
         )}
       </div>
 
-      {salvando && <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', marginTop: 14 }}>Salvando…</p>}
+      {salvando && <p style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center', marginTop: 14 }}>Salvando…</p>}
     </div>
   )
 }

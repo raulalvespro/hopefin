@@ -182,14 +182,14 @@ export default function Checkout() {
             </>
           ) : (
             <>
-              <p style={{ fontSize: 12.5, color: 'var(--text3)' }}>{tp.ouCopie}</p>
+              <p style={{ fontSize: 12.5, color: 'var(--text2)' }}>{tp.ouCopie}</p>
               <div style={{ width: '100%', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', fontSize: 12, color: 'var(--text2)', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>
                 {pix?.copiaECola}
               </div>
               <button className="btn-primary" onClick={() => copiar(pix?.copiaECola)} style={{ width: '100%', minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 {copiado ? <><Check size={18} /> {tp.copiado}</> : <><Copy size={18} /> {tp.copiar}</>}
               </button>
-              {validoAte && <p style={{ fontSize: 12, color: 'var(--text3)' }}>{tp.validoAte(validoAte)}</p>}
+              {validoAte && <p style={{ fontSize: 12, color: 'var(--text2)' }}>{tp.validoAte(validoAte)}</p>}
             </>
           )}
         </div>
@@ -201,7 +201,7 @@ export default function Checkout() {
               <span className="spin" style={{ width: 14, height: 14, border: '2px solid var(--amber-dim)', borderTopColor: 'var(--amber-text)', borderRadius: '50%', display: 'inline-block' }} />
               {tp.aguardando}
             </span>
-            <p style={{ fontSize: 12.5, color: 'var(--text3)' }}>{tp.aguardandoSub}</p>
+            <p style={{ fontSize: 12.5, color: 'var(--text2)' }}>{tp.aguardandoSub}</p>
             <button onClick={jaPaguei} disabled={verificando} style={{ minHeight: 44, padding: '0 20px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border2)', background: 'var(--bg2)', color: 'var(--text)', fontSize: 14, fontWeight: 600 }}>
               {verificando ? tp.verificando : tp.jaPaguei}
             </button>
@@ -224,7 +224,7 @@ export default function Checkout() {
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <button onClick={() => { setPix(null); setEtapa('dados') }} style={{ fontSize: 14, color: 'var(--accent-text)', fontWeight: 500, minHeight: 44 }}>{tp.outraForma}</button>
-          <p style={{ fontSize: 11.5, color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: 6 }}><ShieldCheck size={13} /> {tp.seguro}</p>
+          <p style={{ fontSize: 11.5, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}><ShieldCheck size={13} /> {tp.seguro}</p>
         </div>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin .8s linear infinite}`}</style>
       </div>
@@ -266,7 +266,7 @@ export default function Checkout() {
             <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15 }}>HopeFin Família</p>
             <p style={{ fontSize: 12.5, color: 'var(--text2)' }}>Cobrança {ciclo === 'anual' ? 'anual' : 'mensal'}</p>
             {temLancamento && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--accent2)', fontWeight: 600, marginTop: 4 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--accent-text)', fontWeight: 600, marginTop: 4 }}>
                 <Sparkles size={11} /> preço de lançamento
               </span>
             )}
@@ -275,7 +275,7 @@ export default function Checkout() {
             {anualCartao ? (
               <>
                 <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20 }}>{parcelas}x {fmt(parcelaCartao / 100)}</p>
-                <p style={{ fontSize: 11.5, color: 'var(--text3)' }}>total {fmt(centavos / 100)}/ano</p>
+                <p style={{ fontSize: 11.5, color: 'var(--text2)' }}>total {fmt(centavos / 100)}/ano</p>
               </>
             ) : (
               <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 20 }}>
@@ -292,7 +292,7 @@ export default function Checkout() {
           const ativo = metodo === id
           return (
             <button key={id} onClick={() => setMetodo(id)}
-              style={{ flex: 1, padding: '12px 6px', borderRadius: 'var(--radius-sm)', border: `1.5px solid ${ativo ? 'var(--accent)' : 'var(--border2)'}`, background: ativo ? 'var(--accent-dim)' : 'transparent', color: ativo ? 'var(--accent)' : 'var(--text2)', fontSize: 12.5, fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+              style={{ flex: 1, padding: '12px 6px', borderRadius: 'var(--radius-sm)', border: `1.5px solid ${ativo ? 'var(--accent)' : 'var(--border2)'}`, background: ativo ? 'var(--accent-dim)' : 'transparent', color: ativo ? 'var(--accent-text)' : 'var(--text2)', fontSize: 12.5, fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
               <Icon size={18} /> {label}
             </button>
           )
@@ -317,7 +317,7 @@ export default function Checkout() {
             <input placeholder="CVV" inputMode="numeric" value={form.ccv} onChange={e => set('ccv', e.target.value.replace(/\D/g, ''))} style={{ ...inputStyle, flex: 1 }} />
           </div>
           {anualCartao && (
-            <p style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.45 }}>
+            <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 }}>
               12x de {fmt(parcelaCartao / 100)} no cartão (total de {fmt(centavos / 100)}). Daqui a um ano o plano renova no mesmo cartão — avisamos 7 dias antes e você cancela quando quiser.
             </p>
           )}
@@ -345,7 +345,7 @@ export default function Checkout() {
 
       {/* Selos */}
       <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--text3)', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--text2)', flexWrap: 'wrap', justifyContent: 'center' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Lock size={12} /> Conexão segura (SSL)</span>
           <span>·</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>Processado por

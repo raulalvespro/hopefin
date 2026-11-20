@@ -71,7 +71,7 @@ export default function AtivarNotificacoes() {
       <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--accent-text)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
         {ativando ? t.notifAtivando : t.notifBotao}<ChevronRight size={16} />
       </span>
-      <button onClick={dispensar} style={{ color: 'var(--text3)', flexShrink: 0, display: 'flex', minWidth: 32, minHeight: 32, alignItems: 'center', justifyContent: 'center' }} aria-label={t.dispensar}>
+      <button onClick={dispensar} style={{ color: 'var(--text2)', flexShrink: 0, display: 'flex', minWidth: 32, minHeight: 32, alignItems: 'center', justifyContent: 'center' }} aria-label={t.dispensar}>
         <X size={18} />
       </button>
     </div>

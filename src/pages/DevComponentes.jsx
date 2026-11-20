@@ -72,7 +72,7 @@ export default function DevComponentes() {
             ))}
           </div>
         </header>
-        <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 28 }}>Vitrine do design system (prompt 14) — só em desenvolvimento.</p>
+        <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 28 }}>Vitrine do design system (prompt 14) — só em desenvolvimento.</p>
 
         <Secao titulo="Botões">
           <Button onClick={() => toast('Clique!', 'info')}>Salvar gasto</Button>

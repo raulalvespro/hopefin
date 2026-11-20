@@ -117,7 +117,7 @@ export default function BoasVindas() {
             <UserPlus size={18} /> {t.convidar}
           </Button>
           {proximo && (
-            <button type="button" onClick={() => navigate('/')} style={{ fontSize: 14, color: 'var(--text3)', margin: '2px auto 0' }}>
+            <button type="button" onClick={() => navigate('/')} style={{ fontSize: 14, color: 'var(--text2)', margin: '2px auto 0' }}>
               {t.irInicio}
             </button>
           )}

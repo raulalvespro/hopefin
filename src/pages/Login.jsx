@@ -96,7 +96,7 @@ export default function Login() {
                 <div style={{ position: 'relative' }}>
                   <input type={verSenha ? 'text' : 'password'} placeholder="Sua senha" value={form.senha} onChange={e => setForm(p => ({ ...p, senha: e.target.value }))} autoComplete="current-password" required style={{ paddingRight: 44 }} />
                   <button type="button" onClick={() => setVerSenha(v => !v)} aria-label={verSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', color: 'var(--text3)' }}>
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', color: 'var(--text2)' }}>
                     {verSenha ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
@@ -128,7 +128,7 @@ export default function Login() {
                 <p style={{ fontSize: 40, margin: 0 }}>📬</p>
                 <h2 style={{ margin: 0, fontFamily: "'Syne', system-ui, sans-serif", fontWeight: 700, fontSize: 20 }}>{t.enviadoTitulo}</h2>
                 <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5, margin: 0 }}>{t.enviadoTexto(form.email)}</p>
-                <p style={{ fontSize: 12.5, color: 'var(--text3)', lineHeight: 1.5, margin: 0 }}>{ta.naoChegou}</p>
+                <p style={{ fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.5, margin: 0 }}>{ta.naoChegou}</p>
                 <Button variant="secondary" loading={loading} disabled={espera > 0} onClick={reenviarLink} style={{ width: '100%', marginTop: 6 }}>
                   {espera > 0 ? ta.reenviarEm(espera) : ta.reenviarLink}
                 </Button>
@@ -154,7 +154,7 @@ export default function Login() {
                   {loading ? t.recEnviando : t.recEnviar}
                 </Button>
                 <button type="button" onClick={() => { setModo('login'); setErro('') }}
-                  style={{ fontSize: 13, color: 'var(--text3)', margin: '0 auto' }}>
+                  style={{ fontSize: 13, color: 'var(--text2)', margin: '0 auto' }}>
                   ← {t.recVoltar}
                 </button>
               </form>

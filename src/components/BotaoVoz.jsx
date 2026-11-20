@@ -263,7 +263,7 @@ export default function BotaoVoz({ onSalvo }) {
 
                 {/* Transcrição ao vivo enquanto a pessoa fala */}
                 {gravando && (
-                  <p aria-live="polite" style={{ margin: 0, fontSize: 18, lineHeight: '26px', textAlign: 'center', minHeight: 52, color: parcial ? 'var(--text)' : 'var(--text3)' }}>
+                  <p aria-live="polite" style={{ margin: 0, fontSize: 18, lineHeight: '26px', textAlign: 'center', minHeight: 52, color: parcial ? 'var(--text)' : 'var(--text2)' }}>
                     {parcial ? <>“{parcial}”</> : t.falePerto}
                   </p>
                 )}
@@ -281,9 +281,9 @@ export default function BotaoVoz({ onSalvo }) {
                   </button>
                 </form>
 
-                <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center' }}>{t.dica}</p>
-                {suportado && iosApp && !msgVoz && <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center' }}>{t.dicaIosApp}</p>}
-                {!suportado && <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center' }}>{t.semSuporte}</p>}
+                <p style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center' }}>{t.dica}</p>
+                {suportado && iosApp && !msgVoz && <p style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center' }}>{t.dicaIosApp}</p>}
+                {!suportado && <p style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center' }}>{t.semSuporte}</p>}
                 {msgVoz && !gravando && <p role="alert" style={{ color: 'var(--amber-text)', fontSize: 13, textAlign: 'center', lineHeight: 1.45 }}>{msgVoz}</p>}
                 {erro && <p role="alert" style={{ color: 'var(--red-text)', fontSize: 13, textAlign: 'center' }}>{erro}</p>}
               </div>
@@ -337,7 +337,7 @@ export default function BotaoVoz({ onSalvo }) {
                         <button
                           key={tp}
                           onClick={() => setForm(p => ({ ...p, tipo: tp }))}
-                          style={{ flex: 1, padding: '8px 0', borderRadius: 'var(--radius-sm)', fontSize: 14, fontWeight: 600, textTransform: 'capitalize', border: `1.5px solid ${form.tipo === tp ? 'var(--accent)' : 'var(--border)'}`, background: form.tipo === tp ? 'var(--accent-dim)' : 'transparent', color: form.tipo === tp ? 'var(--accent)' : 'var(--text2)' }}
+                          style={{ flex: 1, padding: '8px 0', borderRadius: 'var(--radius-sm)', fontSize: 14, fontWeight: 600, textTransform: 'capitalize', border: `1.5px solid ${form.tipo === tp ? 'var(--accent)' : 'var(--border)'}`, background: form.tipo === tp ? 'var(--accent-dim)' : 'transparent', color: form.tipo === tp ? 'var(--accent-text)' : 'var(--text2)' }}
                         >
                           {tp}
                         </button>

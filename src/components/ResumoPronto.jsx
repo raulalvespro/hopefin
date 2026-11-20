@@ -38,7 +38,7 @@ export default function ResumoPronto({ grupoId, inicioComp }) {
         <Link to={`/fechamento?mes=${comp}`} onClick={() => marcarVisto(comp)}
           style={{ display: 'inline-block', marginTop: 8, fontSize: 13.5, fontWeight: 600, color: 'var(--accent-text)' }}>{t.ver}</Link>
       </div>
-      <button onClick={fechar} aria-label={t.fechar} style={{ color: 'var(--text3)', padding: 4, display: 'flex' }}><X size={16} /></button>
+      <button onClick={fechar} aria-label={t.fechar} style={{ color: 'var(--text2)', padding: 4, display: 'flex' }}><X size={16} /></button>
     </section>
   )
 }

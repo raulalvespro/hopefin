@@ -49,7 +49,7 @@ export default function AdminLogin() {
           </div>
         </div>
 
-        {erro && <p style={{ color: 'var(--red)', fontSize: 13, margin: '0 0 12px' }}>{erro}</p>}
+        {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, margin: '0 0 12px' }}>{erro}</p>}
 
         <button className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} disabled={carregando}>
           {carregando ? <><Loader size={18} className="spin" /> Entrando…</> : 'Entrar'}

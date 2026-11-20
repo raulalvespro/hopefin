@@ -345,7 +345,7 @@ export default function Importar() {
             <button onClick={baixarModelo} className="btn-ghost" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               <FileSpreadsheet size={16} /> Baixar modelo CSV
             </button>
-            <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 10, textAlign: 'center' }}>
+            <p style={{ fontSize: 11, color: 'var(--text2)', marginTop: 10, textAlign: 'center' }}>
               Se o seu extrato vier com outras colunas, dá pra ajustar o que é o quê na próxima etapa.
             </p>
           </div>
@@ -391,8 +391,8 @@ export default function Importar() {
                 const marcado = destino === d
                 return (
                   <button key={d} type="button" role="radio" aria-checked={marcado} onClick={() => escolherDestino(d)} style={chip(marcado)}>
-                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: marcado ? 'var(--accent2)' : 'var(--text)' }}>{titulo}</span>
-                    <span style={{ display: 'block', fontSize: 11, color: 'var(--text3)', lineHeight: 1.35, marginTop: 2 }}>{dica}</span>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: marcado ? 'var(--accent-text)' : 'var(--text)' }}>{titulo}</span>
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--text2)', lineHeight: 1.35, marginTop: 2 }}>{dica}</span>
                   </button>
                 )
               })}
@@ -407,7 +407,7 @@ export default function Importar() {
                   {destino === 'extrato' && cartoes.map(c => <option key={c.id} value={c.id}>Cartão · {c.nome}</option>)}
                 </select>
                 {destino === 'extrato' && (
-                  <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
                     Escolhendo um cartão, cada gasto cai na fatura certa pela data da compra.
                   </span>
                 )}
@@ -415,7 +415,7 @@ export default function Importar() {
             )}
 
             {destino === 'entradas' && (
-              <p style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.45, margin: 0 }}>{ti.entradasRecebidas}</p>
+              <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.45, margin: 0 }}>{ti.entradasRecebidas}</p>
             )}
 
             {emCartao && (
@@ -438,7 +438,7 @@ export default function Importar() {
                   <div role="radiogroup" aria-label={ti.comprasVemComo} style={{ display: 'flex', gap: 8 }}>
                     {[[1, ti.positivas], [-1, ti.negativas]].map(([v, rotulo]) => (
                       <button key={v} type="button" role="radio" aria-checked={sinal === v} onClick={() => setSinalManual(v)}
-                        style={{ ...chip(sinal === v), flex: 1, textAlign: 'center', fontSize: 13, fontWeight: 600, color: sinal === v ? 'var(--accent2)' : 'var(--text2)' }}>
+                        style={{ ...chip(sinal === v), flex: 1, textAlign: 'center', fontSize: 13, fontWeight: 600, color: sinal === v ? 'var(--accent-text)' : 'var(--text2)' }}>
                         {rotulo}
                       </button>
                     ))}
@@ -450,7 +450,7 @@ export default function Importar() {
                     <div role="radiogroup" aria-label={ti.emQualFatura} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ ...chip(modoFatura === 'uma'), display: 'flex', alignItems: 'center', gap: 6, padding: '6px 6px 6px 12px' }}>
                         <button type="button" role="radio" aria-checked={modoFatura === 'uma'} onClick={() => setModoFatura('uma')}
-                          style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600, color: modoFatura === 'uma' ? 'var(--accent2)' : 'var(--text2)', minHeight: 32 }}>
+                          style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600, color: modoFatura === 'uma' ? 'var(--accent-text)' : 'var(--text2)', minHeight: 32 }}>
                           {ti.todasNaFatura(vencAlvo)}
                         </button>
                         <button type="button" aria-label={ti.faturaAnterior} onClick={() => { setModoFatura('uma'); setFaturaEscolhida(addMeses(faturaAlvo, -1)) }}
@@ -459,11 +459,11 @@ export default function Importar() {
                           style={{ minWidth: 36, minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)' }}><ChevronRight size={18} /></button>
                       </div>
                       <button type="button" role="radio" aria-checked={modoFatura === 'data'} onClick={() => setModoFatura('data')}
-                        style={{ ...chip(modoFatura === 'data'), fontSize: 13, fontWeight: 600, color: modoFatura === 'data' ? 'var(--accent2)' : 'var(--text2)' }}>
+                        style={{ ...chip(modoFatura === 'data'), fontSize: 13, fontWeight: 600, color: modoFatura === 'data' ? 'var(--accent-text)' : 'var(--text2)' }}>
                         {ti.pelaData}
                       </button>
                     </div>
-                    <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6, display: 'block', lineHeight: 1.4 }}>{ti.dicaFatura}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6, display: 'block', lineHeight: 1.4 }}>{ti.dicaFatura}</span>
                   </div>
                 )}
               </>
@@ -503,7 +503,7 @@ export default function Importar() {
                 <input type="checkbox" checked={l.incluir} disabled={!l.valido} onChange={e => setOv(l.i, { incluir: e.target.checked })} aria-label={`Importar ${l.descricao}`} style={{ width: 'auto', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.descricao}</p>
-                  <p style={{ fontSize: 11, color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <p style={{ fontSize: 11, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {!l.legivel
                       ? <span style={{ color: 'var(--red-text)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><AlertCircle size={11} /> linha inválida</span>
                       : fmtData(l.data)}
@@ -519,7 +519,7 @@ export default function Importar() {
                     )}
                   </p>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Syne', color: !l.valido ? 'var(--text3)' : l.tipo === 'entrada' ? 'var(--accent)' : 'var(--red)', flexShrink: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Syne', color: !l.valido ? 'var(--text2)' : l.tipo === 'entrada' ? 'var(--accent-text)' : 'var(--red-text)', flexShrink: 0 }}>
                   {l.valido ? (l.tipo === 'entrada' ? '+' : '−') : (l.valorNum < 0 ? '−' : '')}{Number.isNaN(l.valorNum) ? '—' : fmt(Math.abs(l.valorNum))}
                 </span>
               </div>

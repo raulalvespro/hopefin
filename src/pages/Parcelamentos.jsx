@@ -46,7 +46,7 @@ function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir, onEditar, de
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 12, marginBottom: 12 }}>
         <div><span style={{ color: 'var(--text2)' }}>Parcela</span><br /><strong>{fmt(p.valor_parcela)}</strong></div>
-        <div><span style={{ color: 'var(--text2)' }}>{p.quitado ? 'Total' : 'Falta pagar'}</span><br /><strong style={{ color: p.quitado ? 'var(--text)' : 'var(--amber)' }}>{fmt(p.quitado ? p.valor_total : p.restante)}</strong></div>
+        <div><span style={{ color: 'var(--text2)' }}>{p.quitado ? 'Total' : 'Falta pagar'}</span><br /><strong style={{ color: p.quitado ? 'var(--text)' : 'var(--amber-text)' }}>{fmt(p.quitado ? p.valor_total : p.restante)}</strong></div>
         <div><span style={{ color: 'var(--text2)' }}>Progresso</span><br /><strong>{p.pagas}/{p.total}x</strong></div>
       </div>
 
@@ -55,14 +55,14 @@ function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir, onEditar, de
       </div>
 
       <button onClick={() => setAberto(a => !a)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginTop: 8 }}>
-        <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+        <span style={{ fontSize: 11, color: 'var(--text2)' }}>
           {p.quitado
             ? `Quitado · ${p.total}x de ${fmt(p.valor_parcela)}`
             : p.proxima
               ? `Próxima ${p.proxima.numero}/${p.total} em ${fmtData(p.proxima.data_vencimento, "dd 'de' MMM")}`
               : `1ª parcela: ${fmtData(p.data_primeira_parcela, 'MMM/yyyy')}`}
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--accent2)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--accent-text)' }}>
           {aberto ? 'ocultar' : 'parcelas'} {aberto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </span>
       </button>
@@ -77,13 +77,13 @@ function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir, onEditar, de
                   {parc.paga && <Check size={13} color="var(--on-accent)" />}
                 </button>
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 500, textDecoration: parc.paga ? 'line-through' : 'none', color: parc.paga ? 'var(--text3)' : 'var(--text)' }}>
+                  <p style={{ fontSize: 13, fontWeight: 500, textDecoration: parc.paga ? 'line-through' : 'none', color: parc.paga ? 'var(--text2)' : 'var(--text)' }}>
                     Parcela {parc.numero}/{p.total}
                   </p>
-                  <p style={{ fontSize: 11, color: 'var(--text3)' }}>vence {fmtData(parc.data_vencimento, 'dd/MM/yyyy')}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text2)' }}>vence {fmtData(parc.data_vencimento, 'dd/MM/yyyy')}</p>
                 </div>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: parc.paga ? 'var(--text3)' : 'var(--text)' }}>{fmt(parc.valor)}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: parc.paga ? 'var(--text2)' : 'var(--text)' }}>{fmt(parc.valor)}</span>
             </div>
           ))}
         </div>
@@ -355,7 +355,7 @@ export default function Parcelamentos() {
               <div className="form-group"><label>Nº de parcelas</label><input type="number" inputMode="decimal" min="1" value={form.num_parcelas} onChange={e => setForm(p => ({ ...p, num_parcelas: e.target.value }))} placeholder="Ex: 12" /></div>
             </div>
             {form.valor_total && nEdit >= 1 && (
-              <p style={{ fontSize: 13, color: 'var(--accent2)', marginTop: -4, marginBottom: 12 }}>{nEdit}x de {fmt(parseFloat(String(form.valor_total).replace(',', '.')) / nEdit)}</p>
+              <p style={{ fontSize: 13, color: 'var(--accent-text)', marginTop: -4, marginBottom: 12 }}>{nEdit}x de {fmt(parseFloat(String(form.valor_total).replace(',', '.')) / nEdit)}</p>
             )}
             <div className="form-row">
               <div className="form-group"><label>1ª parcela em</label><input type="date" value={form.data_primeira_parcela} onChange={e => setForm(p => ({ ...p, data_primeira_parcela: e.target.value }))} /></div>
@@ -385,7 +385,7 @@ export default function Parcelamentos() {
                 <div className="form-group" style={{ marginTop: 10 }}>
                   <EscolherPessoa pessoas={pessoas} valor={form.pessoa_nome} onCriar={garantirPessoa}
                     onEscolher={nome => setForm(p => ({ ...p, pessoa_nome: nome }))} />
-                  <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>Cada parcela vira um “A receber” no mês em que vence.</span>
+                  <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>Cada parcela vira um “A receber” no mês em que vence.</span>
                 </div>
               )}
               {/* Dividir com outras pessoas (A8.6) */}
@@ -400,7 +400,7 @@ export default function Parcelamentos() {
                   onAPartirDe={n => setForm(p => ({ ...p, aPartirDe: n }))} />
               )}
             </div>
-            <p style={{ fontSize: 11.5, color: 'var(--text3)', margin: '0 0 16px', lineHeight: 1.4 }}>
+            <p style={{ fontSize: 11.5, color: 'var(--text2)', margin: '0 0 16px', lineHeight: 1.4 }}>
               Ao salvar, as parcelas são recriadas com estes valores e datas. As primeiras <strong>{parseInt(form.parcelas_pagas) || 0}</strong> entram como já pagas.
             </p>
             <div style={{ display: 'flex', gap: 10 }}>

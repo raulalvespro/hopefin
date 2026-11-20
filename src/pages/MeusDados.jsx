@@ -198,7 +198,7 @@ export default function MeusDados() {
         )}
       </div>
 
-      <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 16, textAlign: 'center' }}>
+      <p style={{ fontSize: 11, color: 'var(--text2)', marginTop: 16, textAlign: 'center' }}>
         Backup e exclusão disponíveis desde {fmtData(hojeISO())}.
       </p>
     </div>

@@ -82,6 +82,12 @@ export default function Orcamento() {
     if (pct >= 80) return 'var(--amber)'
     return 'var(--accent)'
   }
+  // Mesma regra, na cor "de texto" do tokens.json (o % legível nos 2 temas)
+  function corTexto(pct) {
+    if (pct >= 100) return 'var(--red-text)'
+    if (pct >= 80) return 'var(--amber-text)'
+    return 'var(--accent-text)'
+  }
 
   if (loading) return <div className="empty-state">Carregando...</div>
 
@@ -100,12 +106,12 @@ export default function Orcamento() {
           <Target size={18} color="var(--accent)" />
           <p style={{ fontWeight: 600, fontFamily: 'Syne', fontSize: 15 }}>Orçamento do mês</p>
         </div>
-        <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>
+        <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>
           O realizado de cada categoria soma compra, conta fixa, parcela e assinatura — só o que é seu (compra de outra pessoa não entra). Toque numa categoria pra ver o que está nela.
         </p>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
           <span style={{ fontSize: 13, color: 'var(--text2)' }}>Gasto {fmt(totalGastoOrcado)} de {fmt(totalOrcado)}</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: totalGastoOrcado > totalOrcado ? 'var(--red)' : 'var(--accent)' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: totalGastoOrcado > totalOrcado ? 'var(--red-text)' : 'var(--accent-text)' }}>
             {totalOrcado > 0 ? Math.round((totalGastoOrcado / totalOrcado) * 100) : 0}%
           </span>
         </div>
@@ -144,12 +150,12 @@ export default function Orcamento() {
                   </p>
                   <p style={{ fontSize: 12, color: 'var(--text2)' }}>
                     {fmt(gasto)}{limite ? ` de ${fmt(limite)}` : ' · sem teto'}
-                    {o && <span style={{ color: 'var(--text3)' }}> · pago {ROT_PAGO[pagoCom]}{o.pago_com === 'auto' || !o.pago_com ? ' (auto)' : ''}</span>}
+                    {o && <span style={{ color: 'var(--text2)' }}> · pago {ROT_PAGO[pagoCom]}{o.pago_com === 'auto' || !o.pago_com ? ' (auto)' : ''}</span>}
                   </p>
                 </div>
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {limite && <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Syne', color: corBarra(pct) }}>{pct}%</span>}
+                {limite && <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Syne', color: corTexto(pct) }}>{pct}%</span>}
               </div>
             </div>
             {limite && (
@@ -160,12 +166,12 @@ export default function Orcamento() {
             {/* O que está enchendo esse limite */}
             {estaAberta && (
               <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 6 }}>
-                {itens.length === 0 ? <p style={{ fontSize: 12, color: 'var(--text3)', padding: '6px 0' }}>Nada lançado nesta categoria no mês.</p>
+                {itens.length === 0 ? <p style={{ fontSize: 12, color: 'var(--text2)', padding: '6px 0' }}>Nada lançado nesta categoria no mês.</p>
                   : itens.map((it, i) => (
                     <div key={`${it.tipo}-${it.id}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                       <div style={{ minWidth: 0 }}>
                         <p style={{ fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.descricao}</p>
-                        <p style={{ fontSize: 11, color: 'var(--text3)' }}>
+                        <p style={{ fontSize: 11, color: 'var(--text2)' }}>
                           {[it.data ? fmtData(it.data, 'dd/MM') : null, ROT_TIPO[it.tipo], it.tipo === 'parcela' ? `${it.numero}/${it.total}` : null].filter(Boolean).join(' · ')}
                         </p>
                       </div>
@@ -211,7 +217,7 @@ export default function Orcamento() {
                 <option value="avista">À vista (pix, débito, dinheiro)</option>
                 <option value="cartao">No cartão de crédito</option>
               </select>
-              <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
+              <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>
                 À vista: o que falta do teto já fica separado no "Quanto posso gastar". No cartão: vai pra fatura do mês seguinte, e o Início mostra até onde ela deve chegar.
               </span>
             </div>

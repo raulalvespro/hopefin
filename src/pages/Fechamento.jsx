@@ -54,7 +54,7 @@ function Delta({ atual, anterior, invertido = false }) {
   const pct = Math.round((dif / Math.abs(anterior)) * 100)
   // invertido: subir é ruim (despesa). normal: subir é bom (receita).
   const bom = invertido ? dif < 0 : dif > 0
-  const cor = bom ? 'var(--accent)' : 'var(--red)'
+  const cor = bom ? 'var(--accent-text)' : 'var(--red-text)'
   const Icon = dif > 0 ? ArrowUpRight : ArrowDownRight
   return (
     <span style={{ fontSize: 11, color: cor, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
@@ -152,7 +152,7 @@ export default function Fechamento() {
           <h2 style={{ fontSize: 18, textTransform: 'capitalize' }}>{format(mes, 'MMMM yyyy', { locale: ptBR })}</h2>
           <p style={{ fontSize: 11, color: 'var(--text2)' }}>{t.fechamentoDoMes}</p>
         </div>
-        <button onClick={() => setMes(m => addMonths(m, 1))} disabled={ehMesCorrente(mes)} style={{ padding: 8, color: ehMesCorrente(mes) ? 'var(--text3)' : 'var(--text2)', opacity: ehMesCorrente(mes) ? 0.4 : 1 }}><ChevronRight size={20} /></button>
+        <button onClick={() => setMes(m => addMonths(m, 1))} disabled={ehMesCorrente(mes)} style={{ padding: 8, color: ehMesCorrente(mes) ? 'var(--text2)' : 'var(--text2)', opacity: ehMesCorrente(mes) ? 0.4 : 1 }}><ChevronRight size={20} /></button>
       </div>
 
       {loading || !atual ? <div className="empty-state">{t.carregando}</div> : (
@@ -244,7 +244,7 @@ export default function Fechamento() {
               <div className="divider" style={{ margin: '8px 0' }} />
               {(() => {
                 const dif = atual.fixas - atual.fixasPrevisto
-                const cor = dif > 0 ? 'var(--red)' : 'var(--accent)'
+                const cor = dif > 0 ? 'var(--red-text)' : 'var(--accent-text)'
                 const txt = Math.abs(dif) < 0.01 ? 'Exatamente no previsto' : dif > 0 ? `${fmt(dif)} acima do previsto` : `${fmt(Math.abs(dif))} abaixo do previsto`
                 return <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600 }}><span>Diferença</span><span style={{ color: cor }}>{txt}</span></div>
               })()}

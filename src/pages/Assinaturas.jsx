@@ -180,7 +180,7 @@ export default function Assinaturas() {
                   <span style={{ fontSize: 16 }}>{emojiDe(cat)}</span> {cat}
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>{Math.round((val / total) * 100)}%</span>
+                  <span style={{ fontSize: 11, color: 'var(--text2)' }}>{Math.round((val / total) * 100)}%</span>
                   <strong>{fmt(val)}</strong>
                 </span>
               </div>
@@ -251,7 +251,7 @@ export default function Assinaturas() {
             <div className="form-group">
               <label>{t.cobradaDesde}</label>
               <input type="date" value={form.cobrada_desde} onChange={e => setForm(p => ({ ...p, cobrada_desde: e.target.value }))} />
-              <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6, lineHeight: 1.4 }}>{t.dicaCobradaDesde}</p>
+              <p style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6, lineHeight: 1.4 }}>{t.dicaCobradaDesde}</p>
             </div>
             <div className="form-group">
               <label>Categoria</label>
@@ -265,7 +265,7 @@ export default function Assinaturas() {
                 <option value="">Não vinculado a cartão</option>
                 {cartoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
-              <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>Se vincular, ela entra automaticamente na fatura do cartão — não precisa lançar como gasto.</p>
+              <p style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6 }}>Se vincular, ela entra automaticamente na fatura do cartão — não precisa lançar como gasto.</p>
             </div>
             {editando && (
               <div style={{ marginBottom: 16 }}>
@@ -277,7 +277,7 @@ export default function Assinaturas() {
                   <>
                     <DividirConta total={parseFloat(form.valor) || 0} partes={form.partes || []} onChange={partes => setForm(p => ({ ...p, partes }))}
                       pessoas={pessoas} onCriar={garantirPessoa} />
-                    <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 4, lineHeight: 1.45 }}>{copy.dividir.assinaturaExplica}</p>
+                    <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 }}>{copy.dividir.assinaturaExplica}</p>
                   </>
                 )}
               </div>

@@ -10,7 +10,7 @@
 
   /* Texto */
   --text: #0f172a;
-  --text2: #64748b;
+  --text2: #5b6b80; /* era #64748b (4,44:1 no --bg e 4,2:1 no --bg3); 20/11: >= 4,5:1 em bg, bg2 e bg3 */
   --text3: #94a3b8;
 
   /* Accent (esmeralda = positivo / marca) */
@@ -42,8 +42,9 @@
 
   /* Borda de controle desmarcado (bolinha de "pago", caixa de marcar): contraste >= 3:1 (A8.22) */
   --control-line: #8090a5;
-  /* Borda dos campos de digitar/escolher: no claro igual à --border2; no escuro >= 3:1 (A8.22) */
-  --field-line: rgba(15,23,42,0.12);
+  /* Borda dos campos de digitar/escolher: >= 3:1 nos 2 temas (A8.22 no escuro; no claro desde
+     20/11, pedido do Raul — antes era a --border2, que quase sumia no branco) */
+  --field-line: #8090a5;
   color-scheme: light;
 
   /* Sombra suave para elevação dos cards */
@@ -335,7 +336,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { margin-left: auto; opaci
 .empty-state {
   text-align: center;
   padding: 40px 20px;
-  color: var(--text3);
+  color: var(--text2); /* era --text3: abaixo de 4,5:1, e "Nenhum cartão cadastrado" é pra ler */
   font-size: 14px;
 }
 

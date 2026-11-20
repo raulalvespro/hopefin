@@ -59,13 +59,13 @@ export default function EscolhaGrupo() {
                 <p style={{ fontSize:13, color:'var(--text2)' }}>Seu cônjuge ou familiar já tem conta e te enviou o código do grupo.</p>
               </button>
             </div>
-            <button onClick={logout} style={{ width:'100%', marginTop:20, fontSize:13, color:'var(--text3)' }}>Sair</button>
+            <button onClick={logout} style={{ width:'100%', marginTop:20, fontSize:13, color:'var(--text2)' }}>Sair</button>
           </>
         )}
 
         {modo === 'criar' && (
           <>
-            <button onClick={() => setModo(null)} style={{ fontSize:13, color:'var(--text3)', marginBottom:20 }}>← Voltar</button>
+            <button onClick={() => setModo(null)} style={{ fontSize:13, color:'var(--text2)', marginBottom:20 }}>← Voltar</button>
             <div className="form-group">
               <label>Nome do grupo / família</label>
               <input placeholder={`Família ${nome}`} value={nomeGrupo} onChange={e => setNomeGrupo(e.target.value)} autoFocus />
@@ -78,11 +78,11 @@ export default function EscolhaGrupo() {
 
         {modo === 'entrar' && (
           <>
-            <button onClick={() => setModo(null)} style={{ fontSize:13, color:'var(--text3)', marginBottom:20 }}>← Voltar</button>
+            <button onClick={() => setModo(null)} style={{ fontSize:13, color:'var(--text2)', marginBottom:20 }}>← Voltar</button>
             <div className="form-group">
               <label>Código do grupo</label>
               <input placeholder="Cole o código que recebeu" value={codigo} onChange={e => setCodigo(e.target.value)} autoFocus />
-              <p style={{ fontSize:12, color:'var(--text3)', marginTop:6 }}>Peça o código nas configurações do app de quem te convidou.</p>
+              <p style={{ fontSize:12, color:'var(--text2)', marginTop:6 }}>Peça o código nas configurações do app de quem te convidou.</p>
             </div>
             {erro && <p style={{ color:'var(--red-text)', fontSize:13, marginBottom:14 }}>{erro}</p>}
             <button className="btn-primary" style={{ width:'100%' }} onClick={handleEntrar} disabled={loading}>

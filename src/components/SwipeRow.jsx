@@ -82,7 +82,7 @@ export default function SwipeRow({ children, onEdit, onDelete, style }) {
             position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: 18, height: 34, borderRadius: 6, background: 'var(--bg3)',
-            color: 'var(--text3)', pointerEvents: 'none', opacity: 0.9,
+            color: 'var(--text2)', pointerEvents: 'none', opacity: 0.9,
           }}>
             <ChevronLeft size={15} />
           </span>

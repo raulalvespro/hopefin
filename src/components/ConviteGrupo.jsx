@@ -141,7 +141,7 @@ export default function ConviteGrupo() {
                 {m.id === perfil?.grupos?.criado_por && m.id !== perfil?.id && <Tag cor="verde">{t.dono}</Tag>}
                 {souDono && m.id !== perfil?.id && (
                   <button onClick={() => setRemovendo(m)} aria-label={t.removerAria(m.nome)} title={t.remover}
-                    style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)' }}>
+                    style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)' }}>
                     <X size={18} />
                   </button>
                 )}

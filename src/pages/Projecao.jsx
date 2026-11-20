@@ -82,7 +82,7 @@ export default function Projecao() {
                 <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 15, textTransform: 'capitalize' }}>
                   {m.label} {m.isAtual && <span style={{ fontSize: 11, color: 'var(--accent-text)', marginLeft: 6 }}>● atual</span>}
                 </p>
-                <p style={{ fontSize: 13, color: m.saldo >= 0 ? 'var(--accent)' : 'var(--red)', marginTop: 2 }}>
+                <p style={{ fontSize: 13, color: m.saldo >= 0 ? 'var(--accent-text)' : 'var(--red-text)', marginTop: 2 }}>
                   Saldo projetado: {fmt(m.saldo)}
                 </p>
               </div>
@@ -91,7 +91,7 @@ export default function Projecao() {
 
             {/* Resumo entradas x saídas */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 10 }}>
-              {[['Entradas', m.entradas, 'var(--accent)'], ['Saídas', m.totalSaidas, 'var(--red)']].map(([l, v, c]) => (
+              {[['Entradas', m.entradas, 'var(--accent-text)'], ['Saídas', m.totalSaidas, 'var(--red-text)']].map(([l, v, c]) => (
                 <div key={l} style={{ background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: '8px 10px' }}>
                   <p style={{ fontSize: 10, color: 'var(--text2)' }}>{l}</p>
                   <p style={{ fontSize: 13, fontWeight: 700, color: c, fontFamily: 'Syne' }}>{fmt(v)}</p>
@@ -117,7 +117,7 @@ export default function Projecao() {
                   {m.fixas.map(f => (
                     <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
                       <span>{f.nome} <span style={{ color: 'var(--text2)', fontSize: 11 }}>· dia {f.dia_vencimento}{f.temReal ? ' · real' : ''}</span></span>
-                      <span style={{ color: f.temReal ? 'var(--accent)' : 'var(--text2)' }}>{fmt(f.efetivo)}</span>
+                      <span style={{ color: f.temReal ? 'var(--accent-text)' : 'var(--text2)' }}>{fmt(f.efetivo)}</span>
                     </div>
                   ))}
                 </>
@@ -197,7 +197,7 @@ export default function Projecao() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontFamily: 'Syne' }}>
                 <span>Saldo projetado</span>
-                <span style={{ color: m.saldo >= 0 ? 'var(--accent)' : 'var(--red)' }}>{fmt(m.saldo)}</span>
+                <span style={{ color: m.saldo >= 0 ? 'var(--accent-text)' : 'var(--red-text)' }}>{fmt(m.saldo)}</span>
               </div>
             </div>
           )}

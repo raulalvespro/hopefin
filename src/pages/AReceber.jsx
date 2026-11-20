@@ -358,14 +358,14 @@ export default function AReceber() {
   const Linha = ({ g, acao }) => (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
       <div style={{ minWidth: 0 }}>
-        <p style={{ fontSize: 13.5, fontWeight: 500, textDecoration: g.recebido ? 'line-through' : 'none', color: g.recebido ? 'var(--text3)' : 'var(--text)' }}>{nomeItem(g)}</p>
-        <p style={{ fontSize: 11, color: 'var(--text3)' }}>
+        <p style={{ fontSize: 13.5, fontWeight: 500, textDecoration: g.recebido ? 'line-through' : 'none', color: g.recebido ? 'var(--text2)' : 'var(--text)' }}>{nomeItem(g)}</p>
+        <p style={{ fontSize: 11, color: 'var(--text2)' }}>
           {g.origem?.tipo === 'cartao' ? t.vence(fmtData(g.dataSaida, 'dd/MM')) : fmtData(g.data, 'dd/MM')}
           {g.recebido && g.recebidoEm ? ` · ${t.recebidoEm(fmtData(g.recebidoEm, 'dd/MM'))}` : ''}
         </p>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Syne', color: g.recebido ? 'var(--text3)' : 'var(--text)' }}>{fmt(g.valor)}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Syne', color: g.recebido ? 'var(--text2)' : 'var(--text)' }}>{fmt(g.valor)}</span>
         {acao}
       </div>
     </div>
@@ -430,7 +430,7 @@ export default function AReceber() {
               <span style={{ fontSize: 13, color: 'var(--text2)' }}>{t.totalMes(nomeMes(comp))}</span>
               <span style={{ fontSize: 20, fontWeight: 700, fontFamily: 'Syne', color: 'var(--amber-text)' }}>{fmt(soma(pendentesMes))}</span>
             </div>
-            {futuros.length > 0 && <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 4 }}>{t.proximos(fmt(soma(futuros)))}</p>}
+            {futuros.length > 0 && <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 4 }}>{t.proximos(fmt(soma(futuros)))}</p>}
           </div>
 
           {grupos.length === 0 && <div className="empty-state" style={{ padding: '18px 0' }}>{t.vazioMes(nomeMes(comp))}</div>}
@@ -441,7 +441,7 @@ export default function AReceber() {
                 <span style={{ fontSize: 15, fontWeight: 600, fontFamily: 'Syne' }}>{gp.nome}</span>
                 <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne', color: 'var(--amber-text)' }}>{fmt(gp.total)}</span>
               </div>
-              <p style={{ fontSize: 11.5, color: 'var(--text3)', marginBottom: 6 }}>{t.itensLinha(gp.itens.length, gp.ate ? fmtData(gp.ate, 'dd/MM') : '')}</p>
+              <p style={{ fontSize: 11.5, color: 'var(--text2)', marginBottom: 6 }}>{t.itensLinha(gp.itens.length, gp.ate ? fmtData(gp.ate, 'dd/MM') : '')}</p>
               {agruparPorOrigem(gp.itens).map(og => (
                 <div key={og.rotulo} style={{ marginTop: 6 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontWeight: 700, color: 'var(--accent-text)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
@@ -472,7 +472,7 @@ export default function AReceber() {
                 <div className="card">
                   {recebidosMes.map(g => (
                     <Linha key={g.chave} g={{ ...g, descricao: `${g.descricao} · ${primeiroNome(g.pessoaNome)}` }} acao={
-                      <button onClick={() => reabrir(g)} title="Reabrir" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text3)' }}>
+                      <button onClick={() => reabrir(g)} title="Reabrir" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>
                         <RotateCcw size={13} /> {t.reabrir}
                       </button>} />
                   ))}
@@ -499,7 +499,7 @@ export default function AReceber() {
                   <input type="checkbox" checked={on} onChange={() => setReceber(r => { const s = new Set(r.selecionados); on ? s.delete(i.chave) : s.add(i.chave); return { ...r, selecionados: s } })} />
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ fontSize: 13, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nomeItem(i)}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'capitalize' }}>{nomeMes(i.comp)} · {rotuloOrigem(i.origem)}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text2)', textTransform: 'capitalize' }}>{nomeMes(i.comp)} · {rotuloOrigem(i.origem)}</span>
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(i.valor)}</span>
                 </label>
@@ -513,7 +513,7 @@ export default function AReceber() {
               <label>{t.quantoPagou(primeiroNome(receber.nome))}</label>
               <input type="number" inputMode="decimal" min="0" step="0.01" value={receber.valor} placeholder={fmt(selTotal)}
                 onChange={e => setReceber(r => ({ ...r, valor: e.target.value }))} />
-              <span style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>{t.quantoPagouSub}</span>
+              <span style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>{t.quantoPagouSub}</span>
               {simParte && (
                 <p style={{ fontSize: 12.5, marginTop: 6, padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--amber-dim)', color: 'var(--text)', lineHeight: 1.45 }}>
                   {t.previaParte(simParte.quitados.filter(i => i.valor > 0).length, fmt(simParte.porConta), fmt(simParte.faltam))}
@@ -561,7 +561,7 @@ export default function AReceber() {
                 })}
               </div>
               <input type="date" value={cobrar.ate} aria-label={t.pagarAte} onChange={e => setCobrar(c => ({ ...c, ate: e.target.value }))} />
-              <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block' }}>{t.pagarAteDica}</span>
+              <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, display: 'block' }}>{t.pagarAteDica}</span>
             </div>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text2)', marginBottom: 8, cursor: 'pointer' }}>
@@ -578,7 +578,7 @@ export default function AReceber() {
                   <div className="form-group"><label>{t.pixNome}</label><input value={pix.nome} onChange={e => mudarPix('nome', e.target.value)} placeholder={perfil?.nome || ''} /></div>
                   <div className="form-group"><label>{t.pixCidade}</label><input value={pix.cidade} onChange={e => mudarPix('cidade', e.target.value)} /></div>
                 </div>
-                <p style={{ fontSize: 11, color: 'var(--text3)' }}>{t.pixDica}</p>
+                <p style={{ fontSize: 11, color: 'var(--text2)' }}>{t.pixDica}</p>
               </div>
             )}
 
@@ -593,7 +593,7 @@ export default function AReceber() {
             <div style={{ display: 'flex', justifyContent: 'center', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 10, marginBottom: 12 }}>
               {previaUrl
                 ? <img src={previaUrl} alt={t.previaImagem} style={{ display: 'block', width: '100%', maxWidth: 360, boxShadow: '0 2px 10px rgba(0,0,0,.12)' }} />
-                : <p style={{ padding: '28px 0', fontSize: 12.5, color: 'var(--text3)' }}>{t.gerandoImagem}</p>}
+                : <p style={{ padding: '28px 0', fontSize: 12.5, color: 'var(--text2)' }}>{t.gerandoImagem}</p>}
             </div>
 
             <p style={{ fontSize: 12, color: 'var(--text2)', margin: '6px 0' }}>{t.previaTexto}</p>
@@ -676,7 +676,7 @@ export default function AReceber() {
                   <option value="">{t.contaFixaNenhuma}</option>
                   {contasFixas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
-                <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>{t.contaFixaDica}</span>
+                <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>{t.contaFixaDica}</span>
               </div>
             )}
             <div className="form-group"><label>Descrição</label><input value={manual.descricao} onChange={e => setManual(m => ({ ...m, descricao: e.target.value }))} placeholder="Ex.: parte do aluguel" /></div>
@@ -694,7 +694,7 @@ export default function AReceber() {
                     )
                   })}
                 </div>
-                {manual.repete === 'mes' && <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block' }}>{t.dicaMes}</span>}
+                {manual.repete === 'mes' && <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, display: 'block' }}>{t.dicaMes}</span>}
               </div>
             )}
             <div className="form-row">
@@ -705,7 +705,7 @@ export default function AReceber() {
               <div className="form-group">
                 <label>{t.quantasVezes}</label>
                 <input type="number" inputMode="numeric" pattern="[0-9]*" min="2" max="120" value={manual.parcelas} onChange={e => setManual(m => ({ ...m, parcelas: e.target.value }))} placeholder="Ex.: 3" />
-                <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>{t.dicaParcelado}</span>
+                <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, display: 'block', lineHeight: 1.4 }}>{t.dicaParcelado}</span>
               </div>
             )}
             {manual.id && manual.serieId && (
@@ -722,7 +722,7 @@ export default function AReceber() {
                     )
                   })}
                 </div>
-                {manual.aplicar === 'proximas' && <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block' }}>{t.dicaSerieData}</span>}
+                {manual.aplicar === 'proximas' && <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, display: 'block' }}>{t.dicaSerieData}</span>}
               </div>
             )}
             <div style={{ height: 6 }} />

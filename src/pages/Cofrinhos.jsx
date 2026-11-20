@@ -9,7 +9,12 @@ import { useToast } from '../contexts/ToastContext'
 import { fmt, hojeISO, fmtData, parseDataLocal } from '../lib/format'
 import { differenceInCalendarMonths, addMonths } from 'date-fns'
 
-const tipos = { cofrinho: { label: 'Cofrinho', icon: '🐷', cor: 'var(--accent)' }, investimento: { label: 'Investimento', icon: '📈', cor: 'var(--blue)' }, reserva: { label: 'Reserva', icon: '🛡️', cor: 'var(--amber)' } }
+// cor = barra e botão; corTexto = valor escrito (tokens.json: as "-text" são as legíveis); tinta = texto do botão
+const tipos = {
+  cofrinho: { label: 'Cofrinho', icon: '🐷', cor: 'var(--accent)', corTexto: 'var(--accent-text)', tinta: 'var(--on-accent)' },
+  investimento: { label: 'Investimento', icon: '📈', cor: 'var(--blue)', corTexto: 'var(--blue-text)', tinta: '#0b1120' },
+  reserva: { label: 'Reserva', icon: '🛡️', cor: 'var(--amber)', corTexto: 'var(--amber-text)', tinta: 'var(--on-accent)' },
+}
 const novoForm = () => ({ nome: '', descricao: '', meta: '', meta_data: '', tipo: 'cofrinho' })
 
 // Métricas da meta de um cofre: quanto falta, ritmo mensal e projeção.
@@ -171,7 +176,7 @@ export default function Cofrinhos() {
                 </div>
               </div>
 
-              <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 24, color: t.cor, marginBottom: 8 }}>{fmt(c.saldo_atual)}</p>
+              <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 24, color: t.corTexto, marginBottom: 8 }}>{fmt(c.saldo_atual)}</p>
 
               {mi && (
                 <div style={{ marginBottom: 12 }}>
@@ -179,7 +184,7 @@ export default function Cofrinhos() {
                     <div style={{ width: `${mi.progresso}%`, height: '100%', background: mi.atingida ? 'var(--accent)' : t.cor, borderRadius: 4, transition: 'width 0.3s' }} />
                   </div>
                   {mi.atingida ? (
-                    <p style={{ fontSize: 12.5, color: 'var(--accent2)', fontWeight: 600 }}>
+                    <p style={{ fontSize: 12.5, color: 'var(--accent-text)', fontWeight: 600 }}>
                       🎉 Meta de {fmt(mi.meta)} atingida!
                     </p>
                   ) : (
@@ -189,7 +194,7 @@ export default function Cofrinhos() {
                       </p>
                       {mi.porMes != null && (
                         <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 3 }}>
-                          Guarde <strong style={{ color: t.cor }}>{fmt(mi.porMes)}/mês</strong> até {fmtData(c.meta_data, 'MMM/yyyy')} para bater a meta
+                          Guarde <strong style={{ color: t.corTexto }}>{fmt(mi.porMes)}/mês</strong> até {fmtData(c.meta_data, 'MMM/yyyy')} para bater a meta
                         </p>
                       )}
                       {mi.dataProjetada && (
@@ -206,16 +211,16 @@ export default function Cofrinhos() {
 
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => abrirTransf(c, 'depositar')}
-                  style={{ flex: 1.4, padding: '10px', borderRadius: 'var(--radius-sm)', border: 'none', background: t.cor, color: 'var(--on-accent)', fontSize: 13, fontWeight: 700, fontFamily: 'Syne', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  style={{ flex: 1.4, padding: '10px', borderRadius: 'var(--radius-sm)', border: 'none', background: t.cor, color: t.tinta, fontSize: 13, fontWeight: 700, fontFamily: 'Syne', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   <ArrowDownToLine size={15} /> Guardar
                 </button>
                 <button onClick={() => abrirTransf(c, 'sacar')} disabled={c.saldo_atual <= 0}
-                  style={{ flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border2)', background: 'transparent', color: c.saldo_atual <= 0 ? 'var(--text3)' : 'var(--text)', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: c.saldo_atual <= 0 ? 0.5 : 1 }}>
+                  style={{ flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border2)', background: 'transparent', color: c.saldo_atual <= 0 ? 'var(--text2)' : 'var(--text)', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: c.saldo_atual <= 0 ? 0.5 : 1 }}>
                   <ArrowUpFromLine size={15} /> Sacar
                 </button>
                 {cofrinhos.length > 1 && (
                   <button onClick={() => abrirTransf(c, 'transferir')} disabled={c.saldo_atual <= 0} title="Transferir para outro cofre"
-                    style={{ width: 42, padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border2)', background: 'transparent', color: c.saldo_atual <= 0 ? 'var(--text3)' : 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: c.saldo_atual <= 0 ? 0.5 : 1 }}>
+                    style={{ width: 42, padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border2)', background: 'transparent', color: c.saldo_atual <= 0 ? 'var(--text2)' : 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: c.saldo_atual <= 0 ? 0.5 : 1 }}>
                     <ArrowLeftRight size={15} />
                   </button>
                 )}
@@ -233,7 +238,7 @@ export default function Cofrinhos() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 16 }}>
               {Object.entries(tipos).map(([v, t]) => (
                 <button key={v} onClick={() => setForm(p => ({ ...p, tipo: v }))}
-                  style={{ padding: '10px 4px', borderRadius: 'var(--radius-sm)', border: `1px solid ${form.tipo === v ? 'var(--accent)' : 'var(--border)'}`, background: form.tipo === v ? 'var(--accent-dim)' : 'transparent', color: form.tipo === v ? 'var(--accent)' : 'var(--text2)', fontSize: 12, fontWeight: 500 }}>
+                  style={{ padding: '10px 4px', borderRadius: 'var(--radius-sm)', border: `1px solid ${form.tipo === v ? 'var(--accent)' : 'var(--border)'}`, background: form.tipo === v ? 'var(--accent-dim)' : 'transparent', color: form.tipo === v ? 'var(--accent-text)' : 'var(--text2)', fontSize: 12, fontWeight: 500 }}>
                   {t.icon} {t.label}
                 </button>
               ))}
@@ -274,7 +279,7 @@ export default function Cofrinhos() {
             <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
               {modos.map(({ v, label, icon: Icon }) => (
                 <button key={v} onClick={() => setFormTransf(p => ({ ...p, modo: v }))}
-                  style={{ flex: 1, padding: '8px 4px', borderRadius: 'var(--radius-sm)', border: `1px solid ${m === v ? 'var(--accent)' : 'var(--border)'}`, background: m === v ? 'var(--accent-dim)' : 'transparent', color: m === v ? 'var(--accent2)' : 'var(--text2)', fontSize: 12, fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  style={{ flex: 1, padding: '8px 4px', borderRadius: 'var(--radius-sm)', border: `1px solid ${m === v ? 'var(--accent)' : 'var(--border)'}`, background: m === v ? 'var(--accent-dim)' : 'transparent', color: m === v ? 'var(--accent-text)' : 'var(--text2)', fontSize: 12, fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                   <Icon size={16} /> {label}
                 </button>
               ))}

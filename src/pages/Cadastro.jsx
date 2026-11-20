@@ -137,7 +137,7 @@ export default function Cadastro() {
           <div className="entrada-card hf-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <h2 style={{ margin: 0, fontFamily: "'Syne', system-ui, sans-serif", fontWeight: 700, fontSize: 26, lineHeight: '32px' }}>{t.confirmeTitulo}</h2>
             <p style={{ margin: 0, fontSize: 15, lineHeight: '22px', color: 'var(--text2)' }}>{t.confirmeTexto(confirmar)}</p>
-            <p style={{ margin: 0, fontSize: 13, lineHeight: '19px', color: 'var(--text3)' }}>{t.confirmeDica}</p>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: '19px', color: 'var(--text2)' }}>{t.confirmeDica}</p>
             {reenvio && <p style={{ margin: 0, fontSize: 13, color: reenvio.ok ? 'var(--accent-text)' : 'var(--red-text)' }}>{reenvio.texto}</p>}
             <Button variant="secondary" loading={reenviando} onClick={reenviar} style={{ width: '100%' }}>{t.reenviar}</Button>
             <Link to="/login" style={{ textAlign: 'center', fontSize: 14, color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 600 }}>{t.jaConfirmei}</Link>
@@ -193,7 +193,7 @@ export default function Cadastro() {
               <div className="form-group">
                 <label>{t.labelGrupo}</label>
                 <input placeholder={`Família ${form.nome ? form.nome.split(' ')[0] : '...'}`} value={form.nomeGrupo} onChange={e => set('nomeGrupo', e.target.value)} />
-                <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6 }}>{t.ajudaGrupo}</p>
+                <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>{t.ajudaGrupo}</p>
               </div>
             )}
 
@@ -201,7 +201,7 @@ export default function Cadastro() {
               <div className="form-group">
                 <label>{t.labelCodigo}</label>
                 <input placeholder={t.phCodigo} value={form.codigoGrupo} onChange={e => set('codigoGrupo', e.target.value)} required />
-                <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6 }}>{t.ajudaCodigo}</p>
+                <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>{t.ajudaCodigo}</p>
               </div>
             )}
 

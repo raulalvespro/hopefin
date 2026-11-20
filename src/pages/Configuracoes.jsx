@@ -110,7 +110,7 @@ export default function Configuracoes() {
                   borderRadius:'var(--radius-sm)', fontSize:12, fontWeight:600,
                   border:`1.5px solid ${ativo ? 'var(--accent)' : 'var(--border2)'}`,
                   background: ativo ? 'var(--accent-dim)' : 'var(--bg3)',
-                  color: ativo ? 'var(--accent)' : 'var(--text2)',
+                  color: ativo ? 'var(--accent-text)' : 'var(--text2)',
                 }}>
                 <Icon size={20} />
                 {label}
@@ -210,7 +210,7 @@ export default function Configuracoes() {
           <p style={{ fontWeight:600, fontFamily:'Syne', fontSize:15 }}>Alterar senha</p>
         </div>
         {senhaOk ? (
-          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:'var(--radius-sm)', background:'var(--accent-dim)', color:'var(--accent2)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:'var(--radius-sm)', background:'var(--accent-dim)', color:'var(--accent-text)' }}>
             <CheckCircle2 size={20} />
             <div>
               <p style={{ fontSize:14, fontWeight:600 }}>Senha alterada com sucesso</p>

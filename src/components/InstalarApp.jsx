@@ -99,7 +99,7 @@ export default function InstalarApp() {
           <p style={{ fontSize: 12.5, color: 'var(--text2)' }}>{texto}</p>
         </div>
         {botao && <span style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 13, color: 'var(--accent-text)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>{botao}<ChevronRight size={16} /></span>}
-        <button onClick={dispensar} style={{ color: 'var(--text3)', flexShrink: 0, display: 'flex', minWidth: 32, minHeight: 32, alignItems: 'center', justifyContent: 'center' }} aria-label={t.dispensar}>
+        <button onClick={dispensar} style={{ color: 'var(--text2)', flexShrink: 0, display: 'flex', minWidth: 32, minHeight: 32, alignItems: 'center', justifyContent: 'center' }} aria-label={t.dispensar}>
           <X size={18} />
         </button>
       </div>
@@ -115,7 +115,7 @@ export default function InstalarApp() {
           <li>1. {t.androidPasso1}</li>
           <li>2. {t.androidPasso2}</li>
           <li>3. {t.androidPasso3}</li>
-          <li style={{ color: 'var(--text3)' }}>{t.androidDicaWhats}</li>
+          <li style={{ color: 'var(--text2)' }}>{t.androidDicaWhats}</li>
         </ol>
       )}
     </div>
