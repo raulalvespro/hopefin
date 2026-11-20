@@ -707,6 +707,21 @@ alter table public.whatsapp_estado enable row level security;  -- sem policy: s�
 -- DESLIGADA até o Raul aprovar os textos; desligada, o fim-de-trial segue a régua de hoje (2d e 0d).
 alter table public.admin_config add column if not exists regua_fim_teste_nova boolean not null default false;
 
+-- 0080 (20/11, L29): chave de recurso 'ajuda' (audiência dono) em feature_flags.
+-- 0079 ligada em 20/11 (ok do Raul): admin_config.regua_fim_teste_nova = true.
+
+-- 0081 (20/11): chamados de suporte pelo app (Ajuda › "Abrir um chamado"), na MESMA caixa do painel.
+-- A pessoa não lê a tabela: só pelas RPCs suporte_abrir_chamado, suporte_meus_chamados,
+-- suporte_respostas_novas e suporte_marcar_respostas_vistas (authenticated). Prazo: 2 dias úteis
+-- (suporte_prazo). Até 5 chamados por pessoa em 24 h. O painel responde por admin-suporte-responder.
+alter table public.suporte_emails
+  add column if not exists origem            text not null default 'email',  -- 'email' | 'app'
+  add column if not exists usuario_id        uuid references public.usuarios(id) on delete set null,
+  add column if not exists categoria         text,  -- duvida | problema | sugestao | assinatura | outro
+  add column if not exists tela              text,
+  add column if not exists prazo_em          timestamptz,
+  add column if not exists resposta_vista_em timestamptz;
+
 -- ============================================================
 -- FIM
 -- ============================================================
