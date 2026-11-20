@@ -5,7 +5,7 @@ import termosRaw from '../../docs/LGPD_TERMOS_DE_USO.md?raw'
 import privacidadeRaw from '../../docs/LGPD_POLITICA_DE_PRIVACIDADE.md?raw'
 
 // Renderizador de Markdown mínimo (suficiente para os docs legais): títulos,
-// citações, listas, negrito, links, linha horizontal e parágrafos.
+// citações, listas, negrito, links (http e e-mail), linha horizontal e parágrafos.
 function inline(txt, key) {
   // Divide por **negrito** e [texto](link), mantendo a ordem.
   const partes = []
@@ -16,8 +16,8 @@ function inline(txt, key) {
     if (m.index > 0) partes.push(resto.slice(0, m.index))
     if (m[1] != null) partes.push(<strong key={key + '-b' + i}>{m[1]}</strong>)
     else partes.push(
-      m[3].startsWith('http')
-        ? <a key={key + '-l' + i} href={m[3]} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-text)' }}>{m[2]}</a>
+      /^(https?:|mailto:)/.test(m[3])
+        ? <a key={key + '-l' + i} href={m[3]} {...(m[3].startsWith('mailto:') ? {} : { target: '_blank', rel: 'noreferrer' })} style={{ color: 'var(--accent-text)' }}>{m[2]}</a>
         : <span key={key + '-l' + i}>{m[2]}</span>  // links internos a outros .md: mostra só o texto
     )
     resto = resto.slice(m.index + m[0].length); i++

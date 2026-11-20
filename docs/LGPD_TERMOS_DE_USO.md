@@ -1,67 +1,84 @@
-# Termos de Uso — HopeFin
+# Termos de uso
 
-> **RASCUNHO — não é aconselhamento jurídico.** Preencha os campos `[entre colchetes]`
-> e peça revisão jurídica antes de publicar/cobrar. Gerado em 02/11/2026.
+Versão em revisão · 20 de novembro de 2026
 
-**Última atualização:** [DATA]
+> **Texto em revisão.** Esta versão ainda vai passar por revisão jurídica, e os campos entre colchetes serão preenchidos antes da publicação oficial.
 
 ## 1. Aceitação
-Ao criar uma conta no HopeFin, você concorda com estes Termos e com a
-[Política de Privacidade](./LGPD_POLITICA_DE_PRIVACIDADE.md). Se não concordar, não use o app.
+
+Ao criar uma conta no HopeFin, você concorda com estes Termos e com a [Política de privacidade](https://app.hopefin.com.br/privacidade). Se não concordar, não use o app.
 
 ## 2. O que é o HopeFin
-O HopeFin é um aplicativo para organização das finanças pessoais e da família
-(gastos, entradas, contas, cartões, orçamentos e metas). Ele é uma ferramenta de
-**organização** — **não** presta aconselhamento financeiro, de investimentos ou contábil,
-e não executa pagamentos nem movimenta contas bancárias.
 
-## 3. Conta e grupo familiar
-- Você é responsável por manter a confidencialidade da sua senha e por tudo que
-  acontece na sua conta.
-- O criador do grupo pode convidar outras pessoas por meio de um código. Quem entra
-  no grupo passa a ver e editar os dados financeiros daquele grupo. Convide apenas
-  pessoas de sua confiança (ex.: cônjuge/família).
-- Você deve ter pelo menos 18 anos e fornecer informações verdadeiras.
+O HopeFin é um aplicativo para organizar as finanças pessoais e da família: gastos, entradas, contas do mês, cartões e parcelas, assinaturas, valores a receber, orçamentos, cofrinhos e metas. Ele pode ser usado pelo app e, se você quiser, pelo WhatsApp, com o Joca, o assistente do HopeFin.
 
-## 4. Planos e pagamento
-- Durante o período de testes/gratuito, o uso é sem custo.
-- Quando houver cobrança, o plano, o preço e o período de teste serão informados
-  claramente antes da contratação. **[Descrever: plano Família R$ 14,90/mês ou
-  R$ 119,90/ano, trial de 14 dias — ajustar quando a cobrança estiver ativa.]**
-- Cancelamento e reembolso: **[definir política — ex.: cancelar a qualquer momento;
-  Código de Defesa do Consumidor, art. 49, direito de arrependimento em 7 dias para
-  compras online].**
+O HopeFin é uma ferramenta de **organização**: **não** presta aconselhamento financeiro, de investimentos ou contábil, não recomenda investimentos, não se conecta ao seu banco, não faz pagamentos e não movimenta dinheiro. As previsões de saldo são estimativas feitas com o que foi lançado no grupo.
 
-## 5. Uso aceitável
-Você concorda em não: usar o app para fins ilícitos; tentar burlar a segurança ou
-acessar dados de outros grupos; sobrecarregar ou comprometer o serviço; ou copiar/
-revender o app sem autorização.
+## 3. Sua conta
 
-## 6. Seus dados e conteúdo
-Os dados que você insere são seus. Você nos concede uma licença limitada para
-armazená-los e processá-los apenas para operar o serviço, conforme a Política de
-Privacidade. Você pode exportar ou excluir seus dados em Configurações → Meus dados.
+- O HopeFin é só para maiores de 18 anos. Você deve informar dados verdadeiros: nome, e-mail e número de WhatsApp.
+- A senha precisa ter pelo menos 8 caracteres, e a conta só fica ativa depois que você confirma o e-mail pelo link que enviamos.
+- Você é responsável por manter sua senha em segredo e por tudo o que acontece na sua conta. Se esquecer a senha, pode criar outra pelo link “Esqueci minha senha”.
 
-## 7. Disponibilidade e isenções
-O HopeFin é fornecido "no estado em que se encontra". Buscamos alta disponibilidade,
-mas não garantimos funcionamento ininterrupto ou isento de erros. Faça conferência
-das suas informações financeiras — **você é responsável pelas suas decisões financeiras.**
+## 4. Grupo da família
 
-## 8. Limitação de responsabilidade
-Na máxima extensão permitida em lei, não nos responsabilizamos por prejuízos
-indiretos decorrentes do uso ou da impossibilidade de uso do app. Nada nestes Termos
-limita direitos que você tenha como consumidor.
+- Cada grupo pode ter até 6 pessoas. Quem cria o grupo convida as outras por link, QR code ou código.
+- Quem entra no grupo vê e edita os dados financeiros do grupo, e cada lançamento mostra quem lançou. Convide só pessoas de sua confiança.
+- Para proteger os grupos, as tentativas de código de convite são limitadas: depois de muitas tentativas erradas, novas tentativas ficam bloqueadas por até 1 hora.
+- Quem criou o grupo pode remover pessoas. Quem sai ou é removido deixa de ver os dados do grupo; o que já foi lançado continua no grupo.
 
-## 9. Encerramento
-Você pode encerrar sua conta a qualquer momento. Podemos suspender contas que violem
-estes Termos, com aviso quando possível.
+## 5. Lançamentos pelo WhatsApp e por voz
 
-## 10. Alterações
-Podemos atualizar estes Termos; mudanças relevantes serão avisadas pelo app ou e-mail.
+- Conectar o WhatsApp é opcional: você faz isso em Configurações, com um código, e pode desconectar quando quiser.
+- O Joca usa inteligência artificial para entender mensagens, áudios e falas e transformar em lançamentos. Ele pode errar: mostra o que entendeu, pergunta quando fica em dúvida e deixa corrigir ou apagar o último lançamento. Confira o que foi lançado.
+- Os lançamentos feitos com inteligência artificial (pelo WhatsApp e por voz) têm limites de uso, informados no app. Lançar digitando no app não tem esse limite.
+- O WhatsApp é um serviço da Meta; ao usá-lo, valem também os termos do WhatsApp.
 
-## 11. Lei aplicável e foro
-Estes Termos são regidos pelas leis do Brasil. Fica eleito o foro da comarca de
-**[CIDADE/UF]**, salvo direito do consumidor de escolher o foro de seu domicílio.
+## 6. Planos e pagamento
 
-## 12. Contato
-**[NOME/RAZÃO SOCIAL]** — **[E-MAIL DE CONTATO]** — **[CPF/CNPJ]**.
+- **Teste grátis:** 7 dias com tudo liberado, sem cartão. No fim, você escolhe se quer assinar. Sem assinatura, você continua vendo e exportando seus dados, mas não cria lançamentos novos.
+- **Plano Família (até 6 pessoas):** mensal de R$ 24,90 (Pix ou cartão); anual de R$ 199,90 no Pix à vista ou 12x de R$ 19,90 no cartão (total de R$ 238,80).
+- **Oferta de lançamento:** para quem assinar o plano anual até 31/12/2026, às 23h59 (horário de Brasília), R$ 149,90 no Pix ou 12x de R$ 14,90 no cartão (total de R$ 178,80). O preço fica mantido nas renovações enquanto a assinatura seguir ativa, sem interrupção.
+- **Cobrança:** feita pelo Asaas, nosso parceiro de pagamentos. No cartão, o anual é sempre cobrado em 12 parcelas; o total é um pouco maior por causa das taxas do parcelamento.
+- **Renovação:** a assinatura renova no fim de cada período (mês ou ano) até você cancelar. No anual no cartão, avisamos por e-mail 7 dias antes da renovação.
+- **Pagamento pendente:** se uma cobrança não for paga, você continua vendo e exportando seus dados, mas os lançamentos novos ficam bloqueados até a regularização.
+- **Cupons:** cupons de parceiros valem nas condições informadas no próprio cupom, um por grupo.
+
+## 7. Cancelamento e reembolso
+
+- Você pode cancelar a qualquer momento, em Configurações, sem multa. O acesso continua até o fim do período já pago e não há novas cobranças.
+- **Direito de arrependimento (art. 49 do Código de Defesa do Consumidor):** nos 7 dias seguintes ao primeiro pagamento, você pode cancelar pelo próprio app e receber o reembolso total. Nesse caso, o acesso termina na hora. Renovações não reabrem esse prazo.
+
+## 8. Uso aceitável
+
+Você concorda em não: usar o app para fins ilícitos; tentar burlar a segurança ou acessar dados de outros grupos; tentar adivinhar códigos de convite; sobrecarregar ou comprometer o serviço; ou copiar ou revender o app sem autorização.
+
+## 9. Seus dados e conteúdo
+
+Os dados que você insere são seus. Você nos concede uma licença limitada para armazená-los e processá-los apenas para operar o serviço, conforme a [Política de privacidade](https://app.hopefin.com.br/privacidade).
+
+Em Configurações → Meus dados, você baixa uma cópia (arquivo JSON ou planilha CSV) e pode apagar os dados financeiros do grupo. Atenção: apagar vale para o grupo inteiro e não tem volta.
+
+## 10. Disponibilidade e isenções
+
+O HopeFin é fornecido “no estado em que se encontra”. Buscamos alta disponibilidade, mas não garantimos funcionamento ininterrupto ou isento de erros, inclusive na interpretação feita pela inteligência artificial. Confira suas informações financeiras: **você é responsável pelas suas decisões financeiras.**
+
+## 11. Limitação de responsabilidade
+
+Na máxima extensão permitida em lei, não nos responsabilizamos por prejuízos indiretos decorrentes do uso ou da impossibilidade de uso do app. Nada nestes Termos limita direitos que você tenha como consumidor.
+
+## 12. Encerramento
+
+Você pode parar de usar o HopeFin e cancelar a assinatura a qualquer momento. Para apagar a sua conta por completo, escreva para [privacidade@hopefin.com.br](mailto:privacidade@hopefin.com.br). Podemos suspender contas que violem estes Termos, com aviso quando possível.
+
+## 13. Alterações
+
+Podemos atualizar estes Termos; mudanças relevantes serão avisadas pelo app ou por e-mail.
+
+## 14. Lei aplicável e foro
+
+Estes Termos são regidos pelas leis do Brasil. Fica eleito o foro da comarca de **[CIDADE/UF]**, salvo o direito do consumidor de escolher o foro do seu domicílio.
+
+## 15. Contato
+
+**[NOME OU RAZÃO SOCIAL]** · **[CPF/CNPJ]** · **[ENDEREÇO]** · [contato@hopefin.com.br](mailto:contato@hopefin.com.br)
