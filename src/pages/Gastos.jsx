@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Plus, Layers, CalendarCheck, Upload } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { destinoVoltar } from '../lib/voltar'
 import BotaoVoz from '../components/BotaoVoz'
 import SwipeRow from '../components/SwipeRow'
-import { useCategorias } from '../hooks/useCategorias'
+import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { fmt, fmtData, hojeISO } from '../lib/format'
@@ -74,10 +76,10 @@ export default function Gastos() {
   const periodoFiltro = buscaLigada && (filtro.de || filtro.ate) ? { de: filtro.de, ate: filtro.ate } : null
 
   useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes(); carregarAssinaturas() } }, [perfil, mes, periodoFiltro?.de, periodoFiltro?.ate])
+  useAtualizarSozinho(perfil?.grupo_id ? (o) => { carregar(o); carregarCartoes(); carregarAssinaturas() } : null)
 
-  async function carregar() {
-    setLoading(true)
-    setVerTodos(false)
+  async function carregar(opcoes) {
+    if (!opcoes?.silencioso) { setLoading(true); setVerTodos(false) }
     const gid = perfil.grupo_id
     // Com o filtro de período da busca (A3.1), carrega o período escolhido em vez do mês.
     const inicio = periodoFiltro ? (periodoFiltro.de || '2000-01-01') : format(startOfMonth(mes), 'yyyy-MM-dd')
@@ -138,12 +140,12 @@ export default function Gastos() {
     const id = params.get('editar')
     if (abriuPeloLink.current || !id || !cartoesProntos || !perfil?.grupo_id) return
     abriuPeloLink.current = true
-    const v = params.get('voltar')
+    const destino = destinoVoltar(params) // volta pra mesma fatura do cartão (A8.7)
     setParams({}, { replace: true })
     supabase.from('gastos').select('*, cartoes(nome), usuarios(nome), pessoas(nome)').eq('id', id).eq('grupo_id', perfil.grupo_id).maybeSingle()
       .then(({ data }) => {
         if (!data) { toast(tg.naoAchei, 'erro'); return }
-        setVoltarPara(v === 'cartoes' ? '/cartoes' : null)
+        setVoltarPara(destino)
         editarGasto(paraItemGasto(data))
       })
   }, [params, cartoesProntos, perfil]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -332,7 +334,7 @@ export default function Gastos() {
   const lista = filtrando ? filtrar(itens, filtro, lerGasto) : itens
   const tb = copy.busca
   const opcoesBusca = buscaLigada ? {
-    categorias: distintos(itens.map(i => i.categoria)).map(c => ({ valor: c, rotulo: `${emojiDe(c)} ${c}` })),
+    categorias: distintos(itens.map(i => i.categoria)).map(c => ({ valor: c, rotulo: `${emojiDe(c)} ${rotuloCategoria(c)}` })),
     origens: distintos(itens.map(i => i.origem)).map(o => ({ valor: o, rotulo: o })),
     pessoas: distintos(itens.flatMap(i => [i.pessoa, i.terceiro])).map(p => ({ valor: p, rotulo: p })),
     tipos: [{ valor: 'avista', rotulo: tb.tipoAvista }, { valor: 'parcela', rotulo: tb.tipoParcela }, { valor: 'terceiro', rotulo: tb.tipoTerceiro }],
@@ -486,7 +488,7 @@ export default function Gastos() {
               <div className="form-group">
                 <label>Categoria</label>
                 <select value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}>
-                  {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
+                  {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {rotuloCategoria(c.nome)}</option>)}
                 </select>
               </div>
               <div className="form-group">

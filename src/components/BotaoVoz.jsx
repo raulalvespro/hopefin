@@ -4,7 +4,7 @@ import { X, Check, Loader, Sparkles, Send, AlertTriangle } from 'lucide-react'
 import { MicButton, Tag } from './ui'
 import { useVoz, ehIosInstalado, ondeLiberarMic, textoErroIa } from '../hooks/useVoz'
 import { useAuth } from '../contexts/AuthContext'
-import { useCategorias } from '../hooks/useCategorias'
+import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { useAssinatura } from '../hooks/useAssinatura'
 import { supabase } from '../lib/supabase'
@@ -365,7 +365,7 @@ export default function BotaoVoz({ onSalvo }) {
                         <div className="form-group">
                           <label>{t.labelCategoria}</label>
                           <select value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}>
-                            {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
+                            {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {rotuloCategoria(c.nome)}</option>)}
                           </select>
                         </div>
                         <div className="form-group">

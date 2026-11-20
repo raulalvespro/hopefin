@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { estadoAssinatura } from '../lib/assinatura'
+import { useAtualizarSozinho } from './useAtualizarSozinho'
 
 // Lê a assinatura do grupo logado (uma por grupo, filtrada pela RLS) e deriva o
 // estado humano + aviso via estadoAssinatura() (fonte única em lib/assinatura.js),
@@ -9,8 +10,8 @@ export function useAssinatura() {
   const [assinatura, setAssinatura] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const recarregar = useCallback(async () => {
-    setLoading(true)
+  const recarregar = useCallback(async (opcoes) => {
+    if (!opcoes?.silencioso) setLoading(true)
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
@@ -21,6 +22,7 @@ export function useAssinatura() {
   }, [])
 
   useEffect(() => { recarregar() }, [recarregar])
+  useAtualizarSozinho(recarregar)
 
   const est = estadoAssinatura(assinatura)
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths, getDaysInMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Check, CalendarCheck, CreditCard, Repeat } from 'lucide-react'
@@ -49,9 +50,10 @@ export default function ContasDoMes() {
   competenciaRef.current = competencia
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil, competencia])
+  useAtualizarSozinho(perfil?.grupo_id ? carregar : null) // aba abre na hora e se atualiza sozinha
 
-  async function carregar() {
-    setLoading(true)
+  async function carregar(opcoes) {
+    if (!opcoes?.silencioso) setLoading(true) // atualizando sozinha: sem "Carregando"
     const gid = perfil.grupo_id
     const ini = format(startOfMonth(mes), 'yyyy-MM-dd')
     const fim = format(endOfMonth(mes), 'yyyy-MM-dd')

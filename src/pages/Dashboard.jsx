@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { format, subMonths, addMonths, isSameMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, TrendingUp, PieChart as PieIcon, Target, Wallet, CalendarClock } from 'lucide-react'
@@ -13,7 +14,7 @@ import BotaoVoz from '../components/BotaoVoz'
 import Onboarding from '../components/Onboarding'
 import Explicacao from '../components/Explicacao'
 import ViradaMes from '../components/ViradaMes'
-import { useCategorias } from '../hooks/useCategorias'
+import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { InfoDica } from '../components/ui'
 import { copy } from '../copy/pt-BR'
 import { carregarMotor, garantirSeries, resumoMes, addMeses, compsEntre, nomeMesCurto, hojeBRT, compDe } from '../lib/motor'
@@ -57,6 +58,7 @@ export default function Dashboard() {
   const ehMesAtual = isSameMonth(mes, new Date())
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil, mes])
+  useAtualizarSozinho(perfil?.grupo_id ? carregar : null) // aba abre na hora e se atualiza sozinha
   useEffect(() => { if (perfil?.grupo_id) carregarGrupo() }, [perfil?.grupo_id])
 
   async function carregarGrupo() {
@@ -69,8 +71,9 @@ export default function Dashboard() {
     setMembros(ms || [])
   }
 
-  async function carregar() {
-    setLoading(true); setErro(null)
+  async function carregar(opcoes) {
+    if (!opcoes?.silencioso) setLoading(true)
+    setErro(null)
     try {
       await garantirSeries()
       const gid = perfil.grupo_id
@@ -152,7 +155,7 @@ export default function Dashboard() {
   // Categorias (meu gasto, sem compras de outras pessoas)
   const catUniEntries = Object.entries(r.meuGasto.porCategoria).sort((a, b) => b[1].total - a[1].total)
   const emojiPara = cat => cat === 'assinaturas' ? '📺' : emojiDe(cat)
-  const nomeCategoria = cat => cat === 'assinaturas' ? 'Assinaturas' : cat
+  const nomeCategoria = cat => cat === 'assinaturas' ? 'Assinaturas' : rotuloCategoria(cat)
   const baseRenda = Math.max(r.entradasPrevistas, r.meuGasto.total, 1)
   const sobraRenda = r.entradasPrevistas - r.meuGasto.total
   const distribuicao = catUniEntries.map(([cat, o]) => ({ nome: cat, valor: o.total, rotulo: `${emojiPara(cat)} ${nomeCategoria(cat)}` }))
@@ -352,7 +355,7 @@ export default function Dashboard() {
             return (
               <div key={categoria} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
-                  <span style={{ textTransform: 'capitalize' }}>{emojiDe(categoria)} {categoria}</span>
+                  <span>{emojiDe(categoria)} {rotuloCategoria(categoria)}</span>
                   <span style={{ fontWeight: 500 }}>{fmt(realizado)} <span style={{ color: 'var(--text3)', fontSize: 11 }}>de {fmt(teto)} ({pct}%)</span></span>
                 </div>
                 <div style={{ background: 'var(--bg3)', borderRadius: 4, height: 7, overflow: 'hidden' }}>

@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { Plus, Repeat } from 'lucide-react'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
-import { useCategorias } from '../hooks/useCategorias'
+import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import SwipeRow from '../components/SwipeRow'
 import { useFlags } from '../hooks/useFlags'
 import BuscaFiltros from '../components/BuscaFiltros'
@@ -36,9 +37,10 @@ export default function Assinaturas() {
   const [salvando, setSalvando] = useState(false)
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil])
+  useAtualizarSozinho(perfil?.grupo_id ? carregar : null) // aba abre na hora e se atualiza sozinha
 
-  async function carregar() {
-    setLoading(true)
+  async function carregar(opcoes) {
+    if (!opcoes?.silencioso) setLoading(true) // atualizando sozinha: sem "Carregando"
     const [{ data }, { data: cs }] = await Promise.all([
       supabase.from('assinaturas').select('*, cartoes(nome)').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('dia_cobranca'),
       supabase.from('cartoes').select('id, nome').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('nome'),
@@ -109,7 +111,7 @@ export default function Assinaturas() {
   const filtrando = buscaLigada && temFiltro(filtro)
   const visiveis = filtrando ? filtrar(itens, filtro, lerAss) : itens
   const opcoesBusca = buscaLigada ? {
-    categorias: distintos(itens.map(a => a.categoria || 'outros')).map(c => ({ valor: c, rotulo: `${emojiDe(c)} ${c}` })),
+    categorias: distintos(itens.map(a => a.categoria || 'outros')).map(c => ({ valor: c, rotulo: `${emojiDe(c)} ${rotuloCategoria(c)}` })),
     origens: distintos(itens.map(a => a.cartoes?.nome || tb.semCartao)).map(o => ({ valor: o, rotulo: o })),
   } : null
 
@@ -220,7 +222,7 @@ export default function Assinaturas() {
             <div className="form-group">
               <label>Categoria</label>
               <select value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}>
-                {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
+                {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {rotuloCategoria(c.nome)}</option>)}
               </select>
             </div>
             <div className="form-group">

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { format, startOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, PiggyBank, ArrowUpRight, ArrowDownRight, Share2 } from 'lucide-react'
-import { useCategorias } from '../hooks/useCategorias'
+import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { fmt } from '../lib/format'
 import { copy } from '../copy/pt-BR'
 import ResumoCartao from '../components/ResumoCartao'
@@ -76,9 +77,10 @@ export default function Fechamento() {
   const ym = format(mes, 'yyyy-MM')
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil, ym])
+  useAtualizarSozinho(perfil?.grupo_id ? carregar : null) // aba abre na hora e se atualiza sozinha
 
-  async function carregar() {
-    setLoading(true)
+  async function carregar(opcoes) {
+    if (!opcoes?.silencioso) setLoading(true) // atualizando sozinha: sem "Carregando"
     const gid = perfil.grupo_id
     const ymAnt = format(subMonths(mes, 1), 'yyyy-MM')
     const [dados, cof] = await Promise.all([
@@ -212,7 +214,7 @@ export default function Fechamento() {
               {atual.categorias.slice(0, 5).map(([cat, valor]) => (
                 <div key={cat} style={{ marginBottom: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                    <span style={{ textTransform: 'capitalize' }}>{cat === 'assinaturas' ? '📺' : emojiDe(cat)} {cat}</span>
+                    <span>{cat === 'assinaturas' ? '📺 Assinaturas' : `${emojiDe(cat)} ${rotuloCategoria(cat)}`}</span>
                     <span style={{ fontWeight: 600 }}>{fmt(valor)}</span>
                   </div>
                   <div style={{ background: 'var(--bg3)', borderRadius: 3, height: 5, overflow: 'hidden' }}>

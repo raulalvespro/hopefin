@@ -15,13 +15,22 @@ function flagsDeTeste() {
   } catch { return {} }
 }
 
+// Última resposta, pra tela já abrir com as chaves certas (sem o botão "aparecer depois").
+// Some ao sair da conta. A cada tela nova pergunta de novo por trás (pega mudança do /admin).
+let ultimasFlags = null
+supabase.auth.onAuthStateChange((evento) => { if (evento === 'SIGNED_OUT') ultimasFlags = null })
+
 export function useFlags() {
-  const [flags, setFlags] = useState(null)
+  const [flags, setFlags] = useState(ultimasFlags)
   useEffect(() => {
     let vivo = true
     supabase.rpc('minhas_flags')
-      .then(({ data }) => { if (vivo) setFlags({ ...(data || {}), ...flagsDeTeste() }) })
-      .catch(() => { if (vivo) setFlags(flagsDeTeste()) })
+      .then(({ data, error }) => {
+        if (error) { if (vivo) setFlags(ultimasFlags ?? flagsDeTeste()); return }
+        ultimasFlags = { ...(data || {}), ...flagsDeTeste() }
+        if (vivo) setFlags(ultimasFlags)
+      })
+      .catch(() => { if (vivo) setFlags(ultimasFlags ?? flagsDeTeste()) })
     return () => { vivo = false }
   }, [])
   return flags

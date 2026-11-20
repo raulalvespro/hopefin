@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { useCategorias } from '../hooks/useCategorias'
+import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
+import { useToast } from '../contexts/ToastContext'
+import { copy } from '../copy/pt-BR'
 import { Plus } from 'lucide-react'
 import SwipeRow from '../components/SwipeRow'
 
@@ -22,6 +24,7 @@ export default function Categorias() {
   const { perfil } = useAuth()
   const { categorias, recarregar } = useCategorias()
   const run = useDb()
+  const { toast } = useToast()
   const [modal, setModal] = useState(null) // { id?, nome, emoji }
   const [salvando, setSalvando] = useState(false)
 
@@ -33,8 +36,20 @@ export default function Categorias() {
     const nome = modal.nome.trim().toLowerCase()
     if (!nome) return
     setSalvando(true)
+    // Renomear leva junto os lançamentos da categoria (renomear_categoria, 0074); o ícone vai à parte.
     const op = modal.id
-      ? run(supabase.from('categorias').update({ nome, emoji: modal.emoji }).eq('id', modal.id), { ok: 'Categoria atualizada', erro: 'Não foi possível salvar (nome já existe?)' })
+      ? (async () => {
+          const atual = categorias.find(c => c.id === modal.id)
+          if (atual && atual.nome !== nome) {
+            const r = await supabase.rpc('renomear_categoria', { p_id: modal.id, p_nome: nome })
+            if (r.error) {
+              const m = r.error.message || ''
+              toast(m.includes('nome_em_uso') ? copy.categorias.nomeEmUso : m.includes('categoria_fixa') ? copy.categorias.outrosFixa : copy.categorias.erroRenomear, 'erro')
+              return r
+            }
+          }
+          return run(supabase.from('categorias').update({ emoji: modal.emoji }).eq('id', modal.id), { ok: 'Categoria atualizada', erro: 'Não foi possível salvar' })
+        })()
       : run(supabase.from('categorias').insert({ nome, emoji: modal.emoji, ordem: 50, grupo_id: perfil.grupo_id }), { ok: 'Categoria criada', erro: 'Não foi possível criar (nome já existe?)' })
     const { error } = await op
     setSalvando(false)
@@ -66,7 +81,7 @@ export default function Categorias() {
         <div className="card" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 24 }}>{c.emoji}</span>
-            <span style={{ fontSize: 15, fontWeight: 500, textTransform: 'capitalize' }}>{c.nome}</span>
+            <span style={{ fontSize: 15, fontWeight: 500 }}>{rotuloCategoria(c.nome)}</span>
           </div>
         </div>
         </SwipeRow>

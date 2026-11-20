@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { destinoVoltar } from '../lib/voltar'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { Info, ChevronDown, ChevronUp, Check } from 'lucide-react'
 import { addMonths } from 'date-fns'
-import { useCategorias } from '../hooks/useCategorias'
+import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import SwipeRow from '../components/SwipeRow'
@@ -115,6 +117,7 @@ export default function Parcelamentos() {
   const [filtro, setFiltro] = useState(filtroVazio())
 
   useEffect(() => { if (perfil?.grupo_id) { carregar(); carregarCartoes() } }, [perfil])
+  useAtualizarSozinho(perfil?.grupo_id ? (o) => { carregar(o); carregarCartoes() } : null)
 
   // Rola até a compra pedida depois que a lista carregar.
   useEffect(() => {
@@ -124,8 +127,8 @@ export default function Parcelamentos() {
     el?.scrollIntoView({ behavior: suave ? 'smooth' : 'auto', block: 'center' })
   }, [ver, loading])
 
-  async function carregar() {
-    setLoading(true)
+  async function carregar(opcoes) {
+    if (!opcoes?.silencioso) setLoading(true) // atualizando sozinha: sem "Carregando"
     const { data } = await supabase
       .from('parcelamentos')
       .select('*, cartoes(nome), pessoas(nome), parcelas(id, numero, valor, data_vencimento, paga)')
@@ -162,8 +165,7 @@ export default function Parcelamentos() {
   useEffect(() => {
     if (!editarId || loading || abriuEdicao.current) return
     abriuEdicao.current = true
-    const v = params.get('voltar')
-    setVoltarPara(v === 'gastos' ? '/gastos' : v === 'cartoes' ? '/cartoes' : null)
+    setVoltarPara(destinoVoltar(params)) // Gastos ou a mesma fatura do cartão (A8.7)
     setParams({}, { replace: true })
     const p = parcelamentos.find(x => x.id === editarId)
     if (p) abrirEdicao(p)
@@ -250,7 +252,7 @@ export default function Parcelamentos() {
   const filtrando = buscaLigada && temFiltro(filtro)
   const visiveis = filtrando ? filtrar(comInfo, filtro, lerParc) : comInfo
   const opcoesBusca = buscaLigada ? {
-    categorias: distintos(comInfo.map(p => p.categoria)).map(c => ({ valor: c, rotulo: `${emojiDe(c)} ${c}` })),
+    categorias: distintos(comInfo.map(p => p.categoria)).map(c => ({ valor: c, rotulo: `${emojiDe(c)} ${rotuloCategoria(c)}` })),
     origens: distintos(comInfo.map(p => p.cartoes?.nome || tb.semCartao)).map(o => ({ valor: o, rotulo: o })),
     pessoas: distintos(comInfo.map(p => p.pessoas?.nome)).map(n => ({ valor: n, rotulo: n })),
     tipos: [{ valor: 'andamento', rotulo: tb.tipoAndamento }, { valor: 'quitado', rotulo: tb.tipoQuitado }],
@@ -326,7 +328,7 @@ export default function Parcelamentos() {
               <div className="form-group">
                 <label>Categoria</label>
                 <select value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}>
-                  {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
+                  {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {rotuloCategoria(c.nome)}</option>)}
                 </select>
               </div>
               <div className="form-group">

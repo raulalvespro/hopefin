@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { paramsVoltarFatura, faturaPedida } from '../lib/voltar'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { Plus, X, ArrowRight, ArrowLeft, Undo2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
@@ -48,10 +50,11 @@ export default function Cartoes() {
   const { toast } = useToast()
   const navigate = useNavigate()
 
-  // Tocar num item da fatura abre o editar dele e, no fim, volta pra cá (A8.7).
+  // Tocar num item da fatura abre o editar dele e, no fim, volta pra MESMA fatura (A8.7).
   function abrirItemFatura(it) {
-    if (it.tipo === 'gasto') navigate(`/gastos?editar=${it.id}&voltar=cartoes`)
-    else if (it.tipo === 'parcela' && it.parcelamentoId) navigate(`/parcelamentos?editar=${it.parcelamentoId}&voltar=cartoes`)
+    const volta = paramsVoltarFatura(detalhe)
+    if (it.tipo === 'gasto') navigate(`/gastos?editar=${it.id}&${volta}`)
+    else if (it.tipo === 'parcela' && it.parcelamentoId) navigate(`/parcelamentos?editar=${it.parcelamentoId}&${volta}`)
     else if (it.tipo === 'assinatura') navigate('/assinaturas')
   }
   const { emojiDe } = useCategorias()
@@ -65,9 +68,19 @@ export default function Cartoes() {
   const [salvando, setSalvando] = useState(false)
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil])
+  useAtualizarSozinho(perfil?.grupo_id ? carregar : null) // aba abre na hora e se atualiza sozinha
 
-  async function carregar() {
-    setLoading(true)
+  // Voltando do editar de um item (?cartao=&comp=): reabre a mesma fatura (A8.7).
+  const [params, setParams] = useSearchParams()
+  useEffect(() => {
+    const pedida = faturaPedida(params)
+    if (!pedida || !dados) return
+    setParams({}, { replace: true })
+    if (cartoes.some(c => c.id === pedida.cardId)) setDetalhe(pedida)
+  }, [params, dados, cartoes]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function carregar(opcoes) {
+    if (!opcoes?.silencioso) setLoading(true) // atualizando sozinha: sem "Carregando"
     try {
       const comp = compDe(hojeBRT())
       const d = await carregarMotor(perfil.grupo_id, { compIni: addMeses(comp, -10), compFim: addMeses(comp, 2), parcelasAte: addMeses(comp, 60) })

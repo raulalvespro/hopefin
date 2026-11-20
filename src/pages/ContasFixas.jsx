@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { Plus } from 'lucide-react'
 import SwipeRow from '../components/SwipeRow'
-import { useCategorias } from '../hooks/useCategorias'
+import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { fmt } from '../lib/format'
@@ -23,9 +24,10 @@ export default function ContasFixas() {
   const [salvando, setSalvando] = useState(false)
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil])
+  useAtualizarSozinho(perfil?.grupo_id ? carregar : null) // aba abre na hora e se atualiza sozinha
 
-  async function carregar() {
-    setLoading(true)
+  async function carregar(opcoes) {
+    if (!opcoes?.silencioso) setLoading(true) // atualizando sozinha: sem "Carregando"
     const { data } = await supabase.from('contas_fixas').select('*').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('dia_vencimento')
     setContas(data || [])
     setLoading(false)
@@ -115,7 +117,7 @@ export default function ContasFixas() {
               <div className="form-group">
                 <label>Categoria</label>
                 <select value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}>
-                  {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
+                  {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {rotuloCategoria(c.nome)}</option>)}
                 </select>
               </div>
               <div className="form-group"><label>Alertar X dias antes</label><input type="number" inputMode="numeric" pattern="[0-9]*" min="1" max="30" value={form.alerta_dias} onChange={e => setForm(p => ({ ...p, alerta_dias: e.target.value }))} /></div>

@@ -3,8 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
-import { useCategorias } from '../hooks/useCategorias'
+import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { supabase } from '../lib/supabase'
+import { limparLeituras } from '../lib/cacheLeitura'
 import { fmt, fmtData, hojeISO } from '../lib/format'
 import { vencimentoDaComp, addMeses, compDe } from '../lib/motor'
 import {
@@ -204,6 +205,8 @@ export default function Importar() {
     const gid = perfil?.grupo_id
     if (!gid || !faixa) return
     let vivo = true
+    // Pra não importar repetido, compara com o banco de AGORA (sem a memória das abas).
+    limparLeituras()
     ;(async () => {
       try {
         // parcelas: faturas que vencem do mês da 1ª compra até 4 meses depois da última (cobre o ‹ ›)
@@ -373,7 +376,7 @@ export default function Importar() {
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label>Categoria padrão dos gastos</label>
                 <select value={catPadrao} onChange={e => setCatPadrao(e.target.value)}>
-                  {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
+                  {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {rotuloCategoria(c.nome)}</option>)}
                 </select>
               </div>
             )}
@@ -511,7 +514,7 @@ export default function Importar() {
                     {l.valido && l.tipo === 'gasto' && (
                       <select value={l.categoria} onChange={e => setOv(l.i, { categoria: e.target.value })} onClick={e => e.stopPropagation()}
                         style={{ fontSize: 11, padding: '1px 4px', width: 'auto', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text2)' }}>
-                        {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {c.nome}</option>)}
+                        {categorias.map(c => <option key={c.nome} value={c.nome}>{c.emoji} {rotuloCategoria(c.nome)}</option>)}
                       </select>
                     )}
                   </p>

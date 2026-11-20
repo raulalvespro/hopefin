@@ -1,6 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from './useAtualizarSozinho'
+
+// Nome pra mostrar (com acento, primeira letra maiúscula) — A8.20
+export { rotuloCategoria } from '../lib/categorias'
 
 // Fallback mínimo caso o grupo ainda não tenha categorias semeadas
 const FALLBACK = [
@@ -31,6 +35,7 @@ export function useCategorias() {
   }, [perfil])
 
   useEffect(() => { recarregar() }, [recarregar])
+  useAtualizarSozinho(recarregar)
 
   const emojiDe = useCallback(
     nome => categorias.find(c => c.nome === nome)?.emoji || '📦',

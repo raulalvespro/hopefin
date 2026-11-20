@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Plus, Users } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import SwipeRow from '../components/SwipeRow'
@@ -45,6 +46,7 @@ export default function Pessoas() {
     setLoading(false)
   }
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil?.grupo_id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useAtualizarSozinho(perfil?.grupo_id ? carregar : null) // aba abre na hora e se atualiza sozinha
 
   // Pares que parecem a mesma pessoa (sugestão de juntar)
   const pares = useMemo(() => {

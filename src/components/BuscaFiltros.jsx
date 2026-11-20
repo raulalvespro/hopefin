@@ -1,20 +1,16 @@
 // Busca enquanto digita + filtros (A3.1, 19/11/2026). Aparece só pra quem tem a chave de
 // recurso "busca_filtros" (no começo, só o dono). Usado em Gastos, Parcelamentos e Assinaturas.
 // A lógica (ignorar acento, pedaço da palavra, filtros) fica em src/lib/busca.js.
+// A8.8 (v2, 19/11 noite): cada filtro é uma lista suspensa com caixinhas de marcar (antes eram
+// todas as opções abertas em botões) e o período é uma escolha só.
 import { useState } from 'react'
-import { Search, X, SlidersHorizontal } from 'lucide-react'
+import { Search, X, SlidersHorizontal, ChevronDown } from 'lucide-react'
 import { copy } from '../copy/pt-BR'
 import { qtdFiltros, temFiltro, filtroVazio, periodoAtalho } from '../lib/busca'
 import { hojeISO } from '../lib/format'
 
 const t = copy.busca
-
-const estiloChip = (on) => ({
-  padding: '6px 11px', minHeight: 32, borderRadius: 'var(--radius-pill)', fontSize: 12.5, fontWeight: 600,
-  border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border2)'}`,
-  background: on ? 'var(--accent-dim)' : 'transparent', color: on ? 'var(--accent-text)' : 'var(--text2)',
-  textTransform: 'none', cursor: 'pointer',
-})
+const ATALHOS = ['mes', '3m', '12m']
 
 function Grupo({ titulo, children }) {
   return (
@@ -25,23 +21,49 @@ function Grupo({ titulo, children }) {
   )
 }
 
-function Chips({ titulo, opcoes, marcados, onTroca }) {
+// Lista suspensa com caixinhas: fechada mostra o que está marcado ("Todas", "Mercado, Farmácia",
+// "3 marcadas"); aberta lista as opções pra marcar/desmarcar. Uma aberta por vez.
+function ListaMarcar({ id, titulo, nenhum, opcoes, marcados, onTroca, aberta, onAbrir }) {
   if (!opcoes?.length) return null
+  const rotulo = (v) => opcoes.find((o) => o.valor === v)?.rotulo
+  const nomes = marcados.map(rotulo).filter(Boolean)
+  const resumo = !marcados.length ? nenhum : marcados.length <= 2 ? nomes.join(', ') : t.marcadas(marcados.length)
+  const trocar = (v) => onTroca(marcados.includes(v) ? marcados.filter((x) => x !== v) : [...marcados, v])
+  const ativo = marcados.length > 0
   return (
-    <Grupo titulo={titulo}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {opcoes.map((o) => {
-          const on = marcados.includes(o.valor)
-          return (
-            <button key={o.valor} type="button" aria-pressed={on} style={estiloChip(on)}
-              onClick={() => onTroca(on ? marcados.filter((x) => x !== o.valor) : [...marcados, o.valor])}>
-              {o.rotulo}
-            </button>
-          )
-        })}
-      </div>
-    </Grupo>
+    <div style={{ marginBottom: 10 }}>
+      <button type="button" aria-expanded={aberta} aria-controls={`filtro-${id}`} onClick={onAbrir}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', minHeight: 46, borderRadius: 'var(--radius-sm)', textAlign: 'left',
+          border: `1.5px solid ${ativo ? 'var(--accent)' : 'var(--border2)'}`, background: ativo ? 'var(--accent-dim)' : 'var(--bg2)', color: 'var(--text)' }}>
+        <span style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+          <span style={{ fontSize: 11.5, color: 'var(--text2)' }}>{titulo}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: ativo ? 'var(--accent-text)' : 'var(--text)' }}>{resumo}</span>
+        </span>
+        <ChevronDown size={17} aria-hidden="true" color="var(--text2)" style={{ flexShrink: 0, transform: aberta ? 'rotate(180deg)' : 'none', transition: 'transform 150ms var(--ease, ease)' }} />
+      </button>
+      {aberta && (
+        <div id={`filtro-${id}`} role="group" aria-label={titulo}
+          style={{ marginTop: 6, maxHeight: 248, overflowY: 'auto', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', background: 'var(--bg2)', padding: '4px 6px' }}>
+          {ativo && (
+            <button type="button" onClick={() => onTroca([])} style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent-text)', padding: '8px 6px' }}>{t.desmarcar}</button>
+          )}
+          {opcoes.map((o) => (
+            <label key={o.valor} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 6px', minHeight: 42, cursor: 'pointer', fontSize: 14, color: 'var(--text)', margin: 0 }}>
+              <input type="checkbox" checked={marcados.includes(o.valor)} onChange={() => trocar(o.valor)} />
+              <span style={{ minWidth: 0 }}>{o.rotulo}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
   )
+}
+
+// Qual opção do período está valendo no rascunho ('' = qualquer data).
+function modoDoPeriodo(r) {
+  if (!r.de && !r.ate) return ''
+  const hoje = hojeISO()
+  return ATALHOS.find((tipo) => { const p = periodoAtalho(tipo, hoje); return p.de === r.de && p.ate === r.ate }) || 'datas'
 }
 
 // opcoes: { categorias, origens, pessoas, tipos } — cada uma [{ valor, rotulo }]; periodo: mostra o filtro de datas.
@@ -50,14 +72,30 @@ export default function BuscaFiltros({ filtro, onChange, opcoes = {}, periodo = 
   // A8.8: o que se mexe no painel de Filtros é um rascunho — só vale ao tocar em "Aplicar".
   // A busca por texto (fora do painel) continua valendo enquanto digita.
   const [rascunho, setRascunho] = useState(filtro)
+  const [lista, setLista] = useState(null) // qual lista suspensa está aberta
+  const [modo, setModo] = useState('')     // período: '' | mes | 3m | 12m | datas
   const n = qtdFiltros(filtro)
   const set = (k, v) => onChange({ ...filtro, [k]: v })
   const setR = (k, v) => setRascunho((r) => ({ ...r, [k]: v }))
-  const atalho = (tipo) => setRascunho((r) => ({ ...r, ...periodoAtalho(tipo, hojeISO()) }))
-  const abrirFechar = () => { if (!aberto) setRascunho(filtro); setAberto(!aberto) }
+  const abrirFechar = () => {
+    if (!aberto) { setRascunho(filtro); setModo(modoDoPeriodo(filtro)); setLista(null) }
+    setAberto(!aberto)
+  }
   const aplicar = () => { onChange({ ...rascunho, texto: filtro.texto }); setAberto(false) }
-  const limparFiltros = () => { const vazio = { ...filtroVazio(), texto: filtro.texto }; setRascunho(vazio); onChange(vazio); setAberto(false) }
+  const limparFiltros = () => { const vazio = { ...filtroVazio(), texto: filtro.texto }; setRascunho(vazio); setModo(''); onChange(vazio); setAberto(false) }
   const limparTudo = () => { setRascunho(filtroVazio()); onChange(filtroVazio()) }
+  const escolherPeriodo = (m) => {
+    setModo(m)
+    if (m === '') setRascunho((r) => ({ ...r, de: '', ate: '' }))
+    else if (ATALHOS.includes(m)) setRascunho((r) => ({ ...r, ...periodoAtalho(m, hojeISO()) }))
+  }
+  const abrirLista = (id) => setLista((l) => (l === id ? null : id))
+  const listas = [
+    ['categorias', t.categoria, t.todas],
+    ['origens', t.origem, t.todos],
+    ['pessoas', t.pessoa, t.todas],
+    ['tipos', t.tipo, t.todos],
+  ]
 
   return (
     <div style={{ marginBottom: 14 }}>
@@ -84,27 +122,29 @@ export default function BuscaFiltros({ filtro, onChange, opcoes = {}, periodo = 
         <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
           {periodo && (
             <Grupo titulo={t.periodo}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                {[['mes', t.esteMes], ['3m', t.tresMeses], ['12m', t.dozeMeses]].map(([tipo, rotulo]) => {
-                  const p = periodoAtalho(tipo, hojeISO())
-                  const on = rascunho.de === p.de && rascunho.ate === p.ate
-                  return <button key={tipo} type="button" aria-pressed={on} style={estiloChip(on)} onClick={() => atalho(tipo)}>{rotulo}</button>
-                })}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <label style={{ fontSize: 11, color: 'var(--text3)' }}>{t.de}
-                  <input type="date" value={rascunho.de} onChange={(e) => setR('de', e.target.value)} style={{ marginTop: 4 }} />
-                </label>
-                <label style={{ fontSize: 11, color: 'var(--text3)' }}>{t.ate}
-                  <input type="date" value={rascunho.ate} onChange={(e) => setR('ate', e.target.value)} style={{ marginTop: 4 }} />
-                </label>
-              </div>
+              <select value={modo} onChange={(e) => escolherPeriodo(e.target.value)} aria-label={t.periodo} style={{ marginBottom: modo === 'datas' ? 8 : 0 }}>
+                <option value="">{t.qualquerData}</option>
+                <option value="mes">{t.esteMes}</option>
+                <option value="3m">{t.tresMeses}</option>
+                <option value="12m">{t.dozeMeses}</option>
+                <option value="datas">{t.escolherDatas}</option>
+              </select>
+              {modo === 'datas' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <label style={{ fontSize: 11, color: 'var(--text3)' }}>{t.de}
+                    <input type="date" value={rascunho.de} onChange={(e) => setR('de', e.target.value)} style={{ marginTop: 4 }} />
+                  </label>
+                  <label style={{ fontSize: 11, color: 'var(--text3)' }}>{t.ate}
+                    <input type="date" value={rascunho.ate} onChange={(e) => setR('ate', e.target.value)} style={{ marginTop: 4 }} />
+                  </label>
+                </div>
+              )}
             </Grupo>
           )}
-          <Chips titulo={t.categoria} opcoes={opcoes.categorias} marcados={rascunho.categorias} onTroca={(v) => setR('categorias', v)} />
-          <Chips titulo={t.origem} opcoes={opcoes.origens} marcados={rascunho.origens} onTroca={(v) => setR('origens', v)} />
-          <Chips titulo={t.pessoa} opcoes={opcoes.pessoas} marcados={rascunho.pessoas} onTroca={(v) => setR('pessoas', v)} />
-          <Chips titulo={t.tipo} opcoes={opcoes.tipos} marcados={rascunho.tipos} onTroca={(v) => setR('tipos', v)} />
+          {listas.map(([k, titulo, nenhum]) => (
+            <ListaMarcar key={k} id={k} titulo={titulo} nenhum={nenhum} opcoes={opcoes[k]} marcados={rascunho[k]}
+              onTroca={(v) => setR(k, v)} aberta={lista === k} onAbrir={() => abrirLista(k)} />
+          ))}
           <Grupo titulo={t.valor}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <input type="number" inputMode="decimal" min="0" value={rascunho.min} placeholder={t.min} aria-label={`${t.valor} ${t.min}`} onChange={(e) => setR('min', e.target.value)} />

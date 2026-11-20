@@ -429,6 +429,13 @@ export const copy = {
     limpar: 'Limpar busca e filtros',
     aplicar: 'Aplicar',
     limparFiltros: 'Limpar filtros',
+    // A8.8 v2: listas suspensas com caixinhas
+    todas: 'Todas',
+    todos: 'Todos',
+    marcadas: (n) => `${n} marcadas`,
+    desmarcar: 'Desmarcar todas',
+    qualquerData: 'Qualquer data',
+    escolherDatas: 'Escolher as datas…',
     nada: 'Nada encontrado com essa busca e esses filtros.',
     semCartao: 'Sem cartão',
     tipoAvista: 'À vista',
@@ -479,6 +486,13 @@ export const copy = {
     pessoas: 'Pessoas',
     pessoasSub: 'Quem divide contas com você ou te deve',
     sair: 'Sair',
+  },
+
+  // Categorias (A8.20): renomear leva junto os lançamentos
+  categorias: {
+    nomeEmUso: 'Já existe uma categoria com esse nome.',
+    outrosFixa: 'A categoria Outros não muda de nome (é pra onde vai o que não tem categoria).',
+    erroRenomear: 'Não foi possível renomear agora. Tente de novo.',
   },
 
   // Tela Pessoas (A8.5): renomear, juntar duplicadas e apagar quem não tem uso

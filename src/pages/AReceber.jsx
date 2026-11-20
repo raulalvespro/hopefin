@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { Check, RotateCcw, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Plus, Send, X, Copy, Users } from 'lucide-react'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
@@ -62,9 +63,10 @@ export default function AReceber() {
   const imgRef = useRef(null)
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil])
+  useAtualizarSozinho(perfil?.grupo_id ? carregar : null) // aba abre na hora e se atualiza sozinha
 
-  async function carregar() {
-    setLoading(true)
+  async function carregar(opcoes) {
+    if (!opcoes?.silencioso) setLoading(true) // atualizando sozinha: sem "Carregando"
     await garantirSeries()
     const gid = perfil.grupo_id
     const [cs, gs, ps, ms, pe, cf] = await Promise.all([

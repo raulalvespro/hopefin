@@ -660,6 +660,12 @@ alter table public.a_receber add column if not exists parcela_total int;
 -- 0073: assinatura cancelada mantém as cobranças antigas (cancelada_em); ativo=false sem data = removida de tudo.
 alter table public.assinaturas add column if not exists cancelada_em date;
 
+-- 0074 (19/11 noite, A8.20): seed_categorias_grupo() ganhou filhos, dízimo e doações, impostos e
+-- taxas, seguros, presentes, beleza e cuidados, trabalho e empresa (só grupos NOVOS).
+-- renomear_categoria(p_id uuid, p_nome text) SECURITY DEFINER (grant só authenticated): renomeia a
+-- categoria E os lançamentos dela (gastos, parcelamentos, assinaturas, contas_fixas, orcamentos);
+-- 'outros' não muda de nome. Ver supabase/migrations/0074_categorias_novas.sql.
+
 -- ============================================================
 -- FIM
 -- ============================================================

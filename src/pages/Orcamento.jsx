@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { format, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, ChevronDown, Target } from 'lucide-react'
 import SwipeRow from '../components/SwipeRow'
-import { useCategorias } from '../hooks/useCategorias'
+import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { fmt, fmtData } from '../lib/format'
@@ -28,9 +29,10 @@ export default function Orcamento() {
   const [modal, setModal] = useState(null) // { categoria, valor, pago_com }
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil, mes])
+  useAtualizarSozinho(perfil?.grupo_id ? carregar : null) // aba abre na hora e se atualiza sozinha
 
-  async function carregar() {
-    setLoading(true)
+  async function carregar(opcoes) {
+    if (!opcoes?.silencioso) setLoading(true) // atualizando sozinha: sem "Carregando"
     try {
       const comp = format(mes, 'yyyy-MM')
       const dados = await carregarMotor(perfil.grupo_id, { compIni: addMeses(comp, -1), compFim: comp })
@@ -137,8 +139,8 @@ export default function Orcamento() {
               <button onClick={() => setAberta(estaAberta ? null : cat)} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', padding: 0, textAlign: 'left', color: 'var(--text)', flex: 1, minWidth: 0 }}>
                 <span style={{ fontSize: 20 }}>{emojiDe(cat)}</span>
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 500, textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {cat} <ChevronDown size={14} color="var(--text3)" style={{ transform: estaAberta ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+                  <p style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {rotuloCategoria(cat)} <ChevronDown size={14} color="var(--text3)" style={{ transform: estaAberta ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
                   </p>
                   <p style={{ fontSize: 12, color: 'var(--text2)' }}>
                     {fmt(gasto)}{limite ? ` de ${fmt(limite)}` : ' · sem teto'}
@@ -196,7 +198,7 @@ export default function Orcamento() {
       {modal && (
         <div className="modal-overlay" onClick={() => setModal(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: 18, marginBottom: 4, textTransform: 'capitalize' }}>{emojiDe(modal.categoria)} {modal.categoria}</h2>
+            <h2 style={{ fontSize: 18, marginBottom: 4 }}>{emojiDe(modal.categoria)} {rotuloCategoria(modal.categoria)}</h2>
             <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>Teto mensal para esta categoria</p>
             <div className="form-group">
               <label>Limite mensal (R$)</label>

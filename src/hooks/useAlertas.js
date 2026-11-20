@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useAtualizarSozinho } from './useAtualizarSozinho'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { format, startOfMonth, endOfMonth, addMonths, getDaysInMonth } from 'date-fns'
@@ -23,9 +24,9 @@ export function useAlertas() {
   const [loading, setLoading] = useState(true)
   const suprimidosRef = useRef(new Set())
 
-  const carregar = useCallback(async () => {
+  const carregar = useCallback(async (opcoes) => {
     if (!perfil?.grupo_id) { setAlertas([]); setLoading(false); return }
-    setLoading(true)
+    if (!opcoes?.silencioso) setLoading(true)
     const gid = perfil.grupo_id
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
     const hojeStr = format(hoje, 'yyyy-MM-dd')
@@ -153,6 +154,7 @@ export function useAlertas() {
   }, [perfil, emojiDe])
 
   useEffect(() => { carregar() }, [carregar])
+  useAtualizarSozinho(carregar)
 
   const suprimir = useCallback(async (id, lembrarEm) => {
     if (!perfil?.grupo_id) return

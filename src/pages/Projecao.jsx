@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronDown, ChevronUp, FileText, Layers, CreditCard, Repeat } from 'lucide-react'
@@ -16,11 +17,12 @@ export default function Projecao() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil])
+  useAtualizarSozinho(perfil?.grupo_id ? carregar : null) // aba abre na hora e se atualiza sozinha
 
   // Próximos 6 meses pelo MOTOR ÚNICO: entradas já lançadas (recorrentes entram mês a mês,
   // pendentes), faturas que vencem em cada mês, contas fixas, parcelas e assinaturas sem cartão.
-  async function carregar() {
-    setLoading(true)
+  async function carregar(opcoes) {
+    if (!opcoes?.silencioso) setLoading(true) // atualizando sozinha: sem "Carregando"
     try {
       const hoje = hojeBRT()
       const compIni = compDe(hoje)

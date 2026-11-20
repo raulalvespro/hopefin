@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { Plus, ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight } from 'lucide-react'
 import SwipeRow from '../components/SwipeRow'
 import { useDb } from '../hooks/useDb'
@@ -48,9 +49,10 @@ export default function Cofrinhos() {
   const [formTransf, setFormTransf] = useState(transfInicial)
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil])
+  useAtualizarSozinho(perfil?.grupo_id ? carregar : null) // aba abre na hora e se atualiza sozinha
 
-  async function carregar() {
-    setLoading(true)
+  async function carregar(opcoes) {
+    if (!opcoes?.silencioso) setLoading(true) // atualizando sozinha: sem "Carregando"
     const { data } = await supabase.from('cofrinhos').select('*, transferencias(valor, data)').eq('grupo_id', perfil.grupo_id).order('criado_em')
     // Saldo é derivado da soma das transferências (fonte única, evita dessincronizar)
     const com_saldo = (data || []).map(c => ({
