@@ -37,4 +37,4 @@ Nomes e onde ficam: `CLAUDE.md`, seção "Chaves e segredos". Valor **nunca** no
 ## E-mail e push em teste
 
 - Nunca disparar e-mail ou push real para usuários só para testar. Testar no e-mail e nos aparelhos do Raul, ou com modo de prévia da função.
-- O **resumo do mês está PAUSADO** (A1.9): os de 01/12 ficam retidos e o Raul envia pelo /admin. Não despausar sem ok explícito.
+- O **resumo do mês foi LIBERADO em 19/11/2026** (pedido do Raul, depois do teste): e-mail + push do dia 1º saem sozinhos (cron hopefin-resumo-mensal, 09:30). A pausa continua no /admin (resumo_mensal_pausado) — pausar de novo só com o Raul. Pra testar sem mandar pra cliente: resumo-mensal { acao: 'teste', so_grupo, usuario } (só o e-mail e os aparelhos dessa pessoa, sem gravar no email_log) ou { acao: 'previa' }.
