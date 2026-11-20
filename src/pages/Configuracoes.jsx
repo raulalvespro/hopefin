@@ -176,7 +176,7 @@ export default function Configuracoes() {
       </Link>
 
       {/* Dados */}
-      <p style={{ fontSize:12, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.04em', margin:'24px 2px 10px' }}>Dados</p>
+      <p style={{ fontSize:12, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'0.04em', margin:'24px 2px 10px' }}>Dados</p>
 
       {/* Importar CSV (A8.1) — só com a chave "importar" */}
       {flags?.importar && <Link to="/importar" className="card" style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', textDecoration:'none', color:'var(--text)' }}>
@@ -203,7 +203,7 @@ export default function Configuracoes() {
       </Link>
 
       {/* Segurança — alterar senha */}
-      <p style={{ fontSize:12, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.04em', margin:'24px 2px 10px' }}>Segurança</p>
+      <p style={{ fontSize:12, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'0.04em', margin:'24px 2px 10px' }}>Segurança</p>
       <div className="card" style={{ marginBottom:16 }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
           <Lock size={18} color="var(--accent)" />
@@ -258,7 +258,7 @@ export default function Configuracoes() {
               {salvandoFoto ? 'Salvando...' : (perfil?.foto_url ? 'Trocar foto' : 'Adicionar foto')}
             </button>
             {perfil?.foto_url && (
-              <button onClick={() => salvarFoto(null, 'Foto removida')} disabled={salvandoFoto} style={{ display:'block', fontSize:12, color:'var(--text3)', marginTop:4 }}>
+              <button onClick={() => salvarFoto(null, 'Foto removida')} disabled={salvandoFoto} style={{ display:'block', fontSize:12, color:'var(--text2)', marginTop:4 }}>
                 Remover
               </button>
             )}

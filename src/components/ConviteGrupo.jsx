@@ -127,7 +127,7 @@ export default function ConviteGrupo() {
             {copiado === 'link' ? <><Check size={18} /> {t.linkCopiado}</> : <><Link2 size={18} /> {t.copiarLink}</>}
           </Button>
         </div>
-        <p style={{ fontSize: 12, color: 'var(--text3)' }}>{t.comoEntrar}</p>
+        <p style={{ fontSize: 12, color: 'var(--text2)' }}>{t.comoEntrar}</p>
 
         {/* Membros e remoção (só o dono vê o botão) */}
         {membros.length > 1 && (

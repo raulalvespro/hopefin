@@ -19,7 +19,7 @@ export default function CasinhaDoMes({ lancamentos, mesFechado, noAzul }) {
           ))}
         </div>
         <p style={{ fontSize: 13, color: 'var(--text2)' }}>{festa ? t.textoFesta : t.etapas[etapa - 1]}</p>
-        <p style={{ fontSize: 12, color: 'var(--text3)' }}>{t.contador(lancamentos)}</p>
+        <p style={{ fontSize: 12, color: 'var(--text2)' }}>{t.contador(lancamentos)}</p>
       </div>
     </section>
   )

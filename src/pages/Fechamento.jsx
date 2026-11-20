@@ -50,7 +50,7 @@ function resumoDoMes(dados, ym) {
 function Delta({ atual, anterior, invertido = false }) {
   if (anterior == null || anterior === 0) return null
   const dif = atual - anterior
-  if (Math.abs(dif) < 0.01) return <span style={{ fontSize: 11, color: 'var(--text3)' }}>igual ao mês anterior</span>
+  if (Math.abs(dif) < 0.01) return <span style={{ fontSize: 11, color: 'var(--text2)' }}>igual ao mês anterior</span>
   const pct = Math.round((dif / Math.abs(anterior)) * 100)
   // invertido: subir é ruim (despesa). normal: subir é bom (receita).
   const bom = invertido ? dif < 0 : dif > 0
@@ -150,7 +150,7 @@ export default function Fechamento() {
         <button onClick={() => setMes(m => subMonths(m, 1))} style={{ padding: 8, color: 'var(--text2)' }}><ChevronLeft size={20} /></button>
         <div style={{ textAlign: 'center' }}>
           <h2 style={{ fontSize: 18, textTransform: 'capitalize' }}>{format(mes, 'MMMM yyyy', { locale: ptBR })}</h2>
-          <p style={{ fontSize: 11, color: 'var(--text3)' }}>{t.fechamentoDoMes}</p>
+          <p style={{ fontSize: 11, color: 'var(--text2)' }}>{t.fechamentoDoMes}</p>
         </div>
         <button onClick={() => setMes(m => addMonths(m, 1))} disabled={ehMesCorrente(mes)} style={{ padding: 8, color: ehMesCorrente(mes) ? 'var(--text3)' : 'var(--text2)', opacity: ehMesCorrente(mes) ? 0.4 : 1 }}><ChevronRight size={20} /></button>
       </div>

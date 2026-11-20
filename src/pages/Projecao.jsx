@@ -116,7 +116,7 @@ export default function Projecao() {
                   </div>
                   {m.fixas.map(f => (
                     <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
-                      <span>{f.nome} <span style={{ color: 'var(--text3)', fontSize: 11 }}>· dia {f.dia_vencimento}{f.temReal ? ' · real' : ''}</span></span>
+                      <span>{f.nome} <span style={{ color: 'var(--text2)', fontSize: 11 }}>· dia {f.dia_vencimento}{f.temReal ? ' · real' : ''}</span></span>
                       <span style={{ color: f.temReal ? 'var(--accent)' : 'var(--text2)' }}>{fmt(f.efetivo)}</span>
                     </div>
                   ))}
@@ -168,11 +168,11 @@ export default function Projecao() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                     <span style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <CreditCard size={13} color="var(--amber)" /> {bandeiras[f.cartao.bandeira] || '💳'} {f.cartao.nome}
-                      <span style={{ color: 'var(--text3)' }}>· vence {format(f.venc, 'dd/MM')}</span>
+                      <span style={{ color: 'var(--text2)' }}>· vence {format(f.venc, 'dd/MM')}</span>
                     </span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--amber-text)' }}>{fmt(f.total)}</span>
                   </div>
-                  <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6 }}>
+                  <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 6 }}>
                     {f.compras > 0 && `${fmt(f.compras)} em compras`}
                     {f.compras > 0 && f.parcelas.length > 0 && ' · '}
                     {f.parcelas.length > 0 && `${f.parcelas.length} parcela${f.parcelas.length > 1 ? 's' : ''}`}
@@ -180,7 +180,7 @@ export default function Projecao() {
                   {f.parcelas.map(p => (
                     <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5, paddingLeft: 4 }}>
                       <span style={{ color: 'var(--text2)' }}>↳ {p.descricao}</span>
-                      <span style={{ color: 'var(--text3)' }}>{fmt(p.valor)}</span>
+                      <span style={{ color: 'var(--text2)' }}>{fmt(p.valor)}</span>
                     </div>
                   ))}
                 </div>

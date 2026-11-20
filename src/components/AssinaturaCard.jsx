@@ -92,7 +92,7 @@ export default function AssinaturaCard() {
                 {t.cancelar}
               </button>
             ) : (
-              <p style={{ fontSize: 12, color: 'var(--text3)' }}>{t.soTitular}</p>
+              <p style={{ fontSize: 12, color: 'var(--text2)' }}>{t.soTitular}</p>
             )}
           </div>
         )}
@@ -114,7 +114,7 @@ export default function AssinaturaCard() {
                 <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>{t.reembolsoTexto}</p>
               </div>
             ) : (
-              <p style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.5, marginBottom: 18 }}>{t.confirmReembolso}</p>
+              <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, marginBottom: 18 }}>{t.confirmReembolso}</p>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <Button onClick={() => setConfirmando(false)} disabled={cancelando}>{t.manter}</Button>

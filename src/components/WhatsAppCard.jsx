@@ -79,7 +79,7 @@ export default function WhatsAppCard() {
 
           {codigo ? (
             <div style={{ padding:'14px', borderRadius:'var(--radius-sm)', background:'var(--bg3)', border:'1.5px dashed var(--accent)', marginBottom:12 }}>
-              <p style={{ fontSize:12, color:'var(--text3)', marginBottom:6 }}>Seu código (vale 15 minutos):</p>
+              <p style={{ fontSize:12, color:'var(--text2)', marginBottom:6 }}>Seu código (vale 15 minutos):</p>
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                 <span style={{ fontFamily:'Syne', fontWeight:700, fontSize:26, letterSpacing:'0.12em', color:'var(--accent)' }}>{codigo}</span>
                 <button onClick={copiar} title="Copiar" style={{ display:'flex', alignItems:'center', gap:4, fontSize:12, fontWeight:600, color:'var(--accent-text)' }}>

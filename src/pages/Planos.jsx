@@ -156,7 +156,7 @@ export default function Planos() {
             <span style={{ fontSize: 13, color: 'var(--accent-text)', fontWeight: 500 }}>
               {t.anualEquivale(fmt(Math.ceil(porMesReais(p.anualPix) * 100) / 100))}
             </span>
-            <span style={{ fontSize: 12, color: 'var(--text3)' }}>{t.anualEconomia(economiaPct(p.anualPix, p.mensal))}</span>
+            <span style={{ fontSize: 12, color: 'var(--text2)' }}>{t.anualEconomia(economiaPct(p.anualPix, p.mensal))}</span>
           </span>
         </label>
 
@@ -201,7 +201,7 @@ export default function Planos() {
           <>
             <Link to="/checkout?ciclo=anual&metodo=pix" className="btn-primary" style={pixBtn}>{t.assinarPix}</Link>
             <Link to="/checkout?ciclo=anual&metodo=cartao" style={cartaoBtn}>{t.pagarCartao12x(fmt(p.anualCartaoParcela / 100))}</Link>
-            <p style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.5, textAlign: 'center' }}>{t.notaCartaoAnual(fmt(p.anualCartao / 100))}</p>
+            <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, textAlign: 'center' }}>{t.notaCartaoAnual(fmt(p.anualCartao / 100))}</p>
           </>
         ) : (
           <>
@@ -221,7 +221,7 @@ export default function Planos() {
             value={cupom}
             onChange={e => setCupom(e.target.value.toUpperCase())}
             placeholder={t.cupomPh}
-            style={{ flex: 1, padding: '11px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border2)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, textTransform: 'uppercase' }}
+            style={{ flex: 1, padding: '11px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--field-line)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, textTransform: 'uppercase' }}
           />
           <button onClick={resgatarCupom} disabled={resgatando || !cupom.trim()}
             className="btn-primary" style={{ padding: '11px 16px', fontSize: 13, opacity: resgatando || !cupom.trim() ? 0.6 : 1 }}>
@@ -235,7 +235,7 @@ export default function Planos() {
         )}
       </div>
 
-      <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', lineHeight: 1.6 }}>
+      <p style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center', lineHeight: 1.6 }}>
         {t.rodapeAntes}<Link to="/configuracoes" style={{ color: 'var(--accent-text)', fontWeight: 500 }}>{t.rodapeLink}</Link>{t.rodapeDepois}
       </p>
     </div>

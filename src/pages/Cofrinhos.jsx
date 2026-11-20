@@ -193,7 +193,7 @@ export default function Cofrinhos() {
                         </p>
                       )}
                       {mi.dataProjetada && (
-                        <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 3 }}>
+                        <p style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 3 }}>
                           No ritmo atual, você chega em {fmtData(mi.dataProjetada, 'MMM/yyyy')}
                         </p>
                       )}
@@ -291,7 +291,7 @@ export default function Cofrinhos() {
             )}
 
             <div className="form-group">
-              <label>Valor {(m === 'sacar' || m === 'transferir') && <span style={{ color: 'var(--text3)', fontWeight: 400 }}>· disp. {fmt(modalTransf.saldo_atual)}</span>}</label>
+              <label>Valor {(m === 'sacar' || m === 'transferir') && <span style={{ color: 'var(--text2)', fontWeight: 400 }}>· disp. {fmt(modalTransf.saldo_atual)}</span>}</label>
               <input type="number" inputMode="decimal" value={formTransf.valor} onChange={e => setFormTransf(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" autoFocus />
             </div>
             <div className="form-group"><label>Descrição (opcional)</label><input value={formTransf.descricao} onChange={e => setFormTransf(p => ({ ...p, descricao: e.target.value }))} placeholder={m === 'sacar' ? 'Ex: Emergência do carro' : m === 'transferir' ? 'Motivo da transferência' : 'Ex: Guardar do salário'} /></div>
