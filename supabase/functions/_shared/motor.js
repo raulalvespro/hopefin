@@ -362,6 +362,21 @@ export function resumoMes(comp, dados, opcoes = {}) {
   }
 }
 
+// Contas que ficaram SEM PAGAR num mês (A8.13): faturas, contas fixas, parcelas sem cartão e
+// assinaturas sem cartão ainda não marcadas como pagas. Base do "Em atraso" (Contas do mês) e da
+// virada ("levar o saldo já descontando o que ficou sem pagar"). O dinheiro dessas contas ainda está
+// no saldo do mês (saldoDoMes = recebido − pago); quem paga depois marca no mês de origem.
+export function pendentesDoMes(comp, dados, opcoes = {}) {
+  const r = resumoMes(comp, dados, opcoes)
+  const item = (x, tipo) => ({ tipo, comp, id: x.id, descricao: x.descricao, valor: arred(x.valor), data: x.data || null })
+  return [
+    ...r.faturas.filter((f) => !f.paga).map((f) => ({ ...item(f, 'fatura'), cartaoNome: f.cartaoNome, itens: f.itens })),
+    ...r.fixas.filter((f) => !f.paga && f.valor > 0.004).map((f) => ({ ...item(f, 'fixa'), previsto: f.previsto, temReal: f.temReal })),
+    ...r.parcelasAvulsas.filter((p) => !p.paga && p.valor > 0.004).map((p) => ({ ...item(p, 'parcela'), numero: p.numero, total: p.total })),
+    ...r.assinaturasAvulsas.filter((a) => !a.paga && a.valor > 0.004).map((a) => item(a, 'assinatura')),
+  ].sort((a, b) => String(a.data || '9').localeCompare(String(b.data || '9')))
+}
+
 // Consumo do mês por categoria (data da compra / da parcela / da cobrança), sem o
 // que é de outra pessoa. Base das categorias, do orçamento e do "para onde foi".
 export function meuGastoDoMes(comp, dados) {

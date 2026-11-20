@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { format, startOfMonth, subMonths, addMonths } from 'date-fns'
@@ -68,7 +69,12 @@ export default function Fechamento() {
   const { emojiDe } = useCategorias()
   const exportRef = useRef(null)
   const [gerando, setGerando] = useState(false)
-  const [mes, setMes] = useState(startOfMonth(new Date()))
+  // ?mes=AAAA-MM abre direto naquele mês (cartão "resumo chegou" e push do dia 1º — A8.14)
+  const [params] = useSearchParams()
+  const [mes, setMes] = useState(() => {
+    const m = params.get('mes') || ''
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(m) ? new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1, 1) : startOfMonth(new Date())
+  })
   const [atual, setAtual] = useState(null)
   const [anterior, setAnterior] = useState(null)
   const [meta, setMeta] = useState(null) // cofrinho com meta mais adiantado (cartão de resumo)

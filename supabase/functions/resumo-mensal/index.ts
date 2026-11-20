@@ -23,6 +23,7 @@ import { layoutEmail, enviarEmail, esc } from '../_shared/email.ts'
 import { resumoMes, hojeBRT, addMeses, compDe } from '../_shared/motor.js'
 import { carregarDadosMotor } from '../_shared/motor-dados.js'
 import { nivelDaSessao } from '../_shared/sessao.ts'
+import { pushParaGrupo, aparelhosDoGrupo } from '../_shared/push.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -180,6 +181,30 @@ async function ehAdmin(req: Request): Promise<boolean> {
 }
 
 // Quem recebe o resumo de `comp` (a RPC filtra plano válido, e-mail e atividade no mês).
+// Push "Seu resumo de <mês> chegou" (A8.14): vai junto com o e-mail (mesma pausa do painel,
+// 1 por grupo por mês porque o e-mail já é 1 por mês) pros aparelhos de quem está no grupo.
+// Respeita "Resumo do mês" em Notificações (preferencias_notificacao.alertar_resumo).
+const pushDoResumo = (comp: string) => ({
+  title: `Seu resumo de ${nomeMes(comp)} chegou 📊`,
+  body: 'Veja quanto entrou, saiu e sobrou no mês. Toque para abrir.',
+  url: `/fechamento?mes=${comp}`,
+  tag: `resumo-${comp}`,
+})
+async function querPushDoResumo(grupoId: string): Promise<boolean> {
+  const { data } = await admin.from('preferencias_notificacao').select('alertar_resumo').eq('grupo_id', grupoId).maybeSingle()
+  return data?.alertar_resumo !== false
+}
+async function avisarNoCelular(grupoId: string, comp: string): Promise<number> {
+  try {
+    if (!(await querPushDoResumo(grupoId))) return 0
+    const r = await pushParaGrupo(admin, grupoId, pushDoResumo(comp))
+    return r.enviados
+  } catch (e) {
+    console.error('push do resumo falhou', grupoId, (e as Error).message)
+    return 0
+  }
+}
+
 async function gruposDoMes(comp: string): Promise<Grupo[]> {
   const { data, error } = await admin.rpc('resumo_mensal', { p_comp: comp })
   if (error) throw new Error(error.message)
@@ -193,7 +218,7 @@ async function enviarRetidos(soGrupo: string | null) {
   const { data: retidos, error } = await q
   if (error) return { erro: error.message }
   const hoje = hojeBRT()
-  const out = { enviados: 0, sem_atividade: 0, erros: 0, detalhes: [] as unknown[] }
+  const out = { enviados: 0, push: 0, sem_atividade: 0, erros: 0, detalhes: [] as unknown[] }
   const cache: Record<string, Grupo[]> = {}
   for (const r of retidos || []) {
     const comp = r.ref as string
@@ -215,6 +240,7 @@ async function enviarRetidos(soGrupo: string | null) {
     if (env.ok) {
       await admin.from('email_log').update({ status: 'enviado', resend_id: env.id, erro: null }).eq('id', r.id)
       out.enviados++; out.detalhes.push({ grupo: g.grupo_id, comp })
+      out.push += await avisarNoCelular(g.grupo_id, comp)
     } else {
       await admin.from('email_log').update({ status: 'retido', erro: String(env.erro || 'falha no envio') }).eq('id', r.id)
       out.erros++; out.detalhes.push({ grupo: g.grupo_id, erro: env.erro })
@@ -231,7 +257,9 @@ async function previa(soGrupo: string | null, comp: string, hoje: string) {
   const g: Grupo = achado || { grupo_id: soGrupo, titular_id: null, email: null, nome: null }
   const numeros = await numerosDoMes(soGrupo, comp, hoje)
   const { assunto, html } = montarEmail(g, numeros)
-  return { comp, hoje, recebe: !!achado?.email, destino: achado?.email || null, assunto, numeros, html }
+  // O push que iria junto (não envia nada): texto, aparelhos e se a pessoa desligou.
+  const push = { ...pushDoResumo(comp), aparelhos: (await aparelhosDoGrupo(admin, soGrupo)).length, ligado: await querPushDoResumo(soGrupo) }
+  return { comp, hoje, recebe: !!achado?.email, destino: achado?.email || null, assunto, numeros, push, html }
 }
 
 Deno.serve(async (req) => {
@@ -262,7 +290,7 @@ Deno.serve(async (req) => {
 
   const hoje = hojeBRT()
   const lista = grupos.filter((g) => !soGrupo || g.grupo_id === soGrupo)
-  const out = { comp, pausado, verificados: lista.length, enviados: 0, retidos: 0, pulados: 0, erros: 0, detalhes: [] as unknown[] }
+  const out = { comp, pausado, verificados: lista.length, enviados: 0, push: 0, retidos: 0, pulados: 0, erros: 0, detalhes: [] as unknown[] }
 
   for (const g of lista) {
     if (!g.email) { out.erros++; out.detalhes.push({ grupo: g.grupo_id, erro: 'sem e-mail' }); continue }
@@ -287,6 +315,7 @@ Deno.serve(async (req) => {
     if (env.ok) {
       await admin.from('email_log').update({ status: 'enviado', resend_id: env.id }).eq('id', ins.data!.id)
       out.enviados++; out.detalhes.push({ grupo: g.grupo_id, para: g.email, id: env.id })
+      out.push += await avisarNoCelular(g.grupo_id, comp)
     } else {
       await admin.from('email_log').delete().eq('id', ins.data!.id)
       out.erros++; out.detalhes.push({ grupo: g.grupo_id, erro: env.erro })

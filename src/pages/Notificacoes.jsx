@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
-import { Bell, CalendarClock, CreditCard, Target, PiggyBank, TrendingDown, Smartphone } from 'lucide-react'
+import { Bell, CalendarClock, CreditCard, Target, PiggyBank, TrendingDown, Smartphone, BarChart3 } from 'lucide-react'
 import { statusPush, ativarPush, desativarPush, enviarPushTeste } from '../lib/push'
 
 const PADRAO = {
@@ -11,6 +11,7 @@ const PADRAO = {
   alertar_orcamento: true,
   alertar_metas: true,
   alertar_projecao: true,
+  alertar_resumo: true,
   dias_padrao: 7,
 }
 
@@ -20,6 +21,7 @@ const TIPOS = [
   { campo: 'alertar_orcamento', icon: Target, titulo: 'Orçamento no limite', desc: 'Avisa quando uma categoria chega perto ou estoura o teto.' },
   { campo: 'alertar_metas', icon: PiggyBank, titulo: 'Metas dos cofrinhos', desc: 'Meta atingida 🎉 ou prazo da meta chegando.' },
   { campo: 'alertar_projecao', icon: TrendingDown, titulo: 'Mês fechando no vermelho', desc: 'Avisa quando a projeção do mês fica negativa.' },
+  { campo: 'alertar_resumo', icon: BarChart3, titulo: 'Resumo do mês', desc: 'No dia 1º, avisa no app e no celular que o resumo do mês que passou chegou.' },
 ]
 
 function Toggle({ ativo, onChange }) {

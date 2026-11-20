@@ -666,6 +666,9 @@ alter table public.assinaturas add column if not exists cancelada_em date;
 -- categoria E os lançamentos dela (gastos, parcelamentos, assinaturas, contas_fixas, orcamentos);
 -- 'outros' não muda de nome. Ver supabase/migrations/0074_categorias_novas.sql.
 
+-- 0075 (19/11 noite, A8.14): preferência "Resumo do mês" (push do dia 1º + cartão no Início).
+alter table public.preferencias_notificacao add column if not exists alertar_resumo boolean not null default true;
+
 -- ============================================================
 -- FIM
 -- ============================================================

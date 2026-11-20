@@ -5,14 +5,14 @@ import { supabase } from '../lib/supabase'
 import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths, getDaysInMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Check, CalendarCheck, CreditCard, Repeat } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, CalendarCheck, CreditCard, Repeat, AlertCircle } from 'lucide-react'
 import { useCategorias } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { fmt, hojeISO, parseDataLocal } from '../lib/format'
 import { Tag, Meter, IconeCategoria, EmptyState } from '../components/ui'
 import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
-import { carregarMotor, faturaDoCartao, cobrancaNoMes, hojeBRT } from '../lib/motor'
+import { carregarMotor, faturaDoCartao, cobrancaNoMes, hojeBRT, pendentesDoMes, addMeses, compsEntre, nomeMes } from '../lib/motor'
 
 const t = copy.contasMes
 
@@ -38,6 +38,7 @@ export default function ContasDoMes() {
   const [dados, setDados] = useState(null)
   const [valores, setValores] = useState({})   // conta_fixa_id -> input de valor real
   const [loading, setLoading] = useState(true)
+  const [atraso, setAtraso] = useState([])   // A8.13: contas dos meses anteriores sem pagar
 
   const competencia = format(mes, 'yyyy-MM')
   const ano = mes.getFullYear()
@@ -58,7 +59,10 @@ export default function ContasDoMes() {
     const ini = format(startOfMonth(mes), 'yyyy-MM-dd')
     const fim = format(endOfMonth(mes), 'yyyy-MM-dd')
 
-    const [cf, lanc, cartoes, gastos, parcelas, assinaturas, pagas, motor] = await Promise.all([
+    // Em atraso (A8.13): só no mês de hoje, olhando até 3 meses pra trás (desde que o grupo começou).
+    const hojeComp = hojeBRT().slice(0, 7)
+    const atrasoIni = addMeses(hojeComp, -3), atrasoFim = addMeses(hojeComp, -1)
+    const [cf, lanc, cartoes, gastos, parcelas, assinaturas, pagas, motor, motorAnt] = await Promise.all([
       supabase.from('contas_fixas').select('id, nome, valor, categoria, dia_vencimento').eq('grupo_id', gid).eq('ativo', true),
       supabase.from('fixas_lancamentos').select('*').eq('grupo_id', gid).eq('competencia', competencia),
       supabase.from('cartoes').select('id, nome, bandeira, dia_fechamento, dia_vencimento, compra_no_fechamento').eq('grupo_id', gid).eq('ativo', true),
@@ -67,7 +71,17 @@ export default function ContasDoMes() {
       supabase.from('assinaturas').select('id, nome, valor, dia_cobranca, cartao_id, cobrada_desde, criado_em, ativo, cancelada_em').eq('grupo_id', gid).or('ativo.eq.true,cancelada_em.not.is.null'), // cancelada continua nos meses de antes (A8.3)
       supabase.from('contas_pagas').select('*').eq('grupo_id', gid).eq('competencia', competencia),
       carregarMotor(gid, { compIni: competencia, compFim: competencia }).catch(e => { console.error('[contas do mês] motor', e); return null }),
+      competencia === hojeComp
+        ? carregarMotor(gid, { compIni: atrasoIni, compFim: atrasoFim }).catch(e => { console.error('[contas do mês] em atraso', e); return null })
+        : Promise.resolve(null),
     ])
+
+    let pend = []
+    if (motorAnt) {
+      const desde = motorAnt.inicioComp && motorAnt.inicioComp > atrasoIni ? motorAnt.inicioComp : atrasoIni
+      if (desde <= atrasoFim) pend = compsEntre(desde, atrasoFim).flatMap(c => pendentesDoMes(c, motorAnt, { hoje: hojeBRT() }))
+    }
+    setAtraso(pend)
 
     const lancMap = {}
     ;(lanc.data || []).forEach(l => { lancMap[l.conta_fixa_id] = l })
@@ -101,6 +115,29 @@ export default function ContasDoMes() {
         },
       },
     })
+  }
+
+  // "Já paguei" de uma conta em atraso: marca como paga NO MÊS DELA, com a data de hoje (A8.13).
+  // Pra desmarcar, é só ir no mês dela (‹) e tocar na bolinha.
+  async function pagarAtrasada(p) {
+    const hoje = hojeISO()
+    let r = null
+    if (p.tipo === 'fixa') {
+      r = await run(supabase.from('fixas_lancamentos').upsert({
+        grupo_id: perfil.grupo_id, conta_fixa_id: p.id, competencia: p.comp, valor_previsto: p.previsto,
+        valor_real: p.temReal ? p.valor : null, pago: true, data_pagamento: hoje, atualizado_em: new Date().toISOString(),
+      }, { onConflict: 'conta_fixa_id,competencia' }))
+    } else if (p.tipo === 'fatura' || p.tipo === 'assinatura') {
+      r = await run(supabase.from('contas_pagas').upsert({
+        grupo_id: perfil.grupo_id, tipo: p.tipo, referencia_id: p.id, competencia: p.comp, valor: p.valor, pago: true, data_pagamento: hoje,
+      }, { onConflict: 'tipo,referencia_id,competencia' }))
+      // fatura paga = as parcelas dela pagas (igual ao "Marcar fatura como paga" de Cartões)
+      const ids = p.tipo === 'fatura' ? (p.itens || []).filter(i => i.tipo === 'parcela' && !i.paga).map(i => i.id) : []
+      if (!r.error && ids.length) await supabase.from('parcelas').update({ paga: true }).in('id', ids)
+    } else if (p.tipo === 'parcela') {
+      r = await run(supabase.from('parcelas').update({ paga: true }).eq('id', p.id))
+    }
+    if (r && !r.error) { toast(t.okAtrasoPaga(nomeMes(p.comp)), 'ok'); carregar({ silencioso: true }) }
   }
 
   // ---- toggles de "pago" por tipo ----
@@ -315,6 +352,26 @@ export default function ContasDoMes() {
         <h3 style={{ fontSize: 15 }}>{(() => { const s = format(mes, "MMMM 'de' yyyy", { locale: ptBR }); return s.charAt(0).toUpperCase() + s.slice(1) })()}</h3>
         <button onClick={() => setMes(m => addMonths(m, 1))} aria-label={t.proximoMes}><ChevronRight size={20} color="var(--text2)" /></button>
       </div>
+
+      {!loading && atraso.length > 0 && (
+        <section className="card" aria-label={t.emAtraso} style={{ marginBottom: 16, borderColor: 'var(--red)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, color: 'var(--red-text)' }}><AlertCircle size={16} aria-hidden="true" /> {t.emAtraso}</span>
+            <span style={{ fontFamily: 'Syne', fontWeight: 700, color: 'var(--red-text)' }}>{fmt(atraso.reduce((s, p) => s + p.valor, 0))}</span>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>{t.emAtrasoSub}</p>
+          {atraso.map((p, i) => (
+            <div key={`${p.tipo}-${p.id}-${p.comp}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.descricao}{p.tipo === 'parcela' && p.numero ? ` (${p.numero}/${p.total})` : ''}</span>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>{t.atrasoSub(p.data ? ddmm(parseDataLocal(p.data)) : null, nomeMes(p.comp))}</span>
+              </span>
+              <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{fmt(p.valor)}</span>
+              <button className="btn-ghost" onClick={() => pagarAtrasada(p)} style={{ padding: '6px 10px', fontSize: 12.5, whiteSpace: 'nowrap' }}>{t.jaPaguei}</button>
+            </div>
+          ))}
+        </section>
+      )}
 
       {loading ? <div className="empty-state">{t.carregando}</div>
         : linhas.length === 0 ? <EmptyState ilustracao={<Joca pose="base" tamanho={150} />} titulo={copy.mascote.vazios.contasTitulo} texto={copy.mascote.vazios.contasTexto} />

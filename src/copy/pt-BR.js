@@ -171,12 +171,23 @@ export const copy = {
     blocoCofrinhos: 'Guardado em cofrinho',
     resultadoSaldo: 'Saldo do mês',
     resultadoSobra: 'Vai sobrar no fim do mês',
+    // A8.14: cartão do resumo do mês (dia 1º ao 7)
+    resumoPronto: {
+      titulo: (mes) => `Seu resumo de ${mes} chegou`,
+      texto: 'Veja quanto entrou, quanto saiu e quanto sobrou no mês.',
+      ver: 'Ver o resumo →',
+      fechar: 'Fechar aviso do resumo',
+    },
     virada: {
       tituloSobra: (mes, v) => `${mes.charAt(0).toUpperCase() + mes.slice(1)} fechou com ${v} de sobra`,
       tituloVermelho: (mes, v) => `${mes.charAt(0).toUpperCase() + mes.slice(1)} fechou ${v} no vermelho`,
       perguntaSobra: 'O que você quer fazer com esse dinheiro?',
       perguntaVermelho: (prox) => `Quer levar esse valor pra ${prox}? Assim o saldo de ${prox} já começa descontando.`,
       pendente: (mes, rec, pag) => `Ainda tem ${rec} a receber e ${pag} a pagar marcados em ${mes}. Se já aconteceu, marque antes — o valor muda.`,
+      // A8.13: contas que ficaram sem pagar
+      semPagar: (mes, v, n, nomes) => `${n === 1 ? 'Ficou 1 conta' : `Ficaram ${n} contas`} sem pagar em ${mes} (${v}): ${nomes}. Esse dinheiro ainda está no saldo.`,
+      descontar: (prox) => `Vou pagar em ${prox}: levar o saldo já descontando essas contas (elas ficam em "Em atraso", em Contas do mês, até você marcar "Já paguei").`,
+      aReceberPendente: (mes, rec) => `Ainda tem ${rec} a receber marcado em ${mes}. Se já recebeu, marque antes — o valor muda.`,
       somar: (prox) => `Somar em ${prox}`,
       levar: (prox) => `Levar pra ${prox}`,
       qualCofrinho: 'Guardar num cofrinho…',
@@ -206,6 +217,12 @@ export const copy = {
 
   contasMes: {
     titulo: 'Contas do mês',
+    // A8.13: contas dos meses anteriores que ficaram sem pagar
+    emAtraso: 'Em atraso',
+    emAtrasoSub: 'Ficaram sem pagar nos meses anteriores. Já pagou? Toque em "Já paguei".',
+    atrasoSub: (dd, mes) => (dd ? `venceu ${dd} · conta de ${mes}` : `conta de ${mes}`),
+    jaPaguei: 'Já paguei',
+    okAtrasoPaga: (mes) => `Marcada como paga (conta de ${mes})`,
     intro: 'Tudo que vence no mês — contas fixas, faturas, parcelas e assinaturas. Marque o que já foi pago.',
     pagoAteAgora: 'Pago até agora',
     contasDe: (a, b) => `${a} de ${b} ${b === 1 ? 'conta' : 'contas'}`,

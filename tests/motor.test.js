@@ -7,7 +7,7 @@ import {
   compDaCompra, cobrancaNoMes, faturaDoCartao, faturasDoCartaoAgora, limiteComprometido,
   resumoMes, meuGastoDoMes, addMeses, dataNoMes, pagoComResolvido, contasAVencer,
   itensDeTerceiros, reembolsosPrevistos, compDe, dataDeCompraNaFatura, primeiroVencimentoParcelado,
-  planoMoverParcelas, assinaturaConta,
+  planoMoverParcelas, assinaturaConta, pendentesDoMes,
 } from '../supabase/functions/_shared/motor.js'
 
 const HOJE = '2026-11-16'
@@ -366,5 +366,25 @@ describe('cartão: parcelado novo, valor inicial e mover parcela (A2.5 / A2.7 / 
       expect(mover('zz', 1).ok).toBe(false)
       expect(mover('r2', 0).ok).toBe(false)
     })
+  })
+})
+
+describe('contas que ficaram sem pagar (A8.13)', () => {
+  it('lista fatura, conta fixa e parcela sem cartão não pagas; o que foi pago fica de fora', () => {
+    const d = dados()
+    const p = pendentesDoMes('2026-11', d, { hoje: '2026-12-02' })
+    expect(p.map((x) => `${x.tipo}:${x.id}`)).toEqual(['parcela:p3', 'fatura:B', 'fixa:f2'])
+    expect(p.find((x) => x.tipo === 'fixa').valor).toBe(300)
+    expect(p.every((x) => x.comp === '2026-11')).toBe(true)
+    // fatura A, aluguel e a assinatura sem cartão estavam pagas
+    expect(p.some((x) => x.id === 'A' || x.id === 'f1' || x.id === 'a3')).toBe(false)
+  })
+
+  it('marcou como paga depois (no mês de origem): sai da lista', () => {
+    const d = dados()
+    d.fixasLanc.push({ conta_fixa_id: 'f2', competencia: '2026-11', valor_real: 310, pago: true })
+    d.contasPagas.push({ tipo: 'fatura', referencia_id: 'B', competencia: '2026-11', pago: true })
+    d.parcelas.find((x) => x.id === 'p3').paga = true
+    expect(pendentesDoMes('2026-11', d, { hoje: '2026-12-02' })).toEqual([])
   })
 })

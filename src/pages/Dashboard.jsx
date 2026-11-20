@@ -14,10 +14,11 @@ import BotaoVoz from '../components/BotaoVoz'
 import Onboarding from '../components/Onboarding'
 import Explicacao from '../components/Explicacao'
 import ViradaMes from '../components/ViradaMes'
+import ResumoPronto from '../components/ResumoPronto'
 import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { InfoDica } from '../components/ui'
 import { copy } from '../copy/pt-BR'
-import { carregarMotor, garantirSeries, resumoMes, addMeses, compsEntre, nomeMesCurto, hojeBRT, compDe } from '../lib/motor'
+import { carregarMotor, garantirSeries, resumoMes, addMeses, compsEntre, nomeMesCurto, hojeBRT, compDe, pendentesDoMes } from '../lib/motor'
 
 const t = copy.inicio
 const fmt = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -51,6 +52,7 @@ export default function Dashboard() {
   const [grupo, setGrupo] = useState(null)
   const [membros, setMembros] = useState([])
   const [virada, setVirada] = useState(null)  // { comp, resumo, cofrinhos }
+  const [inicioComp, setInicioComp] = useState(null) // mês em que o grupo começou (cartão do resumo, A8.14)
   const [explica, setExplica] = useState(null) // 'saldo' | 'sobra'
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
@@ -86,6 +88,7 @@ export default function Dashboard() {
       setRAnt(resumoMes(addMeses(comp, -1), dados, { hoje }))
 
       // Tendência: só a partir de quando o grupo começou a usar o app
+      setInicioComp(dados.inicioComp || null)
       const piso = dados.inicioComp && dados.inicioComp > compIni ? dados.inicioComp : compIni
       setHistorico(compsEntre(piso, comp).map(c => {
         const x = resumoMes(c, dados, { hoje })
@@ -107,9 +110,10 @@ export default function Dashboard() {
         const { data: dec } = await supabase.from('viradas_mes').select('id').eq('grupo_id', gid).eq('competencia', compAnt).maybeSingle()
         if (!dec) {
           const resAnt = resumoMes(compAnt, dados, { hoje })
-          if (Math.abs(resAnt.saldoDoMes) > 0.004) {
+          const pendentes = pendentesDoMes(compAnt, dados, { hoje }) // A8.13: o que ficou sem pagar
+          if (Math.abs(resAnt.saldoDoMes) > 0.004 || pendentes.length) {
             const { data: cofs } = await supabase.from('cofrinhos').select('id, nome').eq('grupo_id', gid).order('nome')
-            setVirada({ comp: compAnt, resumo: resAnt, cofrinhos: cofs || [] })
+            setVirada({ comp: compAnt, resumo: resAnt, pendentes, cofrinhos: cofs || [] })
           }
         }
       }
@@ -226,7 +230,9 @@ export default function Dashboard() {
 
       <Onboarding />
 
-      {virada && <ViradaMes comp={virada.comp} resumo={virada.resumo} cofrinhos={virada.cofrinhos} onDecidido={() => { setVirada(null); carregar() }} />}
+      {virada && <ViradaMes comp={virada.comp} resumo={virada.resumo} pendentes={virada.pendentes} cofrinhos={virada.cofrinhos} onDecidido={() => { setVirada(null); carregar() }} />}
+
+      {isSameMonth(mes, new Date()) && inicioComp && <ResumoPronto grupoId={perfil?.grupo_id} inicioComp={inicioComp} />}
 
       {/* Navegação de mês */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
