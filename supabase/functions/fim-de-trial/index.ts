@@ -1,21 +1,28 @@
 // fim-de-trial — avisa o titular quando o teste grátis está acabando (prompt 7,
-// etapa 2). Chamada pelo cron diário (hopefin-fim-de-trial). NÃO é chamada por
-// usuário: exige header x-cron-secret == CRON_SECRET (deploy --no-verify-jwt).
+// etapa 2; régua nova = A6.2, 20/11/2026). Chamada pelo cron diário (hopefin-fim-de-trial).
+// NÃO é chamada por usuário: exige header x-cron-secret == CRON_SECRET (deploy --no-verify-jwt).
 //
-// Cadência (fuso America/Sao_Paulo): dois toques por trial —
-//   D-2 (faltam 2 dias) -> tipo 'fim_trial_2d'
-//   D0  (termina hoje)   -> tipo 'fim_trial_0d'
+// Régua (fuso America/Sao_Paulo) — ver regua.js:
+//   HOJE (no ar):  2 dias antes ('fim_trial_2d') e no último dia ('fim_trial_0d').
+//   NOVA (só com admin_config.regua_fim_teste_nova = true, migração 0079 — espera o ok do Raul
+//   nos textos): 3 dias antes ('fim_trial_3d'), último dia ('fim_trial_0d') e 1 dia depois
+//   ('fim_trial_d1', "sentimos sua falta").
 //
 // Idempotência: grava em public.email_log com índice único (grupo_id, tipo, ref),
 // onde ref = data do fim do trial (BRT). Assim cada aviso sai uma vez por trial.
 // Em falha de envio, apaga a linha do log para permitir nova tentativa no dia
 // seguinte. Reutiliza o módulo _shared/email.ts (layout no design da marca).
 //
-// Corpo opcional (JSON): { so_grupo?: uuid }  // restringe a um grupo (teste/reenvio)
+// Corpo opcional (JSON):
+//   { so_grupo?: uuid }                          // restringe a um grupo (teste/reenvio)
+//   { acao: 'previa', nome?: string, fim?: 'YYYY-MM-DD' }
+//      -> devolve o HTML dos e-mails das duas réguas, SEM enviar nada e SEM gravar no
+//         email_log nem encerrar teste/assinatura (pro Raul aprovar os textos).
 // Segredos: CRON_SECRET; SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são injetados.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { layoutEmail, enviarEmail, esc } from '../_shared/email.ts'
+import { layoutEmail, enviarEmail } from '../_shared/email.ts'
+import { tipoDoDia, recebe, conteudoRegua, conteudoAntigo0d } from './regua.js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -42,22 +49,19 @@ function diffDias(fim: string, hoje: string): number {
   return Math.round((Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd)) / 86400000)
 }
 
-function conteudo(tipo: string, nome?: string | null) {
-  const ola = nome ? `Oi, ${esc(String(nome).split(' ')[0])}! ` : 'Oi! '
-  if (tipo === 'fim_trial_2d') return {
-    assunto: 'Seu teste do HopeFin termina em 2 dias',
-    titulo: 'Faltam 2 dias de teste 💚',
-    corpo: `${ola}Seu teste grátis do HopeFin termina em <strong>2 dias</strong>.<br><br>` +
-      'Pra não perder o histórico da sua família e seguir com o <strong>planejado × praticado</strong>, ' +
-      'os lançamentos por voz e o painel compartilhado, é só escolher um plano — leva 2 minutos.',
-  }
-  return {
-    assunto: 'Seu teste do HopeFin termina hoje',
-    titulo: 'Seu teste termina hoje',
-    corpo: `${ola}Hoje é o <strong>último dia</strong> do seu teste grátis do HopeFin.<br><br>` +
-      'Assinando agora você mantém tudo do jeitinho que está — nada se perde — e continua com o ' +
-      'controle das contas da família no mesmo lugar.',
-  }
+// Texto do e-mail: a régua nova (com preços do banco) ou a de hoje.
+function conteudo(tipo: string, nova: boolean, nome: string | null | undefined, fim: string, precos: unknown) {
+  if (tipo === 'fim_trial_0d' && !nova) return conteudoAntigo0d(nome)
+  return conteudoRegua(tipo, { nome, fim, precos })
+}
+
+function montar(c: { titulo: string, corpo: string, preheader?: string, assunto: string, cta?: { texto: string, url: string } }) {
+  return layoutEmail({ titulo: c.titulo, corpoHtml: c.corpo, preheader: c.preheader || c.assunto, cta: c.cta })
+}
+
+async function precosPublicos() {
+  const { data } = await admin.rpc('planos_publicos')
+  return data || null
 }
 
 Deno.serve(async (req) => {
@@ -67,36 +71,54 @@ Deno.serve(async (req) => {
     return json({ erro: 'não autorizado' }, 401)
   }
 
+  const body = await req.json().catch(() => ({}))
+
+  // Prévia: só monta os e-mails (nada é enviado nem gravado).
+  if (body?.acao === 'previa') {
+    const precos = await precosPublicos()
+    const nome = typeof body.nome === 'string' ? body.nome : 'Ana Souza'
+    const fim = /^\d{4}-\d{2}-\d{2}$/.test(String(body.fim || '')) ? body.fim : dataBRT(new Date(Date.now() + 3 * 86400000))
+    const emails = [
+      ...['fim_trial_3d', 'fim_trial_0d', 'fim_trial_d1'].map((tipo) => ({ regua: 'nova', tipo, ...conteudo(tipo, true, nome, fim, precos) })),
+      ...['fim_trial_2d', 'fim_trial_0d'].map((tipo) => ({ regua: 'hoje', tipo, ...conteudo(tipo, false, nome, fim, precos) })),
+    ].map((e) => ({ regua: e.regua, tipo: e.tipo, assunto: e.assunto, preheader: e.preheader, html: montar(e) }))
+    const { data: cfg } = await admin.from('admin_config').select('regua_fim_teste_nova').eq('id', 1).maybeSingle()
+    return json({ ok: true, regua_nova_ligada: !!cfg?.regua_fim_teste_nova, emails })
+  }
+
   // Aproveita o cron diário para encerrar assinaturas canceladas que chegaram ao fim do período.
   try { await admin.rpc('encerrar_assinaturas_canceladas') } catch (_) { /* best-effort */ }
   // ...e marcar 'expired' os trials já vencidos que nunca viraram pagantes (migração 0053).
   try { await admin.rpc('encerrar_trials_vencidos') } catch (_) { /* best-effort */ }
 
-  const body = await req.json().catch(() => ({}))
   const soGrupo = typeof body?.so_grupo === 'string' ? body.so_grupo : null
+  const { data: cfg } = await admin.from('admin_config').select('regua_fim_teste_nova').eq('id', 1).maybeSingle()
+  const nova = !!cfg?.regua_fim_teste_nova
 
+  // Régua de hoje: só quem está em teste. Régua nova: também o teste que acabou ontem ("expired").
   let qb = admin.from('subscriptions')
-    .select('grupo_id, titular_id, trial_ends_at')
-    .eq('status', 'trial')
+    .select('grupo_id, titular_id, trial_ends_at, status, is_cortesia')
+    .in('status', nova ? ['trial', 'expired'] : ['trial'])
     .not('trial_ends_at', 'is', null)
   if (soGrupo) qb = qb.eq('grupo_id', soGrupo)
   const { data: trials, error } = await qb
   if (error) return json({ erro: error.message }, 500)
 
   const hoje = dataBRT(new Date())
-  const out = { verificados: trials?.length || 0, enviados: 0, pulados: 0, erros: 0, detalhes: [] as unknown[] }
+  const precos = nova ? await precosPublicos() : null
+  const out = { regua: nova ? 'nova' : 'hoje', verificados: trials?.length || 0, enviados: 0, pulados: 0, erros: 0, detalhes: [] as unknown[] }
 
   for (const t of trials || []) {
     const fim = dataBRT(new Date(t.trial_ends_at as string))
-    const d = diffDias(fim, hoje)
-    const tipo = d === 2 ? 'fim_trial_2d' : d === 0 ? 'fim_trial_0d' : null
-    if (!tipo) continue
+    const tipo = tipoDoDia(diffDias(fim, hoje), nova)
+    if (!tipo || !recebe(t, tipo)) continue
     const ref = fim
 
     const { data: u } = await admin.from('usuarios').select('email, nome').eq('id', t.titular_id).maybeSingle()
     if (!u?.email) { out.erros++; out.detalhes.push({ grupo: t.grupo_id, tipo, erro: 'sem e-mail do titular' }); continue }
 
-    const c = conteudo(tipo, u.nome)
+    const c = conteudo(tipo, nova, u.nome, fim, precos)
+    if (!c) continue
     // idempotência: insere primeiro; conflito (23505) = já enviado -> pula.
     const ins = await admin.from('email_log')
       .insert({ grupo_id: t.grupo_id, titular_id: t.titular_id, tipo, ref, destino: u.email, assunto: c.assunto, status: 'enviando' })
@@ -106,11 +128,7 @@ Deno.serve(async (req) => {
       out.erros++; out.detalhes.push({ grupo: t.grupo_id, tipo, erro: ins.error.message }); continue
     }
 
-    const html = layoutEmail({
-      titulo: c.titulo, corpoHtml: c.corpo, preheader: c.assunto,
-      cta: { texto: 'Assinar o HopeFin', url: 'https://app.hopefin.com.br/planos' },
-    })
-    const env = await enviarEmail({ para: u.email, assunto: c.assunto, html })
+    const env = await enviarEmail({ para: u.email, assunto: c.assunto, html: montar(c) })
     if (env.ok) {
       await admin.from('email_log').update({ status: 'enviado', resend_id: env.id }).eq('id', ins.data!.id)
       out.enviados++; out.detalhes.push({ grupo: t.grupo_id, tipo, para: u.email, id: env.id })

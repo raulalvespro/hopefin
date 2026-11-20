@@ -703,6 +703,10 @@ create table if not exists public.whatsapp_estado (
 );
 alter table public.whatsapp_estado enable row level security;  -- sem policy: só service_role
 
+-- 0079 (20/11, A6.2): chave da régua NOVA de fim de teste (3 dias antes, último dia, 1 dia depois).
+-- DESLIGADA até o Raul aprovar os textos; desligada, o fim-de-trial segue a régua de hoje (2d e 0d).
+alter table public.admin_config add column if not exists regua_fim_teste_nova boolean not null default false;
+
 -- ============================================================
 -- FIM
 -- ============================================================
