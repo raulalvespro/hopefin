@@ -685,6 +685,24 @@ alter table public.a_receber add column if not exists credito_de uuid references
 -- assinatura que não está mais ativa.
 alter table public.a_receber add column if not exists assinatura_id uuid references public.assinaturas(id) on delete cascade;
 
+-- 0078 (20/11, A8.23 + A8.24 — Joca parte 1): estado da conversa do WhatsApp (só service_role:
+-- RLS sem política + revoke de anon/authenticated). pendencia = ação que espera o "sim" (30 min);
+-- ultimo_* = último lançamento da pessoa pelo WhatsApp ("apaga o último", "o valor era 50").
+-- Funções só do servidor: wa_ultimo_lancamento, wa_apagar_ultimo, wa_corrigir_ultimo,
+-- wa_pagar_fatura (= "Marcar como paga" de Cartões) e wa_registrar_ia_chamada (custo real em
+-- ia_chamadas, operações whatsapp_interpretar / whatsapp_audio). wa_salvar_lancamento devolve id/tabela.
+create table if not exists public.whatsapp_estado (
+  usuario_id       uuid primary key references public.usuarios(id) on delete cascade,
+  grupo_id         uuid not null,            -- sem FK pra grupos (ver regra PGRST201 no CLAUDE.md)
+  pendencia        jsonb,
+  pendencia_expira timestamptz,
+  ultimo_tipo      text check (ultimo_tipo in ('gasto', 'entrada', 'parcelamento')),
+  ultimo_id        uuid,
+  ultimo_em        timestamptz,
+  atualizado_em    timestamptz not null default now()
+);
+alter table public.whatsapp_estado enable row level security;  -- sem policy: só service_role
+
 -- ============================================================
 -- FIM
 -- ============================================================

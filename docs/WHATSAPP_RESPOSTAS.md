@@ -1,4 +1,19 @@
-# WhatsApp — padronização das respostas do bot (proposta)
+# WhatsApp — respostas do Joca
+
+> **Atualização 20/11/2026 (Joca parte 1, A8.23 + A8.24) — NO AR (só o grupo do Raul usa hoje):**
+> os textos aprovados pelo Raul estão aplicados e TODOS os textos do Joca agora moram em
+> `supabase/functions/whatsapp-webhook/joca.js` (os aprovados marcados "(aprovado)"; os novos esperam
+> o ok dele). O Joca entende, além de gasto/entrada: "tá certo?" quando a IA fica em dúvida
+> (confiança < 0,6; a confirmação vale 30 min), "paguei a fatura do X" (confirma o valor e marca paga
+> igual a Cartões, com as parcelas), "apaga o último" (pergunta antes) e "o valor era 50". Oi /
+> obrigado / ajuda respondem sem IA. Pergunta sobre o mês: "tá chegando" (Joca parte 2). Investimento:
+> nunca recomenda — a regra está escrita nas instruções da IA. Custo real de cada chamada (Haiku e
+> Whisper) vai pro `ia_chamadas` (/admin), e há um teto de IA por pessoa/dia (`limites_config.por_pessoa_dia`).
+> **Testar sem mandar WhatsApp:** modo simulação do webhook (headers `x-joca-simulacao: 1` +
+> `x-cron-secret`, número falso `5500...` ligado à conta de TESTE) — ver o topo do `index.ts`.
+> Testes automáticos: `tests/joca.test.js`. O texto abaixo é o histórico da proposta de 15/11.
+
+# WhatsApp — padronização das respostas do bot (proposta de 15/11)
 
 > Rascunho para revisão do Raul (15/11/2026). As respostas atuais do webhook
 > (`supabase/functions/whatsapp-webhook/index.ts`) nasceram ao longo dos testes e
