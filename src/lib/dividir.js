@@ -1,7 +1,7 @@
 // Dividir uma conta com outras pessoas (A8.6, 19/11/2026 noite).
 // A compra continua inteira na fatura/no pagamento; a PARTE de cada pessoa vira um "a receber"
 // ligado à compra (a_receber.gasto_id / parcelamento_id) e sai do SEU gasto (motor: meuGastoDoMes).
-import { vencimentoDaComp, compDaCompra, compDe, arred } from '@motor/motor.js'
+import { vencimentoDaComp, compDaCompra, compDe, arred, addMeses, cobrancaNoMes } from '@motor/motor.js'
 
 const valorNum = (v) => { const n = parseFloat(String(v ?? '').replace(',', '.')); return Number.isFinite(n) ? n : 0 }
 
@@ -121,4 +121,52 @@ export async function salvarPartes(cliente, { grupoId, gasto = null, parcelament
     if (error) return false
   }
   return true
+}
+
+// Assinatura dividida (A8.6): uma série "todo mês" por pessoa, ligada à assinatura. A parte de
+// cada mês fica a receber no mês em que o dinheiro sai (cartão: vencimento da fatura da cobrança).
+// Refazer: as séries antigas param e as partes em aberto deste mês em diante saem; o que já passou
+// ou já foi recebido fica (e quem já pagou este mês só volta a ter parte no mês que vem).
+export async function salvarPartesAssinatura(cliente, { grupoId, assinatura, partes = [], cartao = null, hoje }) {
+  const id = assinatura?.id
+  if (!id) return false
+  const ini = `${compDe(hoje)}-01`
+  const parou = await cliente.from('a_receber').update({ recorrente: false }).eq('assinatura_id', id)
+  if (parou.error) return false
+  const del = await cliente.from('a_receber').delete().eq('assinatura_id', id).eq('recebido', false).gte('data', ini)
+  if (del.error) return false
+  const validas = partes.filter((p) => p.pessoaId && p.valor > 0)
+  if (!validas.length) return true
+  const { data: pagas, error: e1 } = await cliente.from('a_receber').select('pessoa_id').eq('assinatura_id', id).eq('recebido', true).gte('data', ini)
+  if (e1) return false
+  const jaPagou = new Set((pagas || []).map((x) => x.pessoa_id))
+  // 1ª parte: a cobrança deste mês (ou a do mês que vem, se a assinatura ainda não cobra / a pessoa já pagou)
+  const dataDa = (comp) => { const c = cobrancaNoMes(assinatura, comp); return c ? dataSaidaGasto(cartao, c) : null }
+  const linhas = []
+  for (const p of validas) {
+    let comp = compDe(hoje)
+    let data = jaPagou.has(p.pessoaId) ? null : dataDa(comp)
+    if (!data) { comp = addMeses(comp, 1); data = dataDa(comp) }
+    if (!data) continue
+    linhas.push({
+      grupo_id: grupoId, pessoa_id: p.pessoaId, descricao: texto(assinatura.nome), valor: arred(p.valor),
+      data, assinatura_id: id, recorrente: true, serie_id: crypto.randomUUID(),
+    })
+  }
+  if (!linhas.length) return true
+  const { error } = await cliente.from('a_receber').insert(linhas)
+  if (error) return false
+  await cliente.rpc('garantir_series') // cria os próximos meses (ligados à assinatura)
+  return true
+}
+
+// Assinatura saiu (A8.3): as partes param de repetir. Cancelada → somem as partes de cobranças
+// DEPOIS da data do cancelamento; lançada errado → somem todas as que ainda não foram recebidas.
+export async function pararPartesAssinatura(cliente, { assinaturaId, canceladaEm = null, cartao = null }) {
+  const parou = await cliente.from('a_receber').update({ recorrente: false }).eq('assinatura_id', assinaturaId)
+  if (parou.error) return false
+  let q = cliente.from('a_receber').delete().eq('assinatura_id', assinaturaId).eq('recebido', false)
+  if (canceladaEm) q = q.gt('data', dataSaidaGasto(cartao, canceladaEm))
+  const { error } = await q
+  return !error
 }

@@ -384,7 +384,7 @@ export function pendentesDoMes(comp, dados, opcoes = {}) {
 // não entra aqui. `dados.partes` (motor-dados) traz as ligadas de uma janela maior; sem ela,
 // usa dados.aReceber.
 export function partesDeOutros(dados) {
-  const gasto = new Map(), parcela = new Map(), fixa = new Map()
+  const gasto = new Map(), parcela = new Map(), fixa = new Map(), assinatura = new Map()
   const somar = (m, k, v) => m.set(k, arred((m.get(k) || 0) + v))
   for (const m of dados.partes || dados.aReceber || []) {
     const v = num(m.valor)
@@ -392,8 +392,10 @@ export function partesDeOutros(dados) {
     if (m.gasto_id) somar(gasto, m.gasto_id, v)
     else if (m.parcelamento_id && m.parcela_num) somar(parcela, `${m.parcelamento_id}|${m.parcela_num}`, v)
     else if (m.conta_fixa_id) somar(fixa, `${m.conta_fixa_id}|${compDe(m.data)}`, v)
+    // assinatura dividida: a parte de cada mês fica no mês em que o dinheiro sai (fatura)
+    else if (m.assinatura_id) somar(assinatura, `${m.assinatura_id}|${compDe(m.data)}`, v)
   }
-  return { gasto, parcela, fixa }
+  return { gasto, parcela, fixa, assinatura }
 }
 
 // Consumo do mês por categoria (data da compra / da parcela / da cobrança), sem o
@@ -429,7 +431,9 @@ export function meuGastoDoMes(comp, dados) {
     if (!assinaturaConta(a)) continue
     const d = cobrancaNoMes(a, comp)
     if (!d) continue
-    add(a.categoria || 'assinaturas', { tipo: 'assinatura', id: a.id, descricao: a.nome, valor: num(a.valor), data: d, cartaoId: a.cartao_id || null })
+    const card = a.cartao_id ? (dados.cartoes || []).find((c) => c.id === a.cartao_id) : null
+    const saida = card ? vencimentoDaComp(card, compDaCompra(card, d)) : d
+    add(a.categoria || 'assinaturas', { tipo: 'assinatura', id: a.id, descricao: a.nome, valor: minhaParte(a.valor, partes.assinatura.get(`${a.id}|${compDe(saida)}`)), data: d, cartaoId: a.cartao_id || null })
   }
   return { porCategoria, itens, total: soma(itens) }
 }
@@ -477,7 +481,7 @@ export function itensDeTerceiros(dados) {
       numero: m.parcela_num || null, deTotal: m.parcela_total || null, // a receber parcelado (A8.17)
       porConta: !!m.por_conta, gastoId: m.gasto_id || null, parcelamentoId: m.parcelamento_id || null,
       origem: m.por_conta ? { tipo: 'por_conta' } // A8.4: pagou só uma parte
-        : m.gasto_id || m.parcelamento_id ? { tipo: 'dividida' } // A8.6: parte de uma conta dividida
+        : m.gasto_id || m.parcelamento_id || m.assinatura_id ? { tipo: 'dividida' } // A8.6: parte de uma conta dividida
         : m.conta_fixa_id
           ? { tipo: 'conta_fixa', contaFixaId: m.conta_fixa_id, contaFixaNome: m.conta_fixa_nome || null }
           : { tipo: m.recorrente ? 'todo_mes' : 'manual' },

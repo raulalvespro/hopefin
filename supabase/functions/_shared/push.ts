@@ -26,10 +26,17 @@ export async function aparelhosDoGrupo(admin: any, grupoId: string): Promise<Sub
   return (subs || []) as Sub[]
 }
 
+// Só os aparelhos de UMA pessoa (teste do dono antes de liberar algo pra todo mundo).
 // deno-lint-ignore no-explicit-any
-export async function pushParaGrupo(admin: any, grupoId: string, payload: Record<string, unknown>) {
+export async function aparelhosDoUsuario(admin: any, usuarioId: string): Promise<Sub[]> {
+  const { data: subs } = await admin.from('push_subscriptions').select('endpoint, p256dh, auth').eq('usuario_id', usuarioId)
+  return (subs || []) as Sub[]
+}
+
+// deno-lint-ignore no-explicit-any
+export async function pushParaGrupo(admin: any, grupoId: string, payload: Record<string, unknown>, soUsuario: string | null = null) {
   if (!configurar()) return { enviados: 0, removidos: 0, erro: 'VAPID ausente' }
-  const subs = await aparelhosDoGrupo(admin, grupoId)
+  const subs = soUsuario ? await aparelhosDoUsuario(admin, soUsuario) : await aparelhosDoGrupo(admin, grupoId)
   const msg = JSON.stringify(payload)
   let enviados = 0
   let removidos = 0

@@ -39,12 +39,12 @@ export async function carregarDadosMotor(cliente, grupoId, { compIni, compFim, p
     cliente.from('orcamentos').select('categoria, valor, pago_com').eq('grupo_id', grupoId),
     cliente.from('grupos').select('criado_em').eq('id', grupoId).maybeSingle(),
     // A receber lançado à mão (reembolso previsto e origem "conta fixa" — A1.14/A1.15)
-    cliente.from('a_receber').select('id, pessoa_id, descricao, valor, data, recebido, entrada_id, recorrente, serie_id, conta_fixa_id, parcela_num, parcela_total, gasto_id, parcelamento_id, por_conta, pessoas(nome), contas_fixas(nome)')
+    cliente.from('a_receber').select('id, pessoa_id, descricao, valor, data, recebido, entrada_id, recorrente, serie_id, conta_fixa_id, parcela_num, parcela_total, gasto_id, parcelamento_id, assinatura_id, por_conta, pessoas(nome), contas_fixas(nome)')
       .eq('grupo_id', grupoId).gte('data', inicioDe(compIni)).lte('data', fimDe(compFim)),
     // Partes de outras pessoas em contas divididas (A8.6) numa janela maior: a parte de uma compra
     // no cartão fica no mês da fatura, que pode ser depois do mês da compra.
-    cliente.from('a_receber').select('gasto_id, parcelamento_id, parcela_num, conta_fixa_id, valor, data')
-      .eq('grupo_id', grupoId).gt('valor', 0).or('gasto_id.not.is.null,parcelamento_id.not.is.null,conta_fixa_id.not.is.null')
+    cliente.from('a_receber').select('gasto_id, parcelamento_id, parcela_num, conta_fixa_id, assinatura_id, valor, data')
+      .eq('grupo_id', grupoId).gt('valor', 0).or('gasto_id.not.is.null,parcelamento_id.not.is.null,conta_fixa_id.not.is.null,assinatura_id.not.is.null')
       .gte('data', gIni).lte('data', fimDe(addMeses(compDe(pFim), 2))),
   ])
 

@@ -421,3 +421,14 @@ describe('conta dividida e pago por conta (A8.6 / A8.4)', () => {
     expect(itens.map((i) => i.origem.tipo).sort()).toEqual(['dividida', 'por_conta'])
   })
 })
+
+describe('assinatura dividida (A8.6)', () => {
+  it('só a sua parte da assinatura entra no seu gasto; a parte fica no mês da fatura', () => {
+    const d = dados()
+    // a1 (Internet, R$ 20 no cartão A, dia 5): cobrança de 05/11 cai na fatura que vence 09/12
+    d.partes = [{ assinatura_id: 'a1', valor: 10, data: '2026-12-09' }, { assinatura_id: 'a1', valor: 10, data: '2026-11-09' }]
+    const item = (x) => meuGastoDoMes('2026-11', x).itens.find((i) => i.tipo === 'assinatura' && i.id === 'a1')
+    expect(item(dados()).valor).toBe(20)
+    expect(item(d).valor).toBe(10)
+  })
+})

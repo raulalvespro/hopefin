@@ -12,6 +12,10 @@
 //   {} ou { comp?, so_grupo? }            cron: resumo do MÊS ANTERIOR (fuso de São Paulo).
 //                                         Com a pausa ligada, só registra como 'retido'.
 //   { acao: 'enviar_retidos', so_grupo? }  painel: envia os retidos com os números de agora.
+//   { acao: 'teste', so_grupo, usuario, comp? }
+//                                         dono testando antes de liberar: e-mail "[Teste]" pro
+//                                         e-mail DESSA pessoa e push só pros aparelhos dela.
+//                                         NÃO grava no email_log (não ocupa o envio do dia 1º).
 //   { acao: 'previa', so_grupo, comp?, hoje? }
 //                                         NÃO envia e NÃO grava nada: devolve assunto,
 //                                         números e HTML (conferência com o conciliar.mjs).
@@ -275,6 +279,23 @@ Deno.serve(async (req) => {
   if (body?.acao === 'enviar_retidos') return json(await enviarRetidos(soGrupo))
 
   const comp = /^\d{4}-\d{2}$/.test(body?.comp || '') ? body.comp : addMeses(compDe(hojeBRT()), -1)
+
+  if (body?.acao === 'teste') {
+    const usuario = typeof body?.usuario === 'string' ? body.usuario : null
+    if (!soGrupo || !usuario) return json({ erro: 'informe so_grupo e usuario' }, 400)
+    try {
+      const { data: membro } = await admin.from('usuarios').select('id, nome').eq('id', usuario).eq('grupo_id', soGrupo).maybeSingle()
+      if (!membro) return json({ erro: 'usuario não é do grupo' }, 400)
+      const { data: u } = await admin.auth.admin.getUserById(usuario)
+      const email = u?.user?.email
+      if (!email) return json({ erro: 'usuario sem e-mail' }, 400)
+      const g: Grupo = { grupo_id: soGrupo, titular_id: usuario, email, nome: membro.nome || null }
+      const montado = montarEmail(g, await numerosDoMes(soGrupo, comp, hojeBRT()))
+      const env = await enviarEmail({ para: email, assunto: `[Teste] ${montado.assunto}`, html: montado.html })
+      const push = await pushParaGrupo(admin, soGrupo, { ...pushDoResumo(comp), title: `[Teste] ${pushDoResumo(comp).title}` }, usuario)
+      return json({ comp, email: env.ok ? 'enviado' : `falhou: ${env.erro}`, push })
+    } catch (e) { return json({ erro: (e as Error).message }, 500) }
+  }
 
   if (body?.acao === 'previa') {
     const hoje = /^\d{4}-\d{2}-\d{2}$/.test(body?.hoje || '') ? body.hoje : hojeBRT()

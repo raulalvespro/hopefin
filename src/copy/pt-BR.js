@@ -529,6 +529,7 @@ export const copy = {
     faltaPessoa: 'Escolha a pessoa e o valor de cada parte.',
     erroSalvar: 'A compra foi salva, mas não deu pra salvar a divisão. Abra de novo e confira.',
     dividida: (n) => `dividida com ${n} ${n === 1 ? 'pessoa' : 'pessoas'}`,
+    assinaturaExplica: 'Valor de cada pessoa por mês. A parte de cada uma entra no A receber todo mês, a partir da cobrança deste mês; se cancelar a assinatura, para junto.',
   },
 
   // Categorias (A8.20): renomear leva junto os lançamentos

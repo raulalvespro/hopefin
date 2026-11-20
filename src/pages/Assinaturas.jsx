@@ -13,11 +13,14 @@ import BuscaFiltros from '../components/BuscaFiltros'
 import { filtrar, filtroVazio, temFiltro, distintos } from '../lib/busca'
 import { fmt, fmtData, hojeISO } from '../lib/format'
 import { copy } from '../copy/pt-BR'
+import { usePessoas } from '../hooks/usePessoas'
+import DividirConta from '../components/DividirConta'
+import { resumoPartes, partesDoBanco, salvarPartesAssinatura, pararPartesAssinatura } from '../lib/dividir'
 
 const t = copy.assinaturasCasa
 // "Cobrada desde": padrão = 1º dia do mês do cadastro (a assinatura entra nas faturas a partir daí).
 const inicioDoMes = (iso) => `${String(iso || hojeISO()).slice(0, 7)}-01`
-const novoForm = () => ({ nome: '', valor: '', dia_cobranca: '', cartao_id: '', categoria: 'outros', cobrada_desde: inicioDoMes() })
+const novoForm = () => ({ nome: '', valor: '', dia_cobranca: '', cartao_id: '', categoria: 'outros', cobrada_desde: inicioDoMes(), dividir: false, partes: [] })
 
 export default function Assinaturas() {
   const { perfil } = useAuth()
@@ -35,6 +38,7 @@ export default function Assinaturas() {
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(novoForm())
   const [salvando, setSalvando] = useState(false)
+  const { pessoas, garantirPessoa } = usePessoas(perfil?.grupo_id) // dividir a assinatura (A8.6)
 
   useEffect(() => { if (perfil?.grupo_id) carregar() }, [perfil])
   useAtualizarSozinho(perfil?.grupo_id ? carregar : null) // aba abre na hora e se atualiza sozinha
@@ -43,7 +47,7 @@ export default function Assinaturas() {
     if (!opcoes?.silencioso) setLoading(true) // atualizando sozinha: sem "Carregando"
     const [{ data }, { data: cs }] = await Promise.all([
       supabase.from('assinaturas').select('*, cartoes(nome)').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('dia_cobranca'),
-      supabase.from('cartoes').select('id, nome').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('nome'),
+      supabase.from('cartoes').select('id, nome, dia_fechamento, dia_vencimento, compra_no_fechamento').eq('grupo_id', perfil.grupo_id).eq('ativo', true).order('nome'),
     ])
     setItens(data || [])
     setCartoes(cs || [])
@@ -58,8 +62,12 @@ export default function Assinaturas() {
     setForm({
       nome: a.nome, valor: String(a.valor), dia_cobranca: String(a.dia_cobranca ?? ''), cartao_id: a.cartao_id || '', categoria: a.categoria || 'outros',
       cobrada_desde: a.cobrada_desde || inicioDoMes(a.criado_em),
+      dividir: false, partes: [],
     })
     setModal(true)
+    // Assinatura dividida (A8.6): traz a parte mais recente de cada pessoa
+    supabase.from('a_receber').select('pessoa_id, valor, pessoas(nome)').eq('assinatura_id', a.id).gt('valor', 0).order('data', { ascending: false })
+      .then(({ data }) => { if (data?.length) setForm(f => ({ ...f, dividir: true, partes: partesDoBanco(data, { total: Number(a.valor) }) })) })
   }
   function fecharModal() { setModal(false); setEditando(null); setForm(novoForm()) }
 
@@ -73,13 +81,34 @@ export default function Assinaturas() {
       categoria: form.categoria || 'outros',
       cobrada_desde: form.cobrada_desde || null, // vazio = a partir do mês do cadastro
     }
+    // Dividir com outras pessoas (A8.6): cada parte com pessoa e valor, sem passar do total
+    let partesOk = []
+    if (editando && form.dividir) {
+      const rp = resumoPartes(payload.valor, form.partes)
+      if (!rp.ok.length || rp.vazias) { toast(copy.dividir.faltaPessoa, 'erro'); return }
+      if (rp.excede) { toast(copy.dividir.passou, 'erro'); return }
+      partesOk = rp.ok
+    }
     setSalvando(true)
+    for (const p of partesOk) {
+      p.pessoaId = await garantirPessoa(p.nome)
+      if (!p.pessoaId) { setSalvando(false); toast(copy.pessoas.erroSalvar, 'erro'); return }
+    }
     const op = editando
       ? run(supabase.from('assinaturas').update(payload).eq('id', editando), { ok: 'Assinatura atualizada' })
       : run(supabase.from('assinaturas').insert({ ...payload, grupo_id: perfil.grupo_id }), { ok: 'Assinatura criada' })
     const { error } = await op
+    if (error) { setSalvando(false); return }
+    if (editando) {
+      const atual = itens.find(x => x.id === editando)
+      const ok = await salvarPartesAssinatura(supabase, {
+        grupoId: perfil.grupo_id, partes: partesOk, hoje: hojeISO(),
+        assinatura: { ...payload, id: editando, ativo: true, cancelada_em: null, criado_em: atual?.criado_em },
+        cartao: cartoes.find(c => c.id === payload.cartao_id) || null,
+      })
+      if (!ok) toast(copy.dividir.erroSalvar, 'erro')
+    }
     setSalvando(false)
-    if (error) return
     fecharModal(); carregar()
   }
 
@@ -97,6 +126,11 @@ export default function Assinaturas() {
     const payload = cancelou ? { ativo: false, cancelada_em: tirando.data } : { ativo: false, cancelada_em: null }
     const { error } = await run(supabase.from('assinaturas').update(payload).eq('id', tirando.id),
       { ok: cancelou ? copy.assinaturasCasa.okCancelada : copy.assinaturasCasa.okRemovida })
+    if (!error) {
+      // as partes de outras pessoas param junto (A8.6)
+      const a = itens.find(x => x.id === tirando.id)
+      await pararPartesAssinatura(supabase, { assinaturaId: tirando.id, canceladaEm: cancelou ? tirando.data : null, cartao: cartoes.find(c => c.id === a?.cartao_id) || null })
+    }
     setSalvando(false)
     if (error) return
     setTirando(null); carregar()
@@ -233,6 +267,21 @@ export default function Assinaturas() {
               </select>
               <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>Se vincular, ela entra automaticamente na fatura do cartão — não precisa lançar como gasto.</p>
             </div>
+            {editando && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
+                  <input type="checkbox" checked={!!form.dividir} onChange={e => setForm(p => ({ ...p, dividir: e.target.checked }))} />
+                  {copy.dividir.marcar}
+                </label>
+                {form.dividir && (
+                  <>
+                    <DividirConta total={parseFloat(form.valor) || 0} partes={form.partes || []} onChange={partes => setForm(p => ({ ...p, partes }))}
+                      pessoas={pessoas} onCriar={garantirPessoa} />
+                    <p style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 4, lineHeight: 1.45 }}>{copy.dividir.assinaturaExplica}</p>
+                  </>
+                )}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharModal}>Cancelar</button>
               <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} onClick={salvar} disabled={salvando}>

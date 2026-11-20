@@ -680,6 +680,11 @@ alter table public.a_receber add column if not exists parcelamento_id uuid refer
 alter table public.a_receber add column if not exists por_conta boolean not null default false;
 alter table public.a_receber add column if not exists credito_de uuid references public.entradas(id) on delete cascade;
 
+-- 0077 (19/11 noite, A8.6): assinatura dividida = série "todo mês" por pessoa ligada à assinatura.
+-- garantir_series_grupo agora copia conta_fixa_id e assinatura_id pros meses novos e para a série de
+-- assinatura que não está mais ativa.
+alter table public.a_receber add column if not exists assinatura_id uuid references public.assinaturas(id) on delete cascade;
+
 -- ============================================================
 -- FIM
 -- ============================================================
