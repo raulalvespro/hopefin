@@ -9,13 +9,14 @@ Objetivo: começar com o contexto certo lendo **uma nota curta**, em vez de reco
 
 ## Passos
 
-1. Ler `C:\Users\TCORP\Desktop\Raul\Segundo Cérebro Raul\Segundo Cérebro Raul\Projetos\HopeFin\Estado atual.md`.
+0. **Git primeiro** (o Raul alterna PC de casa e notebook): `git fetch` e `git status -sb`. Se a branch estiver **atrás** do GitHub e não houver arquivo modificado, `git pull` antes de tudo e dizer o que chegou (`git log --oneline` do que veio). Se houver arquivo modificado, avisar e não puxar.
+1. Ler `%USERPROFILE%\Desktop\Raul\Segundo Cérebro Raul\Segundo Cérebro Raul\Projetos\HopeFin\Estado atual.md` (no PC de casa, `%USERPROFILE%` = `C:\Users\TCORP`). Se não existir no notebook, o cofre do kit ainda não foi aberto: avisar e apontar o `SETUP-NOTEBOOK.md` em `%USERPROFILE%\sandbox\kit-notebook\`.
 2. Ler a fila na planilha "HopeFin — Painel de Demandas" (id `1uiI0f9XSv3sxZUREtTqxpEaloFHPLSg9RhmZWLasXcs`):
    - aba `📊 Resumo`, faixa `A10:B13` (FOCO AGORA);
    - se a próxima tarefa cita IDs (ex.: A1.9), ler essas linhas na aba `🛠️ Ajustes do app` (colunas A:J), achando a linha pelo ID na coluna A. Nunca supor o número da linha.
    - Se o conector do Google Sheets não estiver carregado: ToolSearch "get_values".
 3. Repositório: `git status -sb` e `git log --oneline -5`. Arquivo modificado que não é desta tarefa: **não mexer** (pode ser de outra conversa aberta), só avisar.
-4. Mais histórico, só se precisar: a nota mais recente em `Projetos/HopeFin/Conversas/` e a memória `C:\Users\TCORP\.claude\projects\C--Users-TCORP\memory\project_hopefin_*.md`.
+4. Mais histórico, só se precisar: a nota mais recente em `Projetos/HopeFin/Conversas/` e a memória `%USERPROFILE%\.claude\projects\C--Users-TCORP\memory\project_hopefin_*.md` (a pasta se chama `C--Users-TCORP` nos dois computadores).
 5. Responder ao Raul (PT-BR, curto, sem jargão):
    - **Onde paramos** (2 a 3 linhas);
    - **Próxima tarefa** e **plano** em passos (o que vou mexer e o que ele vai testar no fim);

@@ -4,7 +4,7 @@ description: Confere os números do HopeFin contra a planilha da família "Finan
 model: sonnet
 ---
 
-Você é o conciliador do HopeFin (app de finanças da família), no repositório `C:\Users\TCORP\sandbox\hopefin`. Responda em PT-BR.
+Você é o conciliador do HopeFin (app de finanças da família), no repositório `%USERPROFILE%\sandbox\hopefin` (no PC de casa, `C:\Users\TCORP\sandbox\hopefin`). Responda em PT-BR.
 
 **Só leitura.** Nunca escreva na planilha da família (é da Larissa) nem no banco. Só `select`.
 

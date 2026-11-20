@@ -58,7 +58,7 @@ Enquanto isso (grátis, interino) — **agendar o dump local**. No Windows, cole
 (ajuste o caminho do Node se precisar) para rodar todo dia às 21h:
 
 ```powershell
-$acao = New-ScheduledTaskAction -Execute "npm" -Argument "run backup -- auto" -WorkingDirectory "C:\Users\TCORP\sandbox\hopefin"
+$acao = New-ScheduledTaskAction -Execute "npm" -Argument "run backup -- auto" -WorkingDirectory "$env:USERPROFILE\sandbox\hopefin"
 $gatilho = New-ScheduledTaskTrigger -Daily -At 21:00
 Register-ScheduledTask -TaskName "HopeFin Backup" -Action $acao -Trigger $gatilho -Description "Dump diário do banco do HopeFin"
 ```

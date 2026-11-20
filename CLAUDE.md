@@ -10,21 +10,28 @@ depois), **planejado × praticado** nas contas recorrentes, grupo compartilhado 
 
 ## 🔁 Começo e fim de cada conversa (desde 18/11/2026)
 
-- **Uma tarefa por conversa**, sempre aberta na pasta `C:\Users\TCORP\sandbox\hopefin` (é aqui que carregam as
-  skills, os agentes e a trava do Supabase).
-- **Começo:** `/hopefin-retomar` — lê `Estado atual.md` no Obsidian
-  (`C:\Users\TCORP\Desktop\Raul\Segundo Cérebro Raul\Segundo Cérebro Raul\Projetos\HopeFin\`), a fila da planilha e o
+- **Uma tarefa por conversa**, sempre aberta na pasta `%USERPROFILE%\sandbox\hopefin` (no PC de casa,
+  `C:\Users\TCORP\sandbox\hopefin`) — é aqui que carregam as skills, os agentes e a trava do Supabase.
+- **Começo:** `/hopefin-retomar` — `git pull` se o GitHub estiver na frente, lê `Estado atual.md` no Obsidian
+  (`%USERPROFILE%\Desktop\Raul\Segundo Cérebro Raul\Segundo Cérebro Raul\Projetos\HopeFin\`), a fila da planilha e o
   git; mostra o plano e espera o ok.
-- **Fim:** `/hopefin-fechar-sessao` — planilha + Obsidian (Estado atual, Conversas, Decisões) + memória + o que testar
-  + como começar a próxima conversa.
+- **Fim:** `/hopefin-fechar-sessao` — planilha + Obsidian (Estado atual, Conversas, Decisões) + memória + **commit e
+  push** + o que testar + como começar a próxima conversa.
 - **Cada coisa num lugar:** planilha "HopeFin — Painel de Demandas" = o que fazer · Obsidian `Projetos/HopeFin` = o que
   aconteceu e por quê · este arquivo = regras técnicas.
-- **Memória do projeto** (fatos que valem sempre): `C:\Users\TCORP\.claude\projects\C--Users-TCORP\memory\`
+- **Memória do projeto** (fatos que valem sempre): `%USERPROFILE%\.claude\projects\C--Users-TCORP\memory\` — a pasta
+  se chama `C--Users-TCORP` nos dois computadores, mesmo que o usuário do Windows seja outro
   (`project_hopefin_*.md`, `feedback_hopefin_*.md`). Conversas nesta pasta têm outra pasta de memória automática: ler
   e atualizar ESSES arquivos em vez de criar cópia.
 - **Skills** (`.claude/skills/`): `hopefin-retomar`, `hopefin-fechar-sessao`, `hopefin-publicar`, `hopefin-banco`,
   `hopefin-edge`, `hopefin-planilha`. **Agentes** (`.claude/agents/`): `hopefin-testador`, `hopefin-conciliador`.
   **Trava** (`.claude/settings.json`): escrita no Supabase pelo conector MCP é bloqueada neste projeto.
+- **Dois computadores (desde 20/11/2026):** PC de casa (`D85248-ESC-RF`, usuário `TCORP`) e notebook. Código só pelo
+  GitHub (repos `hopefin`, `hopefin-site`, `hopefin-social`): nada fica só num computador, sem commit ou sem push. O
+  que não vai pelo git (`.env`, `supabase/.env.local`, Obsidian, memória) viaja no cofre criptografado
+  `%USERPROFILE%\sandbox\kit-notebook\` (passo a passo no `SETUP-NOTEBOOK.md` de lá). Fora de casa, o notebook é o
+  dono do Obsidian e da memória; na volta, `SELAR-VOLTA.cmd` no notebook e `ABRIR-VOLTA.cmd` no PC. `backups/`
+  (dados de cliente) nunca viaja: cada computador faz o seu `npm run backup` antes de migração.
 
 ---
 
