@@ -25,6 +25,11 @@ describe('Ajuda — perguntas por tela', () => {
       expect(`${p} ${r}`).not.toMatch(/fundador|14 dias|R\$ ?19,90/i)
     }
   })
+  it('faturas do mês (P17): toda situação de fatura do motor tem texto', () => {
+    for (const s of ['paga', 'aberta', 'fechada', 'atrasada']) expect(copy.faturasMes.status[s], s).toBeTruthy()
+    expect(copy.faturasMes.titulo('novembro')).toBe('Faturas que vencem em novembro')
+    expect(copy.faturasMes.status.aberta('03/12')).toBe('aberta, fecha 03/12')
+  })
   it('acha a tela pelo caminho (com ou sem barra no fim); tela sem curadoria = só as gerais', () => {
     expect(perguntasDaTela('/cartoes')?.nome).toBe('Cartões')
     expect(perguntasDaTela('/cartoes/')?.nome).toBe('Cartões')

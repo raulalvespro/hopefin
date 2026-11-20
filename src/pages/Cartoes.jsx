@@ -9,12 +9,13 @@ import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { useCategorias } from '../hooks/useCategorias'
 import SwipeRow from '../components/SwipeRow'
+import FaturasDoMes from '../components/FaturasDoMes'
 import { fmt, fmtData, hojeISO } from '../lib/format'
 import { copy } from '../copy/pt-BR'
 import {
   carregarMotor, faturaDoCartao, faturasDoCartaoAgora, limiteComprometido,
   addMeses, compDe, compsEntre, hojeBRT, nomeMesCurto, diaDe, planoMoverParcelas,
-  compDaCompra, vencimentoDaComp, fechamentoDaComp, dataDeCompraNaFatura,
+  compDaCompra, vencimentoDaComp, fechamentoDaComp, dataDeCompraNaFatura, nomeMes,
 } from '../lib/motor'
 
 const bandeiras = { Visa: '💙', Mastercard: '🔴', Elo: '🟡', Amex: '🟢', Hipercard: '🔵' }
@@ -260,6 +261,12 @@ export default function Cartoes() {
           <Plus size={16} /> Novo
         </button>
       </div>
+
+      {/* P17: as faturas que vencem neste mês, de todos os cartões (toque abre a fatura) */}
+      {dados && cartoes.length > 0 && (
+        <FaturasDoMes faturas={cartoes.map(c => faturaDoCartao(c, compHoje, dados, hoje))} nomeMes={nomeMes(compHoje)} hoje={hoje}
+          onAbrir={f => setDetalhe({ cardId: f.cartaoId, comp: f.comp })} style={{ marginBottom: 14 }} />
+      )}
 
       {loading && !dados ? <div className="empty-state">Carregando...</div>
         : cartoes.length === 0 ? <div className="empty-state">Nenhum cartão cadastrado</div>

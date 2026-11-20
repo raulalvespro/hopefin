@@ -1100,6 +1100,23 @@ export const copy = {
     ],
   },
 
+  // "Onde vejo a fatura que pago este mês?" (P17, 20/11/2026): bloco no Início e no topo de Cartões.
+  faturasMes: {
+    titulo: (mes) => `Faturas que vencem em ${mes}`,
+    sub: 'O que você paga de cartão nesse mês. Toque numa fatura pra ver as compras e marcar como paga.',
+    vence: (d) => `vence ${d}`,
+    venceu: (d) => `venceu ${d}`,
+    status: {
+      paga: 'paga ✓',
+      aberta: (fecha) => `aberta, fecha ${fecha}`,
+      fechada: 'fechada, a pagar',
+      atrasada: 'não paga',
+    },
+    aPagar: (v) => `${v} a pagar`,
+    tudoPago: 'tudo pago ✓',
+    abrir: (cartao) => `Abrir a fatura do ${cartao}`,
+  },
+
   // Botão de Ajuda + perguntas frequentes (L29, 20/11/2026). Só aparece com a chave de recurso
   // "ajuda" (Área de desenvolvimento do /admin) até o Raul liberar. Curadoria por tela: a chave é
   // o caminho da tela; "gerais" aparece em todas.
@@ -1121,7 +1138,7 @@ export const copy = {
         perguntas: [
           { p: 'O que é o "Saldo do mês"?', r: 'É o que já entrou na conta neste mês menos o que já foi pago neste mês (faturas marcadas como pagas, contas pagas, pix e débito). Toque no valor pra ver a conta item a item.' },
           { p: 'E o "Quanto posso gastar"?', r: 'É o que sobra no mês: tudo que entra menos tudo que vence no mês (faturas, contas fixas, parcelas, assinaturas e o que já foi pago à vista). Toque em "De onde vem esse número?" pra ver a conta.' },
-          { p: 'Onde vejo a fatura que pago este mês?', r: 'Em "Faturas que vencem este mês", aqui no Início: cada cartão com o valor e o dia em que vence. Toque nela pra abrir a fatura em Cartões, onde ela tem a etiqueta "você paga este mês".' },
+          { p: 'Onde vejo a fatura que pago este mês?', r: 'Aqui no Início, no bloco "Faturas que vencem em…" (do mês que você está vendo): cada cartão com o valor, o dia e se já foi paga. Toque numa fatura pra abrir ela em Cartões.' },
           { p: 'Como lanço um gasto rápido?', r: 'Toque no microfone verde e fale do seu jeito, tipo "mercado 87 no Nubank". Dá pra digitar também. Você confere o que o app entendeu antes de salvar.' },
           { p: 'O que acontece na virada do mês?', r: 'No começo do mês o app mostra como o mês anterior fechou e pergunta o que fazer com a sobra: levar pro mês novo, guardar num cofrinho ou deixar como está. Conta que ficou sem pagar vai pra "Em atraso", em Contas do mês.' },
         ],
@@ -1148,7 +1165,7 @@ export const copy = {
       '/cartoes': {
         nome: 'Cartões',
         perguntas: [
-          { p: 'Qual fatura eu pago este mês?', r: 'A que tem a etiqueta "você paga este mês". Cada cartão mostra a fatura "A pagar" (já fechou) e a "Aberta" (ainda recebe compras). No Início, ela aparece em "Faturas que vencem este mês".' },
+          { p: 'Qual fatura eu pago este mês?', r: 'As do bloco "Faturas que vencem em…", no alto desta tela (e também no Início). Em cada cartão, a fatura desse mês ganha a etiqueta "você paga este mês". "A pagar" já fechou; "Aberta" ainda recebe compras.' },
           { p: 'Como marco a fatura como paga?', r: 'Toque em "Marcar como paga a fatura que vence…" no cartão, ou abra a fatura. As parcelas dela entram como pagas. Errou? Abra a fatura e toque em "Desfazer pagamento".' },
           { p: 'Uma compra caiu na fatura errada', r: 'Abra a fatura e use as setas ← → na compra. Numa parcela, as seguintes da mesma compra vão junto.' },
           { p: 'O que é o "Limite disponível"?', r: 'É o limite do cartão menos tudo que ainda não foi pago: a fatura a pagar, a aberta e as parcelas que ainda vão cair.' },

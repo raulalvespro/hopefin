@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
@@ -15,6 +15,7 @@ import Onboarding from '../components/Onboarding'
 import Explicacao from '../components/Explicacao'
 import ViradaMes from '../components/ViradaMes'
 import ResumoPronto from '../components/ResumoPronto'
+import FaturasDoMes from '../components/FaturasDoMes'
 import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { InfoDica } from '../components/ui'
 import { copy } from '../copy/pt-BR'
@@ -44,6 +45,7 @@ const somaLista = lista => Math.round(lista.reduce((s, x) => s + Number(x.valor 
 export default function Dashboard() {
   const { perfil } = useAuth()
   const { emojiDe } = useCategorias()
+  const navigate = useNavigate()
   const [mes, setMes] = useState(new Date())
   const [r, setR] = useState(null)            // resumoMes do mês na tela
   const [rAnt, setRAnt] = useState(null)      // mês anterior (comparativo)
@@ -290,6 +292,10 @@ export default function Dashboard() {
           <ChevronRight size={18} color="var(--text3)" />
         </div>
       </Link>
+
+      {/* P17: as faturas que vencem no mês na tela (o cartão que você paga neste mês) */}
+      <FaturasDoMes faturas={r.faturas} nomeMes={format(mes, 'MMMM', { locale: ptBR })} hoje={hojeBRT()}
+        onAbrir={f => navigate(`/cartoes?cartao=${f.cartaoId}&comp=${f.comp}`)} />
 
       {/* O mês até agora: realizado × total do mês */}
       <section className="card" style={{ marginBottom: 20 }}>
