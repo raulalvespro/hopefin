@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { HelpCircle, X, ChevronDown, ChevronLeft, ChevronRight, Mail, Compass, Search, MessageSquarePlus, Inbox, Loader, CheckCircle2 } from 'lucide-react'
 import { copy } from '../copy/pt-BR'
+import { useMascote } from '../lib/mascote'
 import {
   abrirChamado, meusChamados, respostasNovas, marcarRespostasVistas, codChamado, telaAtual,
   rotuloCategoriaChamado, diaCurto, diaEHora, MENSAGEM_MIN, MENSAGEM_MAX, ASSUNTO_MAX,
@@ -140,6 +141,7 @@ export default function Ajuda({ flags }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [aberto, setAberto] = useState(false)
+  const { mascote } = useMascote()
   const [vista, setVista] = useState('inicio') // inicio | novo | enviado | meus
   const [abertaId, setAbertaId] = useState(null)
   const [busca, setBusca] = useState('')
@@ -233,9 +235,15 @@ export default function Ajuda({ flags }) {
 
   return (
     <>
+      {/* Botão do topo = o Joca com um "?" grudado (21/11/2026): o Joca é o "mordomo" do app que ajuda.
+          Com o mascote desligado no painel, volta o ícone de interrogação. */}
       <button type="button" onClick={() => abrir('inicio')} aria-label={novas ? t.botaoNovas(novas) : t.botao} title={novas ? t.botaoNovas(novas) : t.botao}
-        style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px 5px 8px', minHeight: 32, borderRadius: 999, background: 'var(--accent-dim)', border: '1px solid var(--accent)', color: 'var(--accent-text)', fontFamily: 'Syne', fontWeight: 600, fontSize: 13, lineHeight: 1 }}>
-        <HelpCircle size={16} aria-hidden="true" /> {t.botao}
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', background: 'var(--accent-dim)', border: '1.5px solid var(--accent)', padding: 0 }}>
+        {mascote
+          ? <img src="/joca/joca-base-320.webp" alt="" width={34} height={34} draggable={false}
+              style={{ width: 34, height: 34, objectFit: 'cover', objectPosition: '50% 18%', borderRadius: '50%' }} />
+          : <HelpCircle size={20} color="var(--accent-text)" aria-hidden="true" />}
+        <span aria-hidden="true" style={{ position: 'absolute', right: -4, bottom: -3, width: 17, height: 17, borderRadius: '50%', background: 'var(--accent)', color: 'var(--on-accent, #fff)', border: '2px solid var(--bg2, var(--bg))', fontFamily: 'Syne', fontWeight: 700, fontSize: 10.5, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>?</span>
         {novas > 0 && (
           <span aria-hidden="true" style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: '#dc2626', color: '#fff', fontFamily: 'DM Sans', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{novas}</span>
         )}

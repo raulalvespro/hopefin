@@ -8,6 +8,7 @@ import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { useToast } from '../contexts/ToastContext'
 import { fmt } from '../lib/format'
+import { useAbrirNovoPeloLink } from '../hooks/useAbrirNovoPeloLink'
 
 const novoForm = () => ({ nome: '', valor: '', dia_vencimento: '', categoria: 'outros', alerta_dias: 3 })
 
@@ -33,6 +34,7 @@ export default function ContasFixas() {
     setLoading(false)
   }
 
+  useAbrirNovoPeloLink(abrirNovo) // ?novo=1 (primeiros passos, A8.10)
   function abrirNovo() {
     setEditando(null); setForm(novoForm()); setModal(true)
   }

@@ -12,6 +12,7 @@ import AvisoOffline from './AvisoOffline'
 import Avatar from './Avatar'
 import Logo from './Logo'
 import BannerAssinatura from './BannerAssinatura'
+import GuiaPasso from './GuiaPasso'
 import Ajuda from './Ajuda'
 import { useFlags } from '../hooks/useFlags'
 import { useAlertas } from '../hooks/useAlertas'
@@ -197,6 +198,7 @@ export default function Layout() {
         <AtivarNotificacoes />
         <AvisoOffline />
         <BannerAssinatura />
+        <GuiaPasso />
         <Outlet />
       </main>
 

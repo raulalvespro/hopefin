@@ -11,7 +11,8 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts'
 import BotaoVoz from '../components/BotaoVoz'
-import Onboarding from '../components/Onboarding'
+import CardPrimeirosPassos from '../components/CardPrimeirosPassos'
+import ComunicadosInicio from '../components/ComunicadosInicio'
 import Explicacao from '../components/Explicacao'
 import ViradaMes from '../components/ViradaMes'
 import ResumoPronto from '../components/ResumoPronto'
@@ -232,7 +233,8 @@ export default function Dashboard() {
         )}
       </header>
 
-      <Onboarding />
+      <ComunicadosInicio />
+      <CardPrimeirosPassos />
 
       {virada && <ViradaMes comp={virada.comp} resumo={virada.resumo} pendentes={virada.pendentes} cofrinhos={virada.cofrinhos} onDecidido={() => { setVirada(null); carregar() }} />}
 

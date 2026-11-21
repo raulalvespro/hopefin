@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
-import { Bell, CalendarClock, CreditCard, Target, PiggyBank, TrendingDown, Smartphone, BarChart3 } from 'lucide-react'
+import { Bell, Mail, CalendarClock, CreditCard, Target, PiggyBank, TrendingDown, Smartphone, BarChart3 } from 'lucide-react'
 import { statusPush, ativarPush, desativarPush, enviarPushTeste } from '../lib/push'
 
 const PADRAO = {
@@ -40,7 +40,8 @@ function Toggle({ ativo, onChange }) {
 }
 
 export default function Notificacoes() {
-  const { user, perfil } = useAuth()
+  const { user, perfil, carregarPerfil } = useAuth()
+  const [recebeNovidades, setRecebeNovidades] = useState(() => perfil?.recebe_comunicados !== false)
   const { toast } = useToast()
   const [prefs, setPrefs] = useState(PADRAO)
   const [loading, setLoading] = useState(true)
@@ -110,6 +111,13 @@ export default function Notificacoes() {
 
   const setCampo = (campo, valor) => salvar({ ...prefs, [campo]: valor })
 
+  async function alterarNovidades(v) {
+    setRecebeNovidades(v)
+    const { error } = await supabase.from('usuarios').update({ recebe_comunicados: v }).eq('id', perfil.id)
+    if (error) { setRecebeNovidades(!v); toast('Não foi possível salvar.', 'erro'); return }
+    carregarPerfil?.(user)
+  }
+
   if (loading) return <div className="empty-state">Carregando…</div>
 
   return (
@@ -153,6 +161,20 @@ export default function Notificacoes() {
                 }}>{d}d</button>
             )
           })}
+        </div>
+      </div>
+
+      {/* Novidades por e-mail (comunicados, A8.15) — é por pessoa, não por grupo; o e-mail tem o mesmo "sair" */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Mail size={19} color="var(--accent)" style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 14, fontWeight: 500 }}>Novidades do HopeFin por e-mail</p>
+            <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 }}>
+              Dicas de uso, novidades do app e avisos importantes. Só pra você (não muda o grupo).
+            </p>
+          </div>
+          <Toggle ativo={recebeNovidades} onChange={alterarNovidades} />
         </div>
       </div>
 

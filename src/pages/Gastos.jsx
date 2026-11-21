@@ -26,6 +26,7 @@ import { useFlags } from '../hooks/useFlags'
 import BuscaFiltros from '../components/BuscaFiltros'
 import { filtrar, filtroVazio, temFiltro, distintos } from '../lib/busca'
 import { compDaCompra, faturaDoCartao, addMeses, hojeBRT, primeiroVencimentoParcelado } from '../lib/motor'
+import { useAbrirNovoPeloLink } from '../hooks/useAbrirNovoPeloLink'
 
 const novoForm = () => ({ descricao: '', valor: '', categoria: 'outros', tipo_pagamento: 'cartao', cartao_id: '', parcelado: false, num_parcelas: '', parcelas_pagas: '', data: hojeISO(), de_terceiro: false, pessoa_nome: '', reembolso_status: null, observacao: '', assinatura: false, fatura_ajuste: 0, dividir: false, partes: [] })
 const tg = copy.gastos
@@ -153,6 +154,7 @@ export default function Gastos() {
   }, [params, cartoesProntos, perfil]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Novo gasto: sem cartão cadastrado já começa em PIX; com um cartão só, ele vem escolhido.
+  useAbrirNovoPeloLink(() => abrirNovo(), cartoesProntos) // ?novo=1 (primeiros passos, A8.10)
   function abrirNovo(extra = {}) {
     const f = { ...novoForm(), ...extra }
     if (cartoes.length === 0) f.tipo_pagamento = 'pix'

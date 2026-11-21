@@ -740,6 +740,13 @@ alter table public.cupons drop constraint if exists cupons_tipo_check;
 alter table public.cupons add constraint cupons_tipo_check check (tipo in ('cortesia', 'desconto'));
 alter table public.cupons add column if not exists desconto_pct int;
 
+-- 0086 (21/11): COMUNICADOS (A8.15). comunicados (título, texto, botão, público, canais app/push/email, teste,
+-- contagens) + comunicado_entregas (por pessoa: no_app, visto, clicado, dispensado). Sem policy: só RPCs e
+-- service_role. usuarios.recebe_comunicados (sair do e-mail: função comunicado-sair, link assinado).
+-- comunicado_destinatarios (só servidor), admin_comunicado_previa/_grupos/admin_comunicados_listar (admin),
+-- meus_comunicados/comunicado_marcar (app). Envio: Edge Function admin-comunicado (admin + aal2).
+alter table public.usuarios add column if not exists recebe_comunicados boolean not null default true;
+
 -- ============================================================
 -- FIM
 -- ============================================================

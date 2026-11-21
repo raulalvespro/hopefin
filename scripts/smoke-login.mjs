@@ -61,7 +61,8 @@ if (env.SUPABASE_ACCESS_TOKEN && env.SUPABASE_PROJECT_REF) {
   const SO_SERVIDOR = ['wa_salvar_lancamento', 'wa_usuario', 'wa_conectar', 'wa_pode_grupo', 'pode_lancar_grupo',
     'vencimento_fatura_por_dias', 'vencimento_da_fatura_da_compra', 'resumo_mensal', 'vencimentos_a_vencer',
     'encerrar_trials_vencidos', 'encerrar_assinaturas_canceladas', 'garantir_series_grupo', 'push_pendencias',
-    'wa_ultimo_lancamento', 'wa_apagar_ultimo', 'wa_corrigir_ultimo', 'wa_pagar_fatura', 'wa_registrar_ia_chamada']
+    'wa_ultimo_lancamento', 'wa_apagar_ultimo', 'wa_corrigir_ultimo', 'wa_pagar_fatura', 'wa_registrar_ia_chamada',
+    'comunicado_destinatarios']
   const t = await fetch(`https://api.supabase.com/v1/projects/${env.SUPABASE_PROJECT_REF}/database/query`, { method: 'POST', headers: { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ query: "select p.proname, p.prosecdef as especial, has_function_privilege('anon', p.oid, 'execute') as anon, has_function_privilege('authenticated', p.oid, 'execute') as logado from pg_proc p where p.pronamespace = 'public'::regnamespace" }) })
   if (!t.ok) falhar(`trava das funções: leitura HTTP ${t.status}`)
   const fns = await t.json()

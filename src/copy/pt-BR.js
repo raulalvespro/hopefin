@@ -1119,6 +1119,42 @@ export const copy = {
     ],
   },
 
+  // Primeiros passos guiados (A8.10, 21/11/2026) — lista em /boas-vindas, card no Início e faixa no topo
+  primeirosPassos: {
+    titulo: 'Primeiros passos',
+    subtitulo: 'Seis coisas rápidas e o mês da sua casa já aparece organizado. Eu te mostro onde tocar.',
+    tudoPronto: 'Tudo pronto! Agora é só ir lançando no dia a dia. 💚',
+    contador: (n, total) => `${n} de ${total}`,
+    feito: 'Feito',
+    adiado: 'Deixado pra depois',
+    fazerDepois: 'Fazer depois',
+    comecar: (titulo) => `Começar: ${titulo}`,
+    continuar: 'Continuar',
+    irInicio: 'Ir para o início',
+    verTodos: 'Ver todos os passos',
+    esconder: 'Esconder',
+    cardTitulo: 'Seus primeiros passos',
+    faixaPasso: (n, total) => `Passo ${n} de ${total}`,
+    faixaVoltar: 'Ver os passos',
+    faixaPronto: 'Pronto',
+    faixaFeito: 'Feito! Bora pro próximo?',
+    faixaProximo: 'Próximo passo',
+    passos: {
+      renda: { titulo: 'Lançar a sua renda', subtitulo: 'O salário ou o que entra todo mês', cta: 'Lançar renda',
+        dica: 'Escreva "Salário", o valor e o dia que cai. Em "Repete?", escolha todo mês: aí ela já aparece nos próximos meses.' },
+      gasto: { titulo: 'Lançar um gasto', subtitulo: 'Um gasto de hoje, no Pix ou no dinheiro', cta: 'Lançar gasto',
+        dica: 'Coloque o valor, a categoria e como pagou. Dica: no microfone dá pra só falar, tipo "mercado, 85 reais no Pix".' },
+      cartao: { titulo: 'Cadastrar o cartão', subtitulo: 'Pra ver a fatura antes de fechar', cta: 'Cadastrar cartão',
+        dica: 'Dê um nome (ex.: Nubank), o dia que a fatura fecha e o dia que vence. As compras no cartão caem na fatura certa sozinhas.' },
+      conta: { titulo: 'Lançar as contas fixas', subtitulo: 'Aluguel, luz, internet, escola', cta: 'Lançar conta fixa',
+        dica: 'Cadastre uma conta que vence todo mês, com o valor de sempre e o dia. Ela entra em Contas do mês pra você marcar quando pagar.' },
+      categorias: { titulo: 'Conferir as categorias', subtitulo: 'Deixe com a cara da sua casa', cta: 'Ver categorias',
+        dica: 'Veja as categorias e ajuste: renomeie, crie as que faltam e apague as que a casa não usa. Quando terminar, toque em Pronto.' },
+      convidar: { titulo: 'Convidar quem divide as contas', subtitulo: 'Todo mundo no mesmo painel', cta: 'Convidar',
+        dica: 'No topo de Configurações tem o código do seu grupo. Toque em compartilhar e mande pra quem divide as contas com você.' },
+    },
+  },
+
   onboarding: {
     pular: 'Pular',
     proximo: 'Próximo',
@@ -1168,9 +1204,9 @@ export const copy = {
   // Curadoria por tela: a chave é o caminho da tela; "gerais" aparece em todas. Pergunta com
   // `chave` só aparece pra quem tem aquela chave de recurso (WhatsApp, busca, importar).
   ajuda: {
-    botao: 'Ajuda',
-    botaoNovas: (n) => `Ajuda — ${n === 1 ? '1 resposta nova' : `${n} respostas novas`}`,
-    titulo: 'Ajuda',
+    botao: 'Ajuda do Joca',
+    botaoNovas: (n) => `Ajuda do Joca — ${n === 1 ? '1 resposta nova' : `${n} respostas novas`}`,
+    titulo: 'Oi! Sou o Joca, posso ajudar?',
     buscarPh: 'Procurar (ex.: fatura, convite)',
     buscarLabel: 'Procurar nas perguntas',
     resultados: (n) => (n === 1 ? '1 resposta encontrada' : `${n} respostas encontradas`),

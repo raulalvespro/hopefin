@@ -12,6 +12,7 @@ import SwipeRow from '../components/SwipeRow'
 import FaturasDoMes from '../components/FaturasDoMes'
 import { fmt, fmtData, hojeISO } from '../lib/format'
 import { copy } from '../copy/pt-BR'
+import { useAbrirNovoPeloLink } from '../hooks/useAbrirNovoPeloLink'
 import {
   carregarMotor, faturaDoCartao, faturasDoCartaoAgora, limiteComprometido,
   addMeses, compDe, compsEntre, hojeBRT, nomeMesCurto, diaDe, planoMoverParcelas,
@@ -177,6 +178,7 @@ export default function Cartoes() {
     })
   }
 
+  useAbrirNovoPeloLink(abrirNovo) // ?novo=1 (primeiros passos, A8.10)
   function abrirNovo() { setEditando(null); setForm(novoForm()); setModal(true) }
   function editar(c) {
     setEditando(c.id)

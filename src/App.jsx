@@ -26,6 +26,7 @@ import Categorias from './pages/Categorias'
 import Configuracoes from './pages/Configuracoes'
 import MeusDados from './pages/MeusDados'
 import MinhaConta from './pages/MinhaConta'
+import SairComunicados from './pages/SairComunicados'
 import Planos from './pages/Planos'
 import Checkout from './pages/Checkout'
 import Fechamento from './pages/Fechamento'
@@ -147,6 +148,7 @@ export default function App() {
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       <Route path="/termos" element={<Legal doc="termos" />} />
       <Route path="/privacidade" element={<Legal doc="privacidade" />} />
+      <Route path="/sair-comunicados" element={<SairComunicados />} />
       <Route path="/admin" element={<IrParaPainel />} />
       {import.meta.env.DEV && <Route path="/dev/componentes" element={<DevComponentes />} />}
       <Route path="/" element={<RotaProtegida><Layout /></RotaProtegida>}>

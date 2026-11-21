@@ -15,6 +15,7 @@ import Joca from '../components/Joca'
 import { copy } from '../copy/pt-BR'
 import { dataNoMes, nomeMes, carregarMotor, reembolsosPrevistos } from '../lib/motor'
 import { dividirEmParcelas, periodoParcelas, problemaParcelas } from '../lib/parcelas'
+import { useAbrirNovoPeloLink } from '../hooks/useAbrirNovoPeloLink'
 
 const t = copy.entradas
 const novoForm = () => ({ descricao: '', valor: '', tipo: 'avulso', recorrente: false, parcelada: false, num_parcelas: '', data: hojeISO() })
@@ -88,6 +89,7 @@ export default function Entradas() {
     if (!error) carregar()
   }
 
+  useAbrirNovoPeloLink(abrirNovo) // ?novo=1 (primeiros passos, A8.10)
   function abrirNovo() {
     setEditando(null); setEscopo('esta'); setForm(novoForm()); setModal(true)
   }
