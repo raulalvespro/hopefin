@@ -220,7 +220,7 @@ async function interpretar(u: any, texto: string, pendente?: Record<string, unkn
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify({ model: MODELO, max_tokens: 700, system, messages: [{ role: 'user', content: userMsg }] }),
+        body: JSON.stringify({ model: MODELO, max_tokens: 1500, system, messages: [{ role: 'user', content: userMsg }] }), // 1500: cabe a lista de vários
       })
       const out = await r.json()
       if (!r.ok) throw new Error(out?.error?.message || `Anthropic HTTP ${r.status}`)
@@ -345,6 +345,18 @@ async function processar(m: any, ctx: Ctx) {
   }
   if (pendAtiva) {
     if (J.ehSim(texto)) return executarPendencia(u, pend, responder)
+    // Lista de vários esperando o "sim": "tira o 2" / "o 3 é 70" arrumam a lista sem IA.
+    if (pend.acao === 'lancar_varios') {
+      const ed = J.editarLista(texto, pend.itens)
+      if (ed?.erro) return responder(J.TEXTOS_VARIOS.numeroInvalido(ed.n, (pend.itens || []).length), 'resposta', 'vários: número inválido')
+      if (ed?.itens) {
+        if (!ed.itens.length) { await limparPendencia(u.usuario_id); return responder(J.TEXTOS_VARIOS.esvaziou, 'resposta', 'vários: esvaziou') }
+        try { await guardarPendencia(u, { acao: 'lancar_varios', itens: ed.itens }) } catch (_) {
+          return responder(J.TEXTOS.falhaSalvar, 'erro', 'falha pendência')
+        }
+        return responder(J.TEXTOS_VARIOS.pergunta(ed.itens, hojeBRT(), true), 'resposta', 'vários: arrumou')
+      }
+    }
     await limparPendencia(u.usuario_id)
     if (J.ehNao(texto)) return responder(J.TEXTOS.cancelado, 'resposta', 'cancelou')
     pendAnterior = pend                            // a pessoa mandou outra coisa: vale a mensagem nova
@@ -389,6 +401,18 @@ async function processar(m: any, ctx: Ctx) {
       if (!dados.valor) return responder(J.TEXTOS.semValor, 'erro', 'sem valor')
       if (J.emDuvida(dados)) return perguntar({ acao: 'lancar', dados }, J.TEXTOS.taCerto(dados, hoje), 'tá certo?')
       return salvarLancamento(u, dados, responder)
+    }
+    case 'lancar_varios': {
+      // Vários lançamentos numa mensagem (21/11/2026): SEMPRE lista e pergunta antes de salvar.
+      const itens = dados.itens || []
+      if (!itens.length) return responder(J.TEXTOS.semValor, 'erro', 'vários: sem valor')
+      if (itens.length === 1) {
+        const um = { ...itens[0], acao: 'lancar', confianca: dados.confianca }
+        if (J.emDuvida(um)) return perguntar({ acao: 'lancar', dados: um }, J.TEXTOS.taCerto(um, hoje), 'tá certo?')
+        return salvarLancamento(u, um, responder)
+      }
+      if (itens.length > J.VARIOS_MAX) return responder(J.TEXTOS_VARIOS.muitos(itens.length), 'resposta', `vários: ${itens.length} (muitos)`)
+      return perguntar({ acao: 'lancar_varios', itens }, J.TEXTOS_VARIOS.pergunta(itens, hoje), `vários: ${itens.length}?`)
     }
     case 'corrigir_ultimo': {
       if (!dados.valor) return responder(J.TEXTOS.semValor, 'erro', 'sem valor')
@@ -468,6 +492,25 @@ function textoMotivo(motivo: string | undefined): string {
 async function executarPendencia(u: any, pend: any, responder: Responder) {
   await limparPendencia(u.usuario_id)
   if (pend.acao === 'lancar') return salvarLancamento(u, pend.dados || {}, responder)
+  if (pend.acao === 'lancar_varios') {
+    // Salva um por um (cada um conta 1 no limite do mês, como mandar separado). Para no 1º que o
+    // banco barrar por limite ou assinatura; outro erro pula e segue.
+    const itens = (pend.itens || []).slice(0, J.VARIOS_MAX)
+    const salvos: any[] = []
+    let motivo: string | null = null
+    for (const it of itens) {
+      const { data: r } = await admin.rpc('wa_salvar_lancamento', { p_grupo: u.grupo_id, p_usuario: u.usuario_id, p_dados: J.paraSalvar(it) })
+      if (r?.ok) { salvos.push(J.comoVaiSalvar(it)); continue }
+      motivo = r?.motivo || 'falha'
+      if (motivo === 'limite' || motivo === 'assinatura') break
+    }
+    if (salvos.length === itens.length) return responder(J.TEXTOS_VARIOS.lancados(u.nome, salvos, hojeBRT()), 'lancamento', `vários: ${salvos.length}`)
+    if (!salvos.length) {
+      const msg = motivo === 'limite' ? J.TEXTOS.limite : motivo === 'assinatura' ? J.TEXTOS.assinatura : J.TEXTOS.falhaSalvar
+      return responder(msg, 'erro', `vários: ${motivo}`)
+    }
+    return responder(J.TEXTOS_VARIOS.parcial(salvos.length, itens.length, motivo), 'lancamento', `vários: ${salvos.length}/${itens.length} (${motivo})`)
+  }
   if (pend.acao === 'corrigir') return corrigir(u, pend.id, Number(pend.valor), responder)
   if (pend.acao === 'apagar') {
     const { data: r } = await admin.rpc('wa_apagar_ultimo', { p_grupo: u.grupo_id, p_usuario: u.usuario_id, p_id: pend.id })

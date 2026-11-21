@@ -111,8 +111,9 @@ export const TEXTOS = {
     '',
     '💳 *Fatura paga:* "paguei a fatura do Nubank"',
     '✏️ *Errou?* "o valor era 50" ou "apaga o último"',
+    '📋 *Vários de uma vez:* "mercado 300, farmácia 80 e uber 25" (até 5, eu mostro a lista antes de lançar)',
     '',
-    'Eu entendo sozinho o valor, a data ("ontem", "sexta", "dia 3"), a categoria, o cartão e as parcelas. Manda um lançamento de cada vez. 💙',
+    'Eu entendo sozinho o valor, a data ("ontem", "sexta", "dia 3"), a categoria, o cartão e as parcelas. 💙',
   ].join('\n'),
 
   // --- novos (organização aprovada em 20/11, tarde; textos na nota do Obsidian) ---
@@ -137,7 +138,7 @@ export const TEXTOS = {
     '💰 lanço entradas: *recebi 2000 de salário*',
     '💳 marco fatura paga: *paguei a fatura do Nubank*',
     '✏️ arrumo o último: *o valor era 50* ou *apaga o último*',
-    'Manda um de cada vez 😉',
+    '📋 lanço vários de uma vez (até 5): *mercado 300, farmácia 80 e uber 25* — eu mostro a lista e você confirma',
   ].join('\n'),
   pergunta: 'Ainda não respondo perguntas por aqui, mas tá chegando 🚧 Por enquanto, o Início do app mostra quanto entrou, quanto saiu e o que falta pagar no mês.',
   investimento: 'Dica de investimento eu não dou 🙏 Isso é com um assessor de investimentos registrado na CVM. O que eu faço é te ajudar a organizar as contas da família pra sobrar mais todo mês 💙',
@@ -238,7 +239,7 @@ export function respostaRapida(texto) {
 }
 
 // ---------------------------------------------------------------- IA
-export const ACOES = ['lancar', 'pagar_fatura', 'apagar_ultimo', 'corrigir_ultimo', 'saudacao', 'agradecimento',
+export const ACOES = ['lancar', 'lancar_varios', 'pagar_fatura', 'apagar_ultimo', 'corrigir_ultimo', 'saudacao', 'agradecimento',
   'ajuda', 'pergunta', 'investimento', 'outro']
 
 // Instruções do Joca para a IA (Claude Haiku). A regra de NÃO recomendar investimento fica
@@ -255,7 +256,8 @@ export function instrucoesIA({ hoje, semana, categorias }) {
     '- Nunca invente valores, datas ou cartões que a pessoa não disse.',
     '',
     'Escolha a "acao":',
-    '- "lancar": a pessoa conta um gasto ou um dinheiro que entrou. Ex.: "mercado 120", "uber 23,50 ontem", "tênis 300 em 3x no Nubank", "recebi 2000 de salário".',
+    '- "lancar": a pessoa conta UM gasto ou UM dinheiro que entrou. Ex.: "mercado 120", "uber 23,50 ontem", "tênis 300 em 3x no Nubank", "recebi 2000 de salário".',
+    '- "lancar_varios": a mensagem conta DOIS OU MAIS lançamentos diferentes, cada um com o seu valor. Ex.: "mercado 300, farmácia 80 no dinheiro e uber 25", "gastei 50 de pão e 120 de gasolina". Cuidado: "3x de 100" ou "parcelado em 3" é UMA compra parcelada ("lancar" com parcelas), não vários. Se não der pra saber se são várias compras ou uma parcelada, use "lancar_varios" com confianca baixa.',
     '- "pagar_fatura": diz que PAGOU a fatura de um cartão. Ex.: "paguei a fatura do Nubank", "fatura do Itaú paga". Isso NÃO é um gasto novo.',
     '- "apagar_ultimo": pede pra apagar ou desfazer o último lançamento. Ex.: "apaga o último", "lancei errado, apaga".',
     '- "corrigir_ultimo": corrige o VALOR do último lançamento. Ex.: "o valor era 50", "na verdade foi 45,90".',
@@ -277,6 +279,7 @@ export function instrucoesIA({ hoje, semana, categorias }) {
     '- parcelas: inteiro >= 1 (1 = à vista) (só em "lancar")',
     '- forma: só em gasto SEM cartão: "dinheiro" quando a pessoa disser dinheiro ou espécie; "pix" em todo o resto (Pix, débito, transferência, boleto ou quando não disser). Com cartão ou em entrada: null.',
     '- confianca: de 0 a 1, o quanto você tem certeza da ação e dos campos principais (valor e tipo). Se faltar o valor ou a frase for ambígua, use confiança baixa (abaixo de 0.6).',
+    '- itens: SÓ em "lancar_varios": lista com um objeto por lançamento, cada um com tipo, valor, descricao, categoria, cartao_id, data, parcelas e forma (mesmas regras acima). Nos outros casos, null.',
     '',
     'Se vier "pendente" (um lançamento que o Joca perguntou "tá certo?" e ainda NÃO foi salvo) e a mensagem corrigir algo dele (valor, cartão, data, categoria, parcelas ou descrição), use acao "lancar" e devolva o lançamento COMPLETO já corrigido.',
   ].join('\n')
@@ -326,6 +329,13 @@ export function limparIA(dados, { texto, hoje, categorias, cartoes }) {
     data: /^\d{4}-\d{2}-\d{2}$/.test(String(d.data || '')) ? d.data : hoje,
     parcelas: Number.isInteger(parcelas) && parcelas > 1 && parcelas <= 72 ? parcelas : 1,
     confianca: Number.isFinite(conf) ? Math.min(1, Math.max(0, conf)) : 0.5,
+    // Vários lançamentos numa mensagem (21/11/2026): cada item passa pela MESMA limpeza.
+    itens: acao === 'lancar_varios'
+      ? (Array.isArray(d.itens) ? d.itens : []).slice(0, 20)
+        .map((i) => limparIA({ ...i, acao: 'lancar' }, { texto: [i?.descricao, i?.forma].filter(Boolean).join(' '), hoje, categorias, cartoes: listaCartoes }))
+        .filter((i) => i.valor)
+        .map(({ itens: _i, acao: _a, ...resto }) => resto)
+      : null,
   }
 }
 
@@ -358,3 +368,75 @@ export function msgLancado(nome, d, hoje) {
 
 // Custo da transcrição (OpenAI Whisper): US$ 0,006 por minuto, cobrado por segundo.
 export const custoAudioUsd = (segundos) => Math.max(0, Number(segundos) || 0) / 60 * 0.006
+
+// ---------------------------------------------------------------- vários lançamentos (21/11/2026)
+// Uma mensagem com vários gastos ("mercado 300, farmácia 80 e uber 25"): o Joca SEMPRE lista e
+// pergunta "tá certo?" antes de salvar. Até VARIOS_MAX por mensagem; acima disso, o app.
+// Correção sem IA: "tira o 2" e "o 3 é 70".
+export const VARIOS_MAX = 5
+export const LINK_LANCAR_VARIOS = 'app.hopefin.com.br/lancar-varios'
+
+// Uma linha por lançamento: "1. 💸 *R$ 300,00* · Mercado · Pix"
+export function linhaItem(d, n, hoje) {
+  const entrada = d.tipo === 'entrada'
+  const partes = [`${n}. ${entrada ? '💰' : '💸'} *${brl(d.valor)}* · ${d.descricao}`]
+  if (!entrada) partes.push(d.cartao_nome ? `${d.cartao_nome}${d.parcelas > 1 ? ` ${d.parcelas}x` : ''}` : rotuloForma(d.forma))
+  if (d.data && d.data !== hoje) partes.push(`📅 ${ddmm(d.data)}`)
+  return partes.join(' · ')
+}
+export const listaItens = (itens, hoje) => itens.map((d, i) => linhaItem(d, i + 1, hoje)).join('\n')
+
+export const TEXTOS_VARIOS = {
+  pergunta: (itens, hoje, arrumei = false) => [
+    arrumei ? `Arrumei 👇 Agora são *${itens.length}*:` : `Entendi *${itens.length} lançamentos* 👇`,
+    '',
+    listaItens(itens, hoje),
+    '',
+    'Tá certo? Responde *sim* que eu lanço tudo.',
+    `Pra mudar: *tira o 1* ou *o ${itens.length} é 70*.`,
+  ].join('\n'),
+  lancados: (nome, itens, hoje) => [
+    `${comNome('Prontinho', nome)} Lancei ${itens.length === 1 ? 'o lançamento' : `os ${itens.length}`} 👇`,
+    '',
+    listaItens(itens, hoje),
+  ].join('\n'),
+  parcial: (salvos, total, motivo) => [
+    `Lancei *${salvos} de ${total}* 😕`,
+    motivo === 'limite' ? 'Os outros não couberam no seu limite de lançamentos por WhatsApp deste mês — lança pelo app, que lá segue tudo normal.'
+      : motivo === 'assinatura' ? 'Sua assinatura ficou inativa no meio do caminho — reative no app pra lançar o resto.'
+      : 'Os outros deram erro aqui — confere em Gastos no app e lança o que faltou.',
+  ].join('\n'),
+  muitos: (n) => `Vi *${n} lançamentos* nessa mensagem 😅 Por aqui eu lanço até ${VARIOS_MAX} de cada vez. Manda em partes ou usa o *Lançar vários* do app: ${LINK_LANCAR_VARIOS}`,
+  numeroInvalido: (n, total) => `Não achei o item ${n} 🤔 A lista vai de 1 a ${total}. Ex.: *tira o 2* ou *o 3 é 70*.`,
+  esvaziou: 'Tirei todos, então não lancei nada 👍 Se quiser, me manda de novo.',
+}
+
+// Valor em reais escrito pela pessoa: "70", "70,50", "1.200,50", "1200.5".
+export function lerValor(txt) {
+  let t = String(txt || '').replace(/r\$\s*/i, '').trim()
+  if (/,/.test(t)) t = t.replace(/\./g, '').replace(',', '.')
+  const v = Number(t)
+  return Number.isFinite(v) && v > 0 && v <= 10_000_000 ? Math.round(v * 100) / 100 : null
+}
+
+// "tira o 2" / "o 3 é 70" em cima da lista que espera o "sim". Devolve { itens } (lista nova),
+// { erro: 'numero', n } (não existe esse item) ou null (não é uma edição da lista).
+export function editarLista(texto, itens) {
+  const t = String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+  const lista = Array.isArray(itens) ? itens : []
+  const tirar = t.match(/^(?:tira|tirar|tire|remove|remover|apaga|apagar|exclui|excluir|sem)\s+(?:o\s+|a\s+)?(?:item\s+|numero\s+)?(\d{1,2})\s*$/)
+  if (tirar) {
+    const n = Number(tirar[1])
+    if (n < 1 || n > lista.length) return { erro: 'numero', n }
+    return { itens: lista.filter((_, i) => i !== n - 1) }
+  }
+  const valor = t.match(/^(?:o\s+|a\s+)?(?:item\s+|numero\s+)?(\d{1,2})\s*(?:e|era|eh|=|:|vale|foi|fica|custou)\s+(?:r\$\s*)?(\d[\d.]*(?:,\d{1,2})?)\s*$/)
+  if (valor) {
+    const n = Number(valor[1])
+    const v = lerValor(valor[2])
+    if (n < 1 || n > lista.length) return { erro: 'numero', n }
+    if (!v) return null
+    return { itens: lista.map((it, i) => (i === n - 1 ? { ...it, valor: v } : it)) }
+  }
+  return null
+}
