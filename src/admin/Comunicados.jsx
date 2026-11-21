@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Megaphone, Send, FlaskConical, Smartphone, Bell, Mail } from 'lucide-react'
+import { Megaphone, Send, FlaskConical, Smartphone, Bell, Mail, CalendarClock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
 import { dataHora } from './secoes'
@@ -38,6 +38,8 @@ export default function Comunicados() {
   const [historico, setHistorico] = useState(null)
   const [enviando, setEnviando] = useState(null) // 'teste' | 'enviar'
   const [confirmar, setConfirmar] = useState(false)
+  const [agendar, setAgendar] = useState(false)
+  const [quando, setQuando] = useState('') // datetime-local (horário do computador)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const carregarHistorico = useCallback(async () => {
@@ -56,13 +58,20 @@ export default function Comunicados() {
     return () => { vivo = false }
   }, [form.publico, form.inativos_dias, form.grupo_id])
 
+  async function cancelar(c) {
+    const { error } = await supabase.rpc('admin_comunicado_cancelar', { p_id: c.id })
+    if (error) { toast('Esse já saiu ou já foi cancelado.', 'erro'); return }
+    toast('Envio cancelado.', 'ok'); carregarHistorico()
+  }
+
   const alternarCanal = (c) => set('canais', form.canais.includes(c) ? form.canais.filter(x => x !== c) : [...form.canais, c])
   const valido = form.titulo.trim().length >= 3 && form.texto.trim().length >= 3 && form.canais.length > 0 && (form.publico !== 'grupo' || form.grupo_id)
 
   async function mandar(acao) {
     setConfirmar(false)
     setEnviando(acao)
-    const corpo = { ...form, acao, botao_texto: form.botao_rota ? (form.botao_texto || 'Abrir') : '', inativos_dias: Number(form.inativos_dias) || 14 }
+    const corpo = { ...form, acao, botao_texto: form.botao_rota ? (form.botao_texto || 'Abrir') : '', inativos_dias: Number(form.inativos_dias) || 14,
+      agendado_para: acao === 'agendar' && quando ? new Date(quando).toISOString() : undefined }
     const { data, error } = await supabase.functions.invoke('admin-comunicado', { body: corpo })
     setEnviando(null)
     if (error || data?.erro) {
@@ -73,8 +82,9 @@ export default function Comunicados() {
     }
     toast(acao === 'teste'
       ? `Teste enviado pra você (${data.push} notificação, ${data.emails} e-mail). Olhe o Início do app.`
+      : acao === 'agendar' ? `Agendado pra ${dataHora(data.agendado_para)}.`
       : `Enviado pra ${data.destinatarios} pessoas · ${data.push} notificações · ${data.emails} e-mails.`, 'ok')
-    if (acao === 'enviar') setForm(VAZIO)
+    if (acao !== 'teste') { setForm(VAZIO); setAgendar(false); setQuando('') }
     carregarHistorico()
   }
 
@@ -143,24 +153,35 @@ export default function Comunicados() {
           <button className="btn-ghost" disabled={!valido || !!enviando} onClick={() => mandar('teste')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <FlaskConical size={15} /> {enviando === 'teste' ? 'Enviando…' : 'Enviar teste pra mim'}
           </button>
-          <button className="btn-primary" disabled={!valido || !!enviando || !previa?.pessoas} onClick={() => setConfirmar(true)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <Send size={15} /> {enviando === 'enviar' ? 'Enviando…' : 'Enviar'}
+          <button className="btn-primary" disabled={!valido || !!enviando || !previa?.pessoas || (agendar && !quando)} onClick={() => setConfirmar(true)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            {agendar ? <CalendarClock size={15} /> : <Send size={15} />} {enviando === 'enviar' || enviando === 'agendar' ? 'Salvando…' : agendar ? 'Agendar' : 'Enviar agora'}
           </button>
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginTop: 12, cursor: 'pointer' }}>
+          <input type="checkbox" checked={agendar} onChange={e => setAgendar(e.target.checked)} style={{ width: 'auto' }} /> Agendar pra outro dia ou horário
+        </label>
+        {agendar && (
+          <div className="form-group" style={{ marginTop: 8 }}><label>Data e hora do envio</label>
+            <input type="datetime-local" value={quando} onChange={e => setQuando(e.target.value)} />
+            <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>Sai até 5 minutos depois do horário. O público é calculado na hora do envio.</p>
+          </div>
+        )}
         {confirmar && (
           <div style={{ marginTop: 12, padding: 12, borderRadius: 'var(--radius-sm)', border: '1px solid var(--amber)', background: 'var(--amber-dim, rgba(230,160,30,0.12))' }}>
             <p style={{ fontSize: 13.5, marginBottom: 10, lineHeight: 1.5 }}>
-              Enviar “<strong>{form.titulo}</strong>” para <strong>{previa?.pessoas} pessoa(s)</strong> ({nomePublico(form)}) por {nomesCanais(form.canais)}? Não dá pra desfazer.
+              {agendar
+                ? <>Agendar “<strong>{form.titulo}</strong>” pra <strong>{quando ? dataHora(new Date(quando).toISOString()) : '—'}</strong> ({nomePublico(form)}, hoje {previa?.pessoas} pessoa(s)) por {nomesCanais(form.canais)}? Dá pra cancelar até a hora.</>
+                : <>Enviar “<strong>{form.titulo}</strong>” para <strong>{previa?.pessoas} pessoa(s)</strong> ({nomePublico(form)}) por {nomesCanais(form.canais)}? Não dá pra desfazer.</>}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn-ghost" onClick={() => setConfirmar(false)} style={{ flex: 1 }}>Voltar</button>
-              <button className="btn-primary" onClick={() => mandar('enviar')} style={{ flex: 1 }}>Sim, enviar</button>
+              <button className="btn-primary" onClick={() => mandar(agendar ? 'agendar' : 'enviar')} style={{ flex: 1 }}>{agendar ? 'Sim, agendar' : 'Sim, enviar'}</button>
             </div>
           </div>
         )}
       </div>
 
-      <h3 style={{ fontSize: 14, marginBottom: 8 }}>Enviados</h3>
+      <h3 style={{ fontSize: 14, marginBottom: 8 }}>Enviados e agendados</h3>
       {!historico ? <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando…</p>
         : historico.length === 0 ? <p style={{ fontSize: 13, color: 'var(--text2)' }}>Nenhum comunicado ainda.</p>
         : historico.map(c => (
@@ -169,8 +190,16 @@ export default function Comunicados() {
               <strong style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {c.teste && <span className="tag tag-amber" style={{ marginRight: 6 }}>teste</span>}{c.titulo}
               </strong>
-              <span style={{ color: 'var(--text2)', flexShrink: 0 }}>{dataHora(c.enviado_em || c.criado_em)}</span>
+              <span style={{ color: 'var(--text2)', flexShrink: 0 }}>{dataHora(c.enviado_em || c.agendado_para || c.criado_em)}</span>
             </div>
+            {c.agendado_para && !c.enviado_em && (
+              <p style={{ marginTop: 3, display: 'flex', gap: 10, alignItems: 'center' }}>
+                {c.cancelado_em
+                  ? <span className="tag tag-red">cancelado</span>
+                  : <><span className="tag tag-amber">agendado pra {dataHora(c.agendado_para)}</span>
+                     <button className="btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => cancelar(c)}>Cancelar envio</button></>}
+              </p>
+            )}
             <p style={{ color: 'var(--text2)', marginTop: 3, lineHeight: 1.5 }}>
               {c.teste ? 'Só pra você' : nomePublico(c)} · {nomesCanais(c.canais)} · {c.destinatarios} pessoa(s) · {c.vistos} viram · {c.clicados} tocaram no botão · {c.enviados_push} notificações · {c.enviados_email} e-mails
             </p>

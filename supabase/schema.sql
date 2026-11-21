@@ -752,6 +752,8 @@ alter table public.usuarios add column if not exists recebe_comunicados boolean 
 -- app). Trigger marca na criação/edição; as telas de mês (motor-dados, Gastos, Contas do mês, A receber,
 -- Importar) filtram antes_do_app = false. Nada é apagado; "3 de 10" continua certo.
 alter table public.parcelas add column if not exists antes_do_app boolean not null default false;
+-- 0089 (21/11): comunicados.agendado_para + cancelado_em; admin_comunicado_cancelar; função comunicados-agendados
+-- (cron hopefin-comunicados-agendados, 5 em 5 min, só quando há algum na hora). Entrega em _shared/comunicado.ts.
 
 -- ============================================================
 -- FIM
