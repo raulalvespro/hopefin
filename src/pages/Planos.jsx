@@ -9,6 +9,7 @@ import { lerCupom, limparCupom } from '../lib/cupom'
 import { Tag } from '../components/ui'
 import { copy } from '../copy/pt-BR'
 import { useFlags } from '../hooks/useFlags'
+import { useMeuDesconto } from '../hooks/useMeuDesconto'
 
 const t = copy.planos
 
@@ -41,7 +42,8 @@ export default function Planos() {
     })
   }, [])
 
-  const p = precosVigentes(cfg)
+  const { desconto, recarregar: recarregarDesconto } = useMeuDesconto()
+  const p = precosVigentes(cfg, desconto?.desconto_pct)
 
   // Resumo real do teste: o que a família já fez desde que o teste começou.
   const inicioTeste = assinatura?.trial_started_at
@@ -61,7 +63,7 @@ export default function Planos() {
     const codigo = cupom.trim()
     if (!codigo) return
     setResgatando(true); setCupomMsg(null)
-    const { error } = await supabase.rpc('resgatar_cupom', { p_codigo: codigo })
+    const { data: res, error } = await supabase.rpc('resgatar_cupom', { p_codigo: codigo })
     setResgatando(false)
     if (error) {
       const m = (error.message || '').toLowerCase()
@@ -70,7 +72,12 @@ export default function Planos() {
         : t.cupomErro
       setCupomMsg({ ok: false, texto }); return
     }
-    setCupomMsg({ ok: true, texto: t.cupomOk })
+    if (res?.tipo === 'desconto') {
+      setCupomMsg({ ok: true, texto: t.cupomDescontoOk(res.desconto_pct) })
+      recarregarDesconto()
+    } else {
+      setCupomMsg({ ok: true, texto: t.cupomOk })
+    }
     setCupom('')
     limparCupom()
   }
@@ -212,6 +219,12 @@ export default function Planos() {
       </div>
 
       {/* Cupom */}
+      {desconto ? (
+        <div className="card" style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <TagIcon size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 2 }} />
+          <p style={{ fontSize: 13, lineHeight: 1.5 }}>{t.descontoAtivo(desconto.codigo, desconto.desconto_pct)}</p>
+        </div>
+      ) : (
       <div className="card" style={{ marginBottom: 16 }}>
         <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13.5, marginBottom: 8 }}>
           <TagIcon size={15} color="var(--accent)" /> {t.cupomTitulo}
@@ -234,6 +247,7 @@ export default function Planos() {
           </p>
         )}
       </div>
+      )}
 
       <p style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center', lineHeight: 1.6 }}>
         {t.rodapeAntes}<Link to="/configuracoes" style={{ color: 'var(--accent-text)', fontWeight: 500 }}>{t.rodapeLink}</Link>{t.rodapeDepois}

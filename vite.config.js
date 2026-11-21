@@ -3,7 +3,14 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
 
+import { readFileSync } from 'node:fs'
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+// Versão que aparece na Minha conta (ajuda no atendimento: "qual versão você tem?").
+const VERSAO = `${pkg.version} · ${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+
 export default defineConfig({
+  define: { __VERSAO_APP__: JSON.stringify(VERSAO) },
   // @motor = motor único de cálculo (o MESMO arquivo que as Edge Functions usam).
   resolve: {
     alias: { '@motor': fileURLToPath(new URL('./supabase/functions/_shared', import.meta.url)) },

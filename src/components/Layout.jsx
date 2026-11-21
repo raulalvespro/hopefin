@@ -3,8 +3,7 @@ import { tourVisto } from '../lib/tour'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar,
-  LogOut, MoreHorizontal, X, Target, PiggyBank, Settings, CalendarCheck, Repeat, ClipboardCheck, Bell, Clock, History, Coins,
-  ChevronRight, Database, Users, Sparkles, LifeBuoy,
+  MoreHorizontal, X, Target, PiggyBank, CalendarCheck, Repeat, ClipboardCheck, Bell, Clock, History, Coins,
 } from 'lucide-react'
 import { useState } from 'react'
 import InstalarApp from './InstalarApp'
@@ -13,11 +12,9 @@ import AvisoOffline from './AvisoOffline'
 import Avatar from './Avatar'
 import Logo from './Logo'
 import BannerAssinatura from './BannerAssinatura'
-import Ajuda, { EVENTO_ABRIR_AJUDA } from './Ajuda'
+import Ajuda from './Ajuda'
 import { useFlags } from '../hooks/useFlags'
 import { useAlertas } from '../hooks/useAlertas'
-import { useAssinatura } from '../hooks/useAssinatura'
-import { fmtData } from '../lib/format'
 import { copy } from '../copy/pt-BR'
 
 const tmc = copy.minhaConta
@@ -56,20 +53,13 @@ const navMais = [
   // Configurações saiu daqui (A8.12): fica no menu "Minha conta", na foto do perfil.
 ]
 
-// Menu "Minha conta" (A8.12)
-const itensConta = [
-  { to: '/configuracoes', label: tmc.configuracoes, sub: tmc.configuracoesSub, icon: Settings },
-  { to: '/pessoas', label: tmc.pessoas, sub: tmc.pessoasSub, icon: Users },
-  { to: '/meus-dados', label: tmc.meusDados, sub: tmc.meusDadosSub, icon: Database },
-]
+// "Minha conta" (A8.12) virou tela própria (/conta, src/pages/MinhaConta.jsx), aberta pela foto do perfil.
 
 export default function Layout() {
   const { perfil, user, logout, loading: carregandoAuth, erroPerfil, carregarPerfil } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [mais, setMais] = useState(false)
-  const [conta, setConta] = useState(false) // menu "Minha conta" (A8.12)
-  const plano = useAssinatura()
   const flags = useFlags() // botão de Ajuda só com a chave "ajuda" (L29), até o Raul liberar
   const [alertasAbertos, setAlertasAbertos] = useState(false)
   const { alertas, recarregar: recarregarAlertas, dispensar, snoozeAmanha, dispensarTodos } = useAlertas()
@@ -193,7 +183,7 @@ export default function Layout() {
           </div>
 
           {perfil && (
-            <button onClick={() => setConta(true)} aria-label={tmc.abrir} title={tmc.abrir} style={{ display: 'flex', alignItems: 'center', borderRadius: '50%' }}>
+            <button onClick={() => navigate('/conta')} aria-label={tmc.abrir} title={tmc.abrir} style={{ display: 'flex', alignItems: 'center', borderRadius: '50%' }}>
               <Avatar nome={perfil.nome} foto={perfil.foto_url} size={30} />
             </button>
           )}
@@ -240,67 +230,6 @@ export default function Layout() {
           Mais
         </button>
       </nav>
-
-      {/* Menu "Minha conta" (A8.12) — na foto do perfil */}
-      {conta && perfil && (
-        <div className="modal-overlay" onClick={() => setConta(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-label={tmc.titulo}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18 }}>{tmc.titulo}</h2>
-              <button onClick={() => setConta(false)} aria-label={tmc.fechar}><X size={20} color="var(--text2)" /></button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <Avatar nome={perfil.nome} foto={perfil.foto_url} size={52} />
-              <div style={{ minWidth: 0 }}>
-                <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 17 }}>{perfil.nome}</p>
-                {user?.email && <p style={{ fontSize: 12.5, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</p>}
-                {perfil.grupos?.nome && <p style={{ fontSize: 12, color: 'var(--text2)' }}>{tmc.grupo(perfil.grupos.nome)}</p>}
-              </div>
-            </div>
-            {!plano.loading && (
-              <Link to="/planos" onClick={() => setConta(false)} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, textDecoration: 'none', color: 'var(--text)', background: 'var(--accent-dim)', borderColor: 'var(--accent)' }}>
-                <Sparkles size={18} color="var(--accent-text)" />
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontWeight: 600, fontFamily: 'Syne', fontSize: 14 }}>{tmc.meuPlano}</span>
-                  <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>{(() => {
-                    const r = tmc.plano[plano.estado] ?? tmc.plano.sem_assinatura
-                    if (typeof r !== 'function') return r
-                    if (plano.estado === 'trial') return r(plano.diasRestantes)
-                    const d = plano.estado === 'ativa' ? plano.renovaEm : plano.terminaEm
-                    return r(d ? fmtData(String(d).slice(0, 10), 'dd/MM/yyyy') : '')
-                  })()}</span>
-                </span>
-                <ChevronRight size={16} color="var(--text3)" />
-              </Link>
-            )}
-            {itensConta.map(({ to, label, sub, icon: Icon }) => (
-              <Link key={to} to={to} onClick={() => setConta(false)} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, textDecoration: 'none', color: 'var(--text)' }}>
-                <Icon size={18} color="var(--accent)" />
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontWeight: 600, fontFamily: 'Syne', fontSize: 14 }}>{label}</span>
-                  <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>{sub}</span>
-                </span>
-                <ChevronRight size={16} color="var(--text3)" />
-              </Link>
-            ))}
-            {/* Ajuda e atendimento (mesma folha do botão "Ajuda" do topo) */}
-            {flags?.ajuda && (
-              <button type="button" onClick={() => { setConta(false); window.dispatchEvent(new CustomEvent(EVENTO_ABRIR_AJUDA, { detail: { vista: 'inicio' } })) }}
-                className="card" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, textAlign: 'left', color: 'var(--text)' }}>
-                <LifeBuoy size={18} color="var(--accent)" />
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontWeight: 600, fontFamily: 'Syne', fontSize: 14 }}>{copy.ajuda.menuConta}</span>
-                  <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>{copy.ajuda.menuContaSub}</span>
-                </span>
-                <ChevronRight size={16} color="var(--text3)" />
-              </button>
-            )}
-            <button onClick={() => { setConta(false); handleLogout() }} className="btn-ghost" style={{ width: '100%', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--red-text)' }}>
-              <LogOut size={16} /> {tmc.sair}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Sheet "Mais" */}
       {mais && (

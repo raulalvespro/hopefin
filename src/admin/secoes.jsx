@@ -498,46 +498,91 @@ export function Administradores() {
 }
 
 /* ============================ CUPONS ============================ */
+// Dois tipos (0084): cortesia (grupo usa de graça) e desconto (% no preço na hora de assinar, travado
+// nas renovações). Prazo = "Resgate até". Editar recarrega o cupom no formulário (o código não muda).
+const CUPOM_VAZIO = { codigo: '', tipo: 'cortesia', desconto_pct: 20, max_usos: 50, resgate_ate: '', whatsapp_limite_mes: 100 }
+const ERRO_CUPOM = {
+  codigo_invalido: 'Código: de 3 a 30 letras, números, - ou _.',
+  desconto_invalido: 'Desconto: de 1% a 90%.',
+  tipo_travado: 'Esse cupom já foi usado: não dá pra trocar o tipo. Crie outro código.',
+}
 export function Cupons({ cupons, recarregar }) {
   const { toast } = useToast()
   const [novo, setNovo] = useState(false)
-  const [form, setForm] = useState({ codigo: '', max_usos: 50, resgate_ate: '', whatsapp_limite_mes: 100 })
+  const [editando, setEditando] = useState(null) // código em edição
+  const [form, setForm] = useState(CUPOM_VAZIO)
   const [salvando, setSalvando] = useState(false)
+  const args = (c, ativo) => ({
+    p_codigo: c.codigo, p_max_usos: Number(c.max_usos), p_resgate_ate: c.resgate_ate || null,
+    p_whatsapp_limite_mes: Number(c.whatsapp_limite_mes), p_ativo: ativo,
+    p_tipo: c.tipo || 'cortesia', p_desconto_pct: c.tipo === 'desconto' ? Number(c.desconto_pct) : null,
+  })
+  const erroDe = (error) => ERRO_CUPOM[Object.keys(ERRO_CUPOM).find(k => (error.message || '').includes(k))] || error.message || 'Falhou.'
+  function fechar() { setNovo(false); setEditando(null); setForm(CUPOM_VAZIO) }
+  function editar(c) {
+    setEditando(c.codigo); setNovo(true)
+    setForm({ codigo: c.codigo, tipo: c.tipo || 'cortesia', desconto_pct: c.desconto_pct ?? 20, max_usos: c.max_usos, resgate_ate: c.resgate_ate || '', whatsapp_limite_mes: c.whatsapp_limite_mes, ativo: c.ativo })
+  }
   async function salvar() {
     if (!form.codigo.trim()) return toast('Informe o código.', 'erro')
+    if (form.tipo === 'desconto' && !(Number(form.desconto_pct) >= 1 && Number(form.desconto_pct) <= 90)) return toast(ERRO_CUPOM.desconto_invalido, 'erro')
     setSalvando(true)
-    const { error } = await supabase.rpc('admin_salvar_cupom', { p_codigo: form.codigo, p_max_usos: Number(form.max_usos), p_resgate_ate: form.resgate_ate || null, p_whatsapp_limite_mes: Number(form.whatsapp_limite_mes), p_ativo: true })
+    const { error } = await supabase.rpc('admin_salvar_cupom', args(form, editando ? form.ativo !== false : true))
     setSalvando(false)
-    if (error) return toast(error.message || 'Falhou.', 'erro')
-    toast('Cupom salvo.', 'ok'); setNovo(false); setForm({ codigo: '', max_usos: 50, resgate_ate: '', whatsapp_limite_mes: 100 }); recarregar()
+    if (error) return toast(erroDe(error), 'erro')
+    toast('Cupom salvo.', 'ok'); fechar(); recarregar()
   }
   async function toggle(c) {
-    const { error } = await supabase.rpc('admin_salvar_cupom', { p_codigo: c.codigo, p_max_usos: c.max_usos, p_resgate_ate: c.resgate_ate, p_whatsapp_limite_mes: c.whatsapp_limite_mes, p_ativo: !c.ativo })
-    if (error) return toast('Falhou.', 'erro'); recarregar()
+    const { error } = await supabase.rpc('admin_salvar_cupom', args(c, !c.ativo))
+    if (error) return toast(erroDe(error), 'erro'); recarregar()
   }
   return (
     <section className="adm-sec">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <h2 style={{ margin: 0 }}><Ticket size={16} color="var(--amber)" /> Cupons</h2>
-        <button className="btn-ghost" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => setNovo(v => !v)}>{novo ? 'Cancelar' : '+ Novo'}</button>
+        <button className="btn-ghost" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => (novo ? fechar() : setNovo(true))}>{novo ? 'Cancelar' : '+ Novo'}</button>
       </div>
       {novo && (
         <div style={{ background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 14, marginBottom: 14 }}>
+          {editando && <p style={{ fontSize: 12.5, color: 'var(--text2)', marginBottom: 10 }}>Editando <strong>{editando}</strong></p>}
           <div className="form-row">
-            <div className="form-group"><label>Código</label><input value={form.codigo} onChange={e => setForm(p => ({ ...p, codigo: e.target.value.toUpperCase() }))} placeholder="IGREJA2026" /></div>
+            <div className="form-group"><label>Código</label><input value={form.codigo} disabled={!!editando} onChange={e => setForm(p => ({ ...p, codigo: e.target.value.toUpperCase() }))} placeholder="IGREJA2026" /></div>
+            <div className="form-group"><label>Tipo</label>
+              <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}>
+                <option value="cortesia">Cortesia (sem cobrança)</option>
+                <option value="desconto">Desconto (% no preço)</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-row">
+            {form.tipo === 'desconto'
+              ? <div className="form-group"><label>Desconto (%)</label><input type="number" inputMode="numeric" min="1" max="90" value={form.desconto_pct} onChange={e => setForm(p => ({ ...p, desconto_pct: e.target.value }))} /></div>
+              : <div className="form-group"><label>WhatsApp/mês</label><input type="number" inputMode="decimal" min="0" value={form.whatsapp_limite_mes} onChange={e => setForm(p => ({ ...p, whatsapp_limite_mes: e.target.value }))} /></div>}
             <div className="form-group"><label>Máx. usos</label><input type="number" inputMode="decimal" min="1" value={form.max_usos} onChange={e => setForm(p => ({ ...p, max_usos: e.target.value }))} /></div>
           </div>
           <div className="form-row">
-            <div className="form-group"><label>Resgate até</label><input type="date" value={form.resgate_ate} onChange={e => setForm(p => ({ ...p, resgate_ate: e.target.value }))} /></div>
-            <div className="form-group"><label>WhatsApp/mês</label><input type="number" inputMode="decimal" min="0" value={form.whatsapp_limite_mes} onChange={e => setForm(p => ({ ...p, whatsapp_limite_mes: e.target.value }))} /></div>
+            <div className="form-group"><label>Resgate até (prazo)</label><input type="date" value={form.resgate_ate} onChange={e => setForm(p => ({ ...p, resgate_ate: e.target.value }))} /></div>
           </div>
+          {form.tipo === 'desconto' && (
+            <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, marginBottom: 10 }}>
+              O desconto vale no mensal, no anual Pix e no anual cartão (na parcela), em cima do preço do dia (com o de lançamento, se ainda valer).
+              O preço com desconto fica travado nas renovações. Não tira a pessoa do teste grátis.
+            </p>
+          )}
           <button className="btn-primary" onClick={salvar} disabled={salvando} style={{ width: '100%' }}>{salvando ? 'Salvando…' : 'Salvar cupom'}</button>
         </div>
       )}
       {!cupons || cupons.length === 0 ? <p style={{ fontSize: 13, color: 'var(--text2)' }}>Nenhum cupom.</p> : cupons.map(c => (
         <div key={c.codigo} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderTop: '1px solid var(--border)', fontSize: 14 }}>
-          <div><strong>{c.codigo}</strong><span style={{ color: 'var(--text2)', fontSize: 12, marginLeft: 8 }}>{c.usos}/{c.max_usos} usos · até {dataCurta(c.resgate_ate)}</span></div>
-          <button className={`tag ${c.ativo ? 'tag-green' : 'tag-red'}`} onClick={() => toggle(c)} style={{ cursor: 'pointer' }}>{c.ativo ? 'ativo' : 'inativo'}</button>
+          <div style={{ minWidth: 0 }}>
+            <strong>{c.codigo}</strong>
+            <span className={`tag ${c.tipo === 'desconto' ? 'tag-amber' : 'tag-green'}`} style={{ marginLeft: 8 }}>{c.tipo === 'desconto' ? `−${c.desconto_pct}%` : 'cortesia'}</span>
+            <span style={{ color: 'var(--text2)', fontSize: 12, marginLeft: 8 }}>{c.usos}/{c.max_usos} usos · até {dataCurta(c.resgate_ate)}</span>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => editar(c)}>Editar</button>
+            <button className={`tag ${c.ativo ? 'tag-green' : 'tag-red'}`} onClick={() => toggle(c)} style={{ cursor: 'pointer' }}>{c.ativo ? 'ativo' : 'inativo'}</button>
+          </div>
         </div>
       ))}
     </section>

@@ -1,3 +1,5 @@
+import { comDesconto, parceladoComDesconto, pctValido } from '../../supabase/functions/_shared/desconto.js'
+
 // Fonte da verdade dos preços é a tabela planos_config no banco (RPC
 // planos_publicos()). Aqui ficam só o fallback (caso a RPC não responda) e os
 // helpers que derivam os preços "vigentes" conforme o lançamento ainda vale.
@@ -25,9 +27,26 @@ export const anoNoMensal = p => p.mensal_centavos * 12
 
 // Preços vigentes (aplica o lançamento quando ainda vale) num formato estável
 // para as telas. Centavos.
-export function precosVigentes(cfg) {
+// descontoPct (opcional): cupom de desconto guardado no grupo (0084) — mensal, anual no Pix e anual
+// no cartão (na parcela) saem com desconto, com a mesma conta do servidor (_shared/desconto.js).
+export function precosVigentes(cfg, descontoPct = null) {
   const p = { ...PRECOS_PADRAO, ...(cfg || {}) }
   const lanc = !!p.lancamento_ativo
+  const base = precosSemDesconto(p, lanc)
+  if (!pctValido(descontoPct)) return { ...base, descontoPct: null, semDesconto: null }
+  const cartao = parceladoComDesconto(base.anualCartao, base.anualCartaoParcela, descontoPct)
+  return {
+    ...base,
+    mensal: comDesconto(base.mensal, descontoPct),
+    anualPix: comDesconto(base.anualPix, descontoPct),
+    anualCartao: cartao.total,
+    anualCartaoParcela: cartao.parcela,
+    descontoPct,
+    semDesconto: { mensal: base.mensal, anualPix: base.anualPix, anualCartao: base.anualCartao, anualCartaoParcela: base.anualCartaoParcela },
+  }
+}
+
+function precosSemDesconto(p, lanc) {
   return {
     bruto: p,
     lancamentoAtivo: lanc,

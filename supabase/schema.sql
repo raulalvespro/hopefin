@@ -732,6 +732,14 @@ alter table public.suporte_emails add column if not exists aviso_dono_em timesta
 create index if not exists idx_suporte_emails_sem_aviso
   on public.suporte_emails (recebido_em) where aviso_dono_em is null and origem = 'app';
 
+-- 0084 (21/11): cupom de DESCONTO. cupons.tipo 'cortesia' | 'desconto' + desconto_pct (1 a 90).
+-- resgatar_cupom: desconto só guarda em cupom_resgates (não tira do teste); meu_desconto() (authenticated)
+-- devolve { codigo, desconto_pct } do grupo; asaas-assinar cobra com desconto (_shared/desconto.js) e o
+-- preço fica travado em preco_centavos. admin_salvar_cupom ganhou p_tipo e p_desconto_pct.
+alter table public.cupons drop constraint if exists cupons_tipo_check;
+alter table public.cupons add constraint cupons_tipo_check check (tipo in ('cortesia', 'desconto'));
+alter table public.cupons add column if not exists desconto_pct int;
+
 -- ============================================================
 -- FIM
 -- ============================================================

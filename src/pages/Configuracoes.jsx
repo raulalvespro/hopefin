@@ -11,27 +11,8 @@ import WhatsAppCard from '../components/WhatsAppCard'
 import { useFlags } from '../hooks/useFlags'
 import { copy } from '../copy/pt-BR'
 import { SENHA_MIN, mensagemErroSenha } from '../lib/acesso'
+import { redimensionar } from '../lib/foto'
 import { Compass, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera, Bell, Upload, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
-
-// Redimensiona (corte quadrado central) para um data URL leve.
-function redimensionar(file, max = 160) {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    const reader = new FileReader()
-    reader.onload = () => { img.src = reader.result }
-    reader.onerror = reject
-    img.onload = () => {
-      const lado = Math.min(img.width, img.height)
-      const sx = (img.width - lado) / 2, sy = (img.height - lado) / 2
-      const canvas = document.createElement('canvas')
-      canvas.width = max; canvas.height = max
-      canvas.getContext('2d').drawImage(img, sx, sy, lado, lado, 0, 0, max, max)
-      resolve(canvas.toDataURL('image/jpeg', 0.82))
-    }
-    img.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
 
 const OPCOES_TEMA = [
   { v: 'auto', label: 'Automático', icon: Monitor },

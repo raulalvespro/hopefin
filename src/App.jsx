@@ -25,6 +25,7 @@ import Orcamento from './pages/Orcamento'
 import Categorias from './pages/Categorias'
 import Configuracoes from './pages/Configuracoes'
 import MeusDados from './pages/MeusDados'
+import MinhaConta from './pages/MinhaConta'
 import Planos from './pages/Planos'
 import Checkout from './pages/Checkout'
 import Fechamento from './pages/Fechamento'
@@ -165,6 +166,7 @@ export default function App() {
         <Route path="categorias" element={<Categorias />} />
         <Route path="configuracoes" element={<Configuracoes />} />
         <Route path="meus-dados" element={<MeusDados />} />
+        <Route path="conta" element={<MinhaConta />} />
         <Route path="planos" element={<Planos />} />
         <Route path="checkout" element={<Checkout />} />
         <Route path="fechamento" element={<Fechamento />} />

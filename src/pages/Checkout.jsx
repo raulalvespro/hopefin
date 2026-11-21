@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { fmt } from '../lib/format'
 import { track } from '../lib/analytics'
 import { precosVigentes } from '../lib/precos'
+import { useMeuDesconto } from '../hooks/useMeuDesconto'
 import { copy } from '../copy/pt-BR'
 
 const METODOS = [
@@ -44,6 +45,7 @@ export default function Checkout() {
   const [agora, setAgora] = useState(() => Date.now()) // relógio p/ a validade do código Pix
 
   useEffect(() => { supabase.rpc('planos_publicos').then(({ data }) => data && setPlanos(data)) }, [])
+  const { desconto } = useMeuDesconto() // cupom de desconto do grupo (0084): mesmo preço que o servidor cobra
   useEffect(() => {
     if (!perfil) return
     setForm(f => ({
@@ -93,7 +95,7 @@ export default function Checkout() {
   }, [etapa])
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
-  const pv = precosVigentes(planos)
+  const pv = precosVigentes(planos, desconto?.desconto_pct)
   // Preço conforme ciclo e método: anual no cartão é parcelado em 12x (total
   // maior por causa das taxas); Pix/boleto no anual é o valor à vista.
   const anualCartao = ciclo === 'anual' && metodo === 'cartao'

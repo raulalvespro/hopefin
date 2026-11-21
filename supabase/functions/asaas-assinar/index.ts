@@ -14,6 +14,7 @@
 // Requer JWT de usuário. Segredos: ASAAS_API_KEY, ASAAS_BASE_URL (opcional).
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { comDesconto, parceladoComDesconto, pctValido } from '../_shared/desconto.js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -81,6 +82,26 @@ Deno.serve(async (req) => {
     centavos = lanc ? cfg.lanc_anual_pix_centavos : cfg.anual_pix_centavos
   }
 
+  // 2b) Cupom de desconto guardado no grupo (0084): mesma conta do app (_shared/desconto.js).
+  //     O preço com desconto vai pro preco_centavos e fica travado nas renovações.
+  let descontoPct: number | null = null
+  let cupomDesconto: string | null = null
+  {
+    const { data: r } = await admin.from('cupom_resgates').select('cupom_codigo, cupons(tipo, desconto_pct)')
+      .eq('grupo_id', perfil.grupo_id).maybeSingle()
+    // deno-lint-ignore no-explicit-any
+    const c = (r as any)?.cupons
+    if (c?.tipo === 'desconto' && pctValido(c.desconto_pct)) { descontoPct = c.desconto_pct; cupomDesconto = r!.cupom_codigo }
+  }
+  if (descontoPct) {
+    if (ciclo === 'anual' && metodo === 'cartao') {
+      const parcelaBase = lanc ? cfg.lanc_anual_cartao_parcela_centavos : cfg.anual_cartao_parcela_centavos
+      centavos = parceladoComDesconto(centavos, parcelaBase, descontoPct).total
+    } else {
+      centavos = comDesconto(centavos, descontoPct)
+    }
+  }
+
   // 3) Captura de lead / carrinho (antes de cobrar): telefone + marca de checkout.
   if (telefone && telefone !== perfil.telefone) {
     await admin.from('usuarios').update({ telefone }).eq('id', u.user.id)
@@ -124,7 +145,7 @@ Deno.serve(async (req) => {
         customer: customerId,
         billingType: 'CREDIT_CARD',
         dueDate: hoje(),
-        description: `HopeFin Família (anual${n > 1 ? `, ${n}x` : ''})`,
+        description: `HopeFin Família (anual${n > 1 ? `, ${n}x` : ''})${cupomDesconto ? ` · cupom ${cupomDesconto} (-${descontoPct}%)` : ''}`,
         externalReference: perfil.grupo_id,
         creditCard: {
           holderName: c.holderName, number: String(c.number || '').replace(/\s/g, ''),
@@ -144,7 +165,7 @@ Deno.serve(async (req) => {
       const pg = await asaas('/payments', { method: 'POST', body: JSON.stringify(cobranca) })
 
       await admin.from('subscriptions').update({
-        titular_id: u.user.id, ciclo, preco_centavos: centavos, parcelas: n,
+        titular_id: u.user.id, ciclo, preco_centavos: centavos, ...(cupomDesconto ? { cupom_codigo: cupomDesconto } : {}), parcelas: n,
         asaas_customer_id: customerId, asaas_subscription_id: null,
         asaas_installment_id: pg.installment || null, asaas_last_payment_id: pg.id,
       }).eq('grupo_id', perfil.grupo_id)
@@ -168,7 +189,7 @@ Deno.serve(async (req) => {
       value: centavos / 100,
       cycle: ciclo === 'anual' ? 'YEARLY' : 'MONTHLY',
       nextDueDate: hoje(),
-      description: `HopeFin Família (${ciclo})`,
+      description: `HopeFin Família (${ciclo})${cupomDesconto ? ` · cupom ${cupomDesconto} (-${descontoPct}%)` : ''}`,
       externalReference: perfil.grupo_id,
     }
     if (metodo === 'cartao') {
@@ -190,7 +211,7 @@ Deno.serve(async (req) => {
     const assinatura = await asaas('/subscriptions', { method: 'POST', body: JSON.stringify(payload) })
 
     await admin.from('subscriptions').update({
-      titular_id: u.user.id, ciclo, preco_centavos: centavos, parcelas: 1, asaas_installment_id: null,
+      titular_id: u.user.id, ciclo, preco_centavos: centavos, ...(cupomDesconto ? { cupom_codigo: cupomDesconto } : {}), parcelas: 1, asaas_installment_id: null,
       asaas_customer_id: customerId, asaas_subscription_id: assinatura.id,
     }).eq('grupo_id', perfil.grupo_id)
 
