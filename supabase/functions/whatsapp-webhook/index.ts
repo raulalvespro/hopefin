@@ -18,7 +18,8 @@
 //   7) áudio -> Whisper; texto -> IA (Claude Haiku) entende a ação e o webhook executa
 //
 // Simulação (testes, sem WhatsApp de verdade): POST com headers x-joca-simulacao: 1 e
-// x-cron-secret: <CRON_SECRET>, corpo { from: '5500...', texto, tipo?: 'audio', transcricao?,
+// x-cron-secret: <CRON_SECRET>, corpo { from: '5500...', texto, tipo?: 'audio'|'image'|'document', transcricao?,
+// midia_b64?, midia_tipo?, legenda?,
 // segundos?, audio_falha? }. Só aceita números de teste 5500... (DDD 00 não existe), NUNCA chama a
 // API da Meta (nem envio, nem mídia) e devolve as respostas no JSON. O resto (IA, banco, consumo,
 // custo) é o caminho de verdade.
@@ -145,6 +146,22 @@ async function transcreverAudio(mediaId: string | undefined): Promise<{ texto: s
   return { texto: String(tj?.text || '').trim(), segundos: Number(tj?.duration) || 0 }
 }
 
+// Baixa uma foto/PDF da Meta (Graph) em base64, com teto de tamanho (21/11/2026: comprovantes).
+async function baixarMidia(mediaId: string | undefined, maxBytes: number): Promise<{ b64: string, mime: string } | { grande: true }> {
+  if (!mediaId) throw new Error('sem media id')
+  const meta = await fetch(`${GRAPH}/${mediaId}`, { headers: { Authorization: `Bearer ${WA_TOKEN}` } })
+  const mj = await meta.json()
+  if (!meta.ok || !mj?.url) throw new Error(mj?.error?.message || 'mídia sem url')
+  if (Number(mj.file_size) > maxBytes) return { grande: true }
+  const bin = await fetch(mj.url, { headers: { Authorization: `Bearer ${WA_TOKEN}` } })
+  if (!bin.ok) throw new Error(`download HTTP ${bin.status}`)
+  const buf = new Uint8Array(await bin.arrayBuffer())
+  if (buf.length > maxBytes) return { grande: true }
+  let bin64 = ''
+  for (let i = 0; i < buf.length; i += 0x8000) bin64 += String.fromCharCode(...buf.subarray(i, i + 0x8000))
+  return { b64: btoa(bin64), mime: String(mj.mime_type || '').split(';')[0] }
+}
+
 // ---- banco ----
 async function logMsg(row: Record<string, unknown>) {
   try { await admin.from('whatsapp_mensagens').insert(row) } catch (_) { /* silencioso */ }
@@ -200,15 +217,27 @@ const TEXTO_TRAVA: Record<string, string> = {
 
 // Interpreta a mensagem no contexto do grupo (categorias/cartões), com a IA barata (Haiku).
 // `pendente`: o lançamento que espera o "sim" (a pessoa pode estar corrigindo ele).
-async function interpretar(u: any, texto: string, pendente?: Record<string, unknown>) {
+// `midia` (21/11/2026): foto ou PDF de comprovante/nota/cupom em base64 — vai como bloco de imagem
+// ou documento antes do texto, com a instrução a mais de leitura (J.instrucoesMidia).
+type Midia = { b64: string, mime: string }
+async function interpretar(u: any, texto: string, pendente?: Record<string, unknown>, midia?: Midia) {
   const [{ data: cats }, { data: cartoes }] = await Promise.all([
     admin.from('categorias').select('nome').eq('grupo_id', u.grupo_id).order('nome'),
     admin.from('cartoes').select('id, nome').eq('grupo_id', u.grupo_id).eq('ativo', true),
   ])
   const categorias = (cats || []).map((c: any) => c.nome)
   const hoje = hojeBRT()
-  const system = J.instrucoesIA({ hoje, semana: semanaSP(), categorias })
+  const system = J.instrucoesIA({ hoje, semana: semanaSP(), categorias }) + (midia ? J.instrucoesMidia() : '')
   const userMsg = JSON.stringify({ texto, cartoes: (cartoes || []).map((c: any) => ({ id: c.id, nome: c.nome })), ...(pendente ? { pendente } : {}) })
+  const conteudo = midia
+    ? [
+        midia.mime === 'application/pdf'
+          ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: midia.b64 } }
+          : { type: 'image', source: { type: 'base64', media_type: midia.mime, data: midia.b64 } },
+        { type: 'text', text: userMsg },
+      ]
+    : userMsg
+  const operacao = midia ? 'whatsapp_imagem' : 'whatsapp_interpretar'
 
   // Às vezes (raro) a IA responde sem o JSON — viu-se em 20/11 ("janta 100 no itaú" deu "não
   // entendi" e na 2ª vez lançou). Nesse caso tenta de novo UMA vez; erro de rede/HTTP não repete.
@@ -220,7 +249,7 @@ async function interpretar(u: any, texto: string, pendente?: Record<string, unkn
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify({ model: MODELO, max_tokens: 1500, system, messages: [{ role: 'user', content: userMsg }] }), // 1500: cabe a lista de vários
+        body: JSON.stringify({ model: MODELO, max_tokens: 1500, system, messages: [{ role: 'user', content: conteudo }] }), // 1500: cabe a lista de vários
       })
       const out = await r.json()
       if (!r.ok) throw new Error(out?.error?.message || `Anthropic HTTP ${r.status}`)
@@ -234,10 +263,10 @@ async function interpretar(u: any, texto: string, pendente?: Record<string, unkn
         throw new Error(`sem JSON (stop: ${out?.stop_reason || '?'}, ${String(textoResp).length} letras)`)
       }
       const dados = J.limparIA(bruto, { texto, hoje, categorias, cartoes: cartoes || [] })
-      await registrarIA(u, 'whatsapp_interpretar', MODELO, { tokensIn, tokensOut, ms: Date.now() - t0 })
+      await registrarIA(u, operacao, MODELO, { tokensIn, tokensOut, ms: Date.now() - t0 })
       return { dados, cartoes: cartoes || [] }
     } catch (e) {
-      await registrarIA(u, 'whatsapp_interpretar', MODELO, {
+      await registrarIA(u, operacao, MODELO, {
         tokensIn, tokensOut, ms: Date.now() - t0, sucesso: false,
         erro: `${tentativa > 1 ? '2ª tentativa: ' : ''}${String((e as Error)?.message || '')}`.slice(0, 300),
       })
@@ -265,11 +294,14 @@ type Ctx = {
   enviar: (to: string, body: string) => Promise<void>,
   sticker: (to: string) => Promise<void>,
   transcrever: (mediaId: string | undefined) => Promise<{ texto: string, segundos: number, longo?: boolean }>,
+  baixar: (mediaId: string | undefined, maxBytes: number) => Promise<{ b64: string, mime: string } | { grande: true }>,
 }
 
 async function processar(m: any, ctx: Ctx) {
   const tipoMsg = m?.type
-  if (tipoMsg !== 'text' && tipoMsg !== 'audio') return
+  // Foto e PDF (comprovante, nota, cupom) desde 21/11/2026; antes eram ignorados sem resposta.
+  if (!['text', 'audio', 'image', 'document'].includes(tipoMsg)) return
+  const ehMidia = tipoMsg === 'image' || tipoMsg === 'document'
   const waId = String(m.id || '')
   const from = String(m.from || '')          // dígitos com DDI, ex. 5511999998888
   if (!waId || !from) return
@@ -277,7 +309,7 @@ async function processar(m: any, ctx: Ctx) {
   // 1) Idempotência (ANTES de transcrever/gastar): a tabela tem unique(wa_message_id).
   const { error: dupErr } = await admin.from('whatsapp_mensagens').insert({
     wa_message_id: waId, telefone: from, direcao: 'entrada', tipo: 'desconhecido',
-    texto: tipoMsg === 'audio' ? '[áudio]' : String(m?.text?.body || '').trim(),
+    texto: tipoMsg === 'audio' ? '[áudio]' : tipoMsg === 'image' ? '[foto]' : tipoMsg === 'document' ? '[documento]' : String(m?.text?.body || '').trim(),
   })
   if (dupErr && (dupErr as any).code === '23505') return
 
@@ -314,6 +346,9 @@ async function processar(m: any, ctx: Ctx) {
     return responder(J.TEXTOS.naoConectado, 'desconhecido', 'orientou a conectar')
   }
   u = quem
+
+  // 4b) Foto ou PDF (comprovante, nota fiscal, cupom): a IA lê e o Joca SEMPRE pergunta antes de lançar.
+  if (ehMidia) return processarMidia(m, u, ctx, responder)
 
   // 5) Áudio: trava antes de transcrever (o Whisper é o que mais custa) e custo real no /admin.
   let travou: string | null | undefined
@@ -454,6 +489,49 @@ async function processar(m: any, ctx: Ctx) {
   }
 }
 
+// Foto/PDF de comprovante, nota ou cupom (21/11/2026). Limites: tipo de arquivo, tamanho, fotos por
+// pessoa por dia (J.FOTOS_POR_DIA) e as travas de sempre (assinatura, limite do mês, teto de IA/dia).
+async function processarMidia(m: any, u: any, ctx: Ctx, responder: (t: string, tipo: string, nota: string) => Promise<void>) {
+  const tipoMsg = m.type
+  const info = tipoMsg === 'image' ? m.image : m.document
+  const mime = String(info?.mime_type || (tipoMsg === 'image' ? 'image/jpeg' : '')).split(';')[0]
+  const legenda = String(info?.caption || '').trim()
+  if (!J.MIDIA_TIPOS.includes(mime)) return responder(J.TEXTOS_MIDIA.tipo, 'erro', `mídia: tipo ${mime || '?'}`)
+
+  const travou = await trava(u)
+  if (travou) return responder(TEXTO_TRAVA[travou], 'bloqueado', travou)
+  const { count: fotosHoje } = await admin.from('ia_chamadas').select('id', { count: 'exact', head: true })
+    .eq('usuario_id', u.usuario_id).eq('operacao', 'whatsapp_imagem').gte('criado_em', `${hojeBRT()}T00:00:00-03:00`)
+  if ((fotosHoje || 0) >= J.FOTOS_POR_DIA) return responder(J.TEXTOS_MIDIA.limiteDia, 'bloqueado', 'mídia: limite do dia')
+
+  let midia: Midia
+  try {
+    const b = await ctx.baixar(info?.id, mime === 'application/pdf' ? J.MIDIA_MAX_BYTES.pdf : J.MIDIA_MAX_BYTES.imagem)
+    if ('grande' in b) return responder(J.TEXTOS_MIDIA.grande, 'erro', 'mídia: grande')
+    midia = { b64: b.b64, mime: J.MIDIA_TIPOS.includes(b.mime) ? b.mime : mime }
+  } catch (e) {
+    console.error('[whatsapp] baixar mídia', (e as Error).message)
+    return responder(J.TEXTOS_MIDIA.falhou, 'erro', 'mídia: falha download')
+  }
+
+  // Foto nova: o que esperava "sim" deixa de valer (é outra conversa).
+  await limparPendencia(u.usuario_id)
+  let dados: any
+  try {
+    ({ dados } = await interpretar(u, legenda, undefined, midia))
+  } catch (e) {
+    console.error('[whatsapp] ler mídia', (e as Error).message)
+    return responder(J.TEXTOS_MIDIA.falhou, 'erro', 'mídia: falha IA')
+  }
+  if (dados.acao !== 'lancar' && dados.acao !== 'lancar_varios') return responder(J.TEXTOS_MIDIA.naoE, 'resposta', 'mídia: não é comprovante')
+  const um = dados.acao === 'lancar_varios' ? { ...(dados.itens?.[0] || {}), acao: 'lancar' } : dados
+  if (!um.valor) return responder(J.TEXTOS_MIDIA.semValor, 'resposta', 'mídia: sem valor')
+  try { await guardarPendencia(u, { acao: 'lancar', dados: um }) } catch (_) {
+    return responder(J.TEXTOS.falhaSalvar, 'erro', 'falha pendência')
+  }
+  return responder(J.TEXTOS_MIDIA.pergunta(um, hojeBRT()), 'resposta', `mídia: ${um.tipo} ${um.valor}?`)
+}
+
 // O último lançamento dá pra mexer por aqui? Devolve o texto de quando NÃO dá (ou null).
 function motivoUltimo(ult: any): string | null {
   if (!ult?.ok) return ult?.motivo === 'sumiu' ? J.TEXTOS.sumiu : J.TEXTOS.nenhumUltimo
@@ -543,7 +621,7 @@ async function executarPendencia(u: any, pend: any, responder: Responder) {
 }
 
 // ---- HTTP ----
-const ctxReal: Ctx = { enviar: enviarTexto, sticker: enviarStickerJoca, transcrever: transcreverAudio }
+const ctxReal: Ctx = { enviar: enviarTexto, sticker: enviarStickerJoca, transcrever: transcreverAudio, baixar: baixarMidia }
 
 Deno.serve(async (req) => {
   const url = new URL(req.url)
@@ -567,9 +645,12 @@ Deno.serve(async (req) => {
     const from = String(body.from || '')
     if (!NUMERO_TESTE.test(from)) return json({ erro: 'simulação só com número de teste (5500...)' }, 400)
     const respostas: string[] = []
+    // Foto/PDF simulados: { tipo: 'image'|'document', midia_b64, midia_tipo, legenda? } (21/11/2026).
+    const tipoSim = ['audio', 'image', 'document'].includes(body.tipo) ? body.tipo : 'text'
+    const infoMidia = { id: 'simulado', mime_type: String(body.midia_tipo || (tipoSim === 'image' ? 'image/jpeg' : 'application/pdf')), caption: String(body.legenda || '') }
     const m = {
-      id: String(body.id || `sim-${crypto.randomUUID()}`), from, type: body.tipo === 'audio' ? 'audio' : 'text',
-      text: { body: String(body.texto || '') }, audio: { id: 'simulado' },
+      id: String(body.id || `sim-${crypto.randomUUID()}`), from, type: tipoSim,
+      text: { body: String(body.texto || '') }, audio: { id: 'simulado' }, image: infoMidia, document: infoMidia,
     }
     try {
       await processar(m, {
@@ -579,6 +660,12 @@ Deno.serve(async (req) => {
           if (body.audio_falha) throw new Error('falha simulada')
           if (body.audio_longo) return { texto: '', segundos: 0, longo: true }
           return { texto: String(body.transcricao || ''), segundos: Number(body.segundos) || 5 }
+        },
+        baixar: async (_id, maxBytes) => {
+          const b64 = String(body.midia_b64 || '')
+          if (!b64) throw new Error('simulação sem midia_b64')
+          if (Math.floor(b64.length * 3 / 4) > maxBytes) return { grande: true as const }
+          return { b64, mime: infoMidia.mime_type }
         },
       })
     } catch (e) {

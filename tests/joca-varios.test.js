@@ -72,3 +72,24 @@ describe('mensagens', () => {
     expect(TEXTOS_VARIOS.muitos(8)).toContain('lancar-varios')
   })
 })
+
+describe('foto e PDF de comprovante', async () => {
+  const J = await import('../supabase/functions/whatsapp-webhook/joca.js')
+  it('instrução pede o valor TOTAL e recusa o que não é comprovante', () => {
+    const t = J.instrucoesMidia()
+    expect(t).toContain('VALOR TOTAL')
+    expect(t).toContain('"outro"')
+  })
+  it('só foto e PDF, com limites', () => {
+    expect(J.MIDIA_TIPOS).toEqual(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+    expect(J.FOTOS_POR_DIA).toBeGreaterThan(0)
+    expect(J.MIDIA_MAX_BYTES.imagem).toBeGreaterThan(J.MIDIA_MAX_BYTES.pdf)
+  })
+  it('pergunta antes de lançar, mostrando o que leu', () => {
+    const m = J.TEXTOS_MIDIA.pergunta({ tipo: 'gasto', valor: 99.8, descricao: 'Supermercado', categoria: 'mercado', forma: 'pix', data: '2026-11-20', parcelas: 1 }, '2026-11-21')
+    expect(m).toContain('Li o comprovante')
+    expect(m).toContain('*R$ 99,80* · Supermercado')
+    expect(m).toContain('📅 20/11')
+    expect(m).toContain('*sim*')
+  })
+})

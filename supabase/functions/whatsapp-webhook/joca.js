@@ -112,6 +112,7 @@ export const TEXTOS = {
     '💳 *Fatura paga:* "paguei a fatura do Nubank"',
     '✏️ *Errou?* "o valor era 50" ou "apaga o último"',
     '📋 *Vários de uma vez:* "mercado 300, farmácia 80 e uber 25" (até 5, eu mostro a lista antes de lançar)',
+    '📸 *Comprovante:* manda a foto ou o PDF do comprovante, nota ou cupom que eu leio o valor',
     '',
     'Eu entendo sozinho o valor, a data ("ontem", "sexta", "dia 3"), a categoria, o cartão e as parcelas. 💙',
   ].join('\n'),
@@ -139,6 +140,7 @@ export const TEXTOS = {
     '💳 marco fatura paga: *paguei a fatura do Nubank*',
     '✏️ arrumo o último: *o valor era 50* ou *apaga o último*',
     '📋 lanço vários de uma vez (até 5): *mercado 300, farmácia 80 e uber 25* — eu mostro a lista e você confirma',
+    '📸 leio *foto ou PDF* de comprovante, nota fiscal ou cupom — eu mostro o que li e você confirma',
   ].join('\n'),
   pergunta: 'Ainda não respondo perguntas por aqui, mas tá chegando 🚧 Por enquanto, o Início do app mostra quanto entrou, quanto saiu e o que falta pagar no mês.',
   investimento: 'Dica de investimento eu não dou 🙏 Isso é com um assessor de investimentos registrado na CVM. O que eu faço é te ajudar a organizar as contas da família pra sobrar mais todo mês 💙',
@@ -368,6 +370,47 @@ export function msgLancado(nome, d, hoje) {
 
 // Custo da transcrição (OpenAI Whisper): US$ 0,006 por minuto, cobrado por segundo.
 export const custoAudioUsd = (segundos) => Math.max(0, Number(segundos) || 0) / 60 * 0.006
+
+// ---------------------------------------------------------------- foto e PDF (21/11/2026)
+// Comprovante (Pix, transferência, boleto pago), nota fiscal ou cupom: a IA lê a imagem/PDF e o
+// Joca SEMPRE pergunta "tá certo?" antes de lançar (leitura de foto erra mais que texto).
+// Limites: tamanho do arquivo e fotos por pessoa por dia (além do limite de lançamentos do mês e do
+// teto diário de IA que já valem pra tudo no WhatsApp).
+export const MIDIA_MAX_BYTES = { imagem: 5_000_000, pdf: 3_000_000 }
+export const FOTOS_POR_DIA = 15
+export const MIDIA_TIPOS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+
+// Instrução a mais pra IA quando a mensagem é uma foto/PDF.
+export function instrucoesMidia() {
+  return [
+    '',
+    'ATENÇÃO: a mensagem é uma FOTO ou PDF (pode vir com uma legenda em "texto").',
+    'Se for comprovante de pagamento (Pix, transferência, boleto pago, cartão), nota fiscal ou cupom fiscal:',
+    '- use acao "lancar" com UM lançamento: o VALOR TOTAL pago (nunca some nem liste os itens do cupom), a data da compra/pagamento, descricao = nome da loja ou de quem recebeu (curto), categoria pelo tipo de loja.',
+    '- Pix ou transferência que a PESSOA RECEBEU (ela é quem recebe) = tipo "entrada". Se ela pagou = "gasto".',
+    '- forma: "cartao" se o comprovante for de cartão; "dinheiro" se disser dinheiro; senão "pix". cartao_id só se o nome do cartão bater com um da lista.',
+    '- Se a legenda disser algo (ex.: "foi no Nubank", "dividido em 3x"), ela vale mais que a foto.',
+    '- Se a foto estiver ilegível ou faltar o valor total, use confianca baixa e valor null.',
+    'Se NÃO for comprovante, nota ou cupom (foto de pessoa, paisagem, print de conversa etc.), use acao "outro".',
+  ].join('\n')
+}
+
+export const TEXTOS_MIDIA = {
+  grande: 'Esse arquivo é grande demais pra eu ler 😅 Manda uma foto do comprovante (ou um PDF menor) ou me escreve o valor, tipo *mercado 120*.',
+  tipo: 'Esse tipo de arquivo eu não consigo ler 😅 Manda uma *foto* ou *PDF* do comprovante, nota ou cupom — ou me escreve o valor, tipo *mercado 120*.',
+  naoE: 'Não achei um comprovante, nota ou cupom nessa imagem 🤔 Se for um gasto, me manda a foto do comprovante ou escreve o valor, tipo *farmácia 48,90*.',
+  semValor: 'Não consegui ler o valor total nesse comprovante 😕 Me escreve o valor, tipo *mercado 120*, que eu lanço.',
+  falhou: 'Não consegui ler esse arquivo agora 😕 Tenta mandar de novo ou me escreve o valor, tipo *mercado 120*.',
+  limiteDia: `Hoje você já mandou ${FOTOS_POR_DIA} fotos de comprovante 📸 Amanhã libera de novo. Até lá, me escreve o valor que eu lanço, tipo *mercado 120*.`,
+  pergunta: (d, hoje) => [
+    'Li o comprovante 🧾',
+    '',
+    resumoLancamento(comoVaiSalvar(d), hoje),
+    '',
+    'Tá certo? Responde *sim* que eu lanço.',
+    'Se algo estiver errado, me diz o certo (ex.: *era 85,90* ou *foi no Nubank*).',
+  ].join('\n'),
+}
 
 // ---------------------------------------------------------------- vários lançamentos (21/11/2026)
 // Uma mensagem com vários gastos ("mercado 300, farmácia 80 e uber 25"): o Joca SEMPRE lista e
