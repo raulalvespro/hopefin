@@ -26,6 +26,7 @@ import Categorias from './pages/Categorias'
 import Configuracoes from './pages/Configuracoes'
 import MeusDados from './pages/MeusDados'
 import MinhaConta from './pages/MinhaConta'
+import LancarVarios from './pages/LancarVarios'
 import SairComunicados from './pages/SairComunicados'
 import Planos from './pages/Planos'
 import Checkout from './pages/Checkout'
@@ -169,6 +170,7 @@ export default function App() {
         <Route path="configuracoes" element={<Configuracoes />} />
         <Route path="meus-dados" element={<MeusDados />} />
         <Route path="conta" element={<MinhaConta />} />
+        <Route path="lancar-varios" element={<LancarVarios />} />
         <Route path="planos" element={<Planos />} />
         <Route path="checkout" element={<Checkout />} />
         <Route path="fechamento" element={<Fechamento />} />

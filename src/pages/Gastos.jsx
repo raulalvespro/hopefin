@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAtualizarSozinho } from '../hooks/useAtualizarSozinho'
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, Layers, CalendarCheck, Upload } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Layers, CalendarCheck, Upload, Sparkles } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { destinoVoltar } from '../lib/voltar'
 import BotaoVoz from '../components/BotaoVoz'
@@ -404,6 +404,12 @@ export default function Gastos() {
         <h2 style={{ fontSize: 16 }}>{format(mes, 'MMMM yyyy', { locale: ptBR })}</h2>
         <button onClick={() => setMes(m => addMonths(m, 1))}><ChevronRight size={20} color="var(--text2)" /></button>
       </div>
+
+      {/* Lançar vários de uma vez (A4.4) */}
+      <button type="button" onClick={() => navigate('/lancar-varios')}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 12px', marginBottom: 14, borderRadius: 'var(--radius-sm)', border: '1px dashed var(--accent)', background: 'var(--accent-dim)', color: 'var(--accent-text)', fontSize: 13.5, fontWeight: 600 }}>
+        <Sparkles size={15} /> {copy.lancarVarios.atalho}
+      </button>
 
       {/* Total — clica para ver tudo que vence no mês (escondido quando a busca está num período) */}
       {!periodoFiltro && <button onClick={() => navigate('/contas-do-mes')} className="card" style={{ width: '100%', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', background: 'var(--bg2)', color: 'var(--text)' }}>

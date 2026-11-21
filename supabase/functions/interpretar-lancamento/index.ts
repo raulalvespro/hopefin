@@ -3,8 +3,10 @@
 // (RLS ativa) — NUNCA com a service role. Reaproveitável pelo webhook do
 // WhatsApp (prompt 11.1): basta chamar com { texto, origem: 'whatsapp' }.
 //
-// Corpo (JSON): { texto: string, origem?: 'voz'|'texto'|'whatsapp' }
+// Corpo (JSON): { texto: string, origem?: 'voz'|'texto'|'whatsapp', varios?: boolean }
 // Resposta:     { ok, dados, log_id, limite } | { erro, limite? }
+// varios: true (A4.4, 21/11/2026) → "lançar vários de uma vez": texto de até 2000 letras (lista colada
+// ou áudio longo); devolve { ok, itens: [...até 20], log_id, limite }. Cada item conta 1 no limite.
 // Segredos: ANTHROPIC_API_KEY. (SUPABASE_URL / SUPABASE_ANON_KEY são injetados.)
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -57,7 +59,8 @@ Deno.serve(async (req) => {
   const texto = String(body.texto || '').trim()
   const origem = ['voz', 'texto', 'whatsapp'].includes(body.origem) ? body.origem : 'texto'
   if (!texto) return json({ erro: 'texto vazio' }, 400)
-  if (texto.length > 500) return json({ erro: 'texto muito longo' }, 400)
+  const varios = body.varios === true
+  if (texto.length > (varios ? 2000 : 500)) return json({ erro: 'texto muito longo' }, 400)
 
   // Trava do plano (A6.3, 19/11/2026): com o teste grátis ou o plano vencido o grupo só lê. Não
   // gasta IA interpretando um lançamento que o banco não vai deixar salvar (o WhatsApp já fazia
@@ -83,14 +86,19 @@ Deno.serve(async (req) => {
   const { iso: hoje, semana } = hojeSP()
 
   const system = [
-    'Você extrai UM lançamento financeiro de um texto em português do Brasil.',
-    'Responda APENAS com um objeto JSON válido, sem comentários nem texto fora do JSON.',
+    varios
+      ? 'Você separa VÁRIOS lançamentos financeiros de um texto em português do Brasil (uma lista colada ou um áudio longo, ex.: "mercado 300, farmácia 80"). Cada valor é um lançamento. No máximo 20.'
+      : 'Você extrai UM lançamento financeiro de um texto em português do Brasil.',
+    varios
+      ? 'Responda APENAS com um objeto JSON válido {"itens": [ ... ]}, sem comentários nem texto fora do JSON. Cada item tem os campos abaixo.'
+      : 'Responda APENAS com um objeto JSON válido, sem comentários nem texto fora do JSON.',
     'Campos:',
     '- tipo: "gasto" ou "entrada"',
     '- valor: número em reais (ponto decimal), sem símbolo',
     '- descricao: string curta e natural',
     `- categoria: UMA destas (ou "outros"): ${nomesCategorias.join(', ') || 'outros'}`,
     '- cartao_id: id de um cartão da lista, ou null',
+    '- forma: "pix", "dinheiro" ou "cartao" se o texto disser como pagou; senão null',
     '- conta_id: id de uma conta da lista, ou null',
     `- data: "YYYY-MM-DD". Hoje é ${hoje} (${semana}, America/Sao_Paulo). Entenda "ontem", "sexta", "dia 3".`,
     '- parcelas: inteiro >= 1 (1 = à vista)',
@@ -119,7 +127,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: MODELO,
-        max_tokens: 400,
+        max_tokens: varios ? 2500 : 400,
         system,
         messages: [{ role: 'user', content: userMsg }],
       }),
@@ -151,27 +159,35 @@ Deno.serve(async (req) => {
   // Validação/saneamento (nunca confiar cegamente na IA).
   const idsCartao = new Set((cartoes || []).map((c: any) => c.id))
   const idsConta = new Set((contas || []).map((c: any) => c.id))
-  const valor = Number(dados.valor)
-  const limpo = {
-    tipo: dados.tipo === 'entrada' ? 'entrada' : 'gasto',
-    valor: Number.isFinite(valor) && valor > 0 ? Math.round(valor * 100) / 100 : null,
-    descricao: String(dados.descricao || texto).slice(0, 120),
-    categoria: nomesCategorias.includes(dados.categoria) ? dados.categoria : 'outros',
-    cartao_id: idsCartao.has(dados.cartao_id) ? dados.cartao_id : null,
-    conta_id: idsConta.has(dados.conta_id) ? dados.conta_id : null,
-    data: /^\d{4}-\d{2}-\d{2}$/.test(dados.data) ? dados.data : hoje,
-    parcelas: Number.isInteger(dados.parcelas) && dados.parcelas > 1 ? dados.parcelas : 1,
-    confianca: Number.isFinite(Number(dados.confianca)) ? Number(dados.confianca) : 0.5,
+  const sanear = (d: any) => {
+    const valor = Number(d?.valor)
+    return {
+      tipo: d?.tipo === 'entrada' ? 'entrada' : 'gasto',
+      valor: Number.isFinite(valor) && valor > 0 ? Math.round(valor * 100) / 100 : null,
+      descricao: String(d?.descricao || (varios ? '' : texto)).slice(0, 120),
+      categoria: nomesCategorias.includes(d?.categoria) ? d.categoria : 'outros',
+      cartao_id: idsCartao.has(d?.cartao_id) ? d.cartao_id : null,
+      forma: ['pix', 'dinheiro', 'cartao'].includes(d?.forma) ? d.forma : null,
+      conta_id: idsConta.has(d?.conta_id) ? d.conta_id : null,
+      data: /^\d{4}-\d{2}-\d{2}$/.test(d?.data) ? d.data : hoje,
+      parcelas: Number.isInteger(d?.parcelas) && d.parcelas > 1 ? d.parcelas : 1,
+      confianca: Number.isFinite(Number(d?.confianca)) ? Number(d.confianca) : 0.5,
+    }
   }
+  const itens = varios
+    ? (Array.isArray(dados?.itens) ? dados.itens : []).slice(0, 20).map(sanear).filter((i: any) => i.valor)
+    : []
+  if (varios && itens.length === 0) return json({ erro: 'nao_entendi' })
+  const limpo = varios ? { itens } : sanear(dados)
 
   // Registra consumo (prompt 2.1) e grava o log para a taxa de acerto do /admin.
   await sb.rpc('registrar_consumo_ia', {
-    p_origem: origem === 'whatsapp' ? 'whatsapp' : 'app', p_qtd: 1, p_custo: 0,
+    p_origem: origem === 'whatsapp' ? 'whatsapp' : 'app', p_qtd: varios ? itens.length : 1, p_custo: 0,
   })
   // Custo REAL de IA desta chamada (tokens medidos + tempo). Não derruba a resposta.
   try {
     await sb.rpc('registrar_ia_chamada', {
-      p_operacao: 'interpretar_lancamento', p_modelo: MODELO,
+      p_operacao: varios ? 'interpretar_varios' : 'interpretar_lancamento', p_modelo: MODELO,
       p_tokens_entrada: tokensIn, p_tokens_saida: tokensOut,
       p_ms: msChamada, p_sucesso: true, p_erro: null,
     })
@@ -180,5 +196,6 @@ Deno.serve(async (req) => {
     .insert({ grupo_id: perfil.grupo_id, usuario_id: uid, origem, texto, json_ia: limpo })
     .select('id').maybeSingle()
 
+  if (varios) return json({ ok: true, itens, log_id: logRow?.id || null, limite })
   return json({ ok: true, dados: limpo, log_id: logRow?.id || null, limite })
 })
