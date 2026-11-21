@@ -505,6 +505,7 @@ const ERRO_CUPOM = {
   codigo_invalido: 'Código: de 3 a 30 letras, números, - ou _.',
   desconto_invalido: 'Desconto: de 1% a 90%.',
   tipo_travado: 'Esse cupom já foi usado: não dá pra trocar o tipo. Crie outro código.',
+  cupom_usado: 'Esse cupom já foi usado por alguém: não dá pra excluir (o grupo que resgatou depende dele). Desative em vez de excluir.',
 }
 export function Cupons({ cupons, recarregar }) {
   const { toast } = useToast()
@@ -531,6 +532,13 @@ export function Cupons({ cupons, recarregar }) {
     setSalvando(false)
     if (error) return toast(erroDe(error), 'erro')
     toast('Cupom salvo.', 'ok'); fechar(); recarregar()
+  }
+  const [excluindo, setExcluindo] = useState(null) // código aguardando confirmação
+  async function excluir(c) {
+    setExcluindo(null)
+    const { error } = await supabase.rpc('admin_excluir_cupom', { p_codigo: c.codigo })
+    if (error) return toast(erroDe(error), 'erro')
+    toast(`Cupom ${c.codigo} excluído.`, 'ok'); if (editando === c.codigo) fechar(); recarregar()
   }
   async function toggle(c) {
     const { error } = await supabase.rpc('admin_salvar_cupom', args(c, !c.ativo))
@@ -581,6 +589,11 @@ export function Cupons({ cupons, recarregar }) {
           </div>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
             <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => editar(c)}>Editar</button>
+            {c.usos > 0
+              ? null
+              : excluindo === c.codigo
+                ? <button className="tag tag-red" style={{ cursor: 'pointer' }} onClick={() => excluir(c)}>confirmar exclusão</button>
+                : <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 12, color: 'var(--red-text)' }} onClick={() => setExcluindo(c.codigo)} title="Só dá pra excluir cupom que ninguém usou">Excluir</button>}
             <button className={`tag ${c.ativo ? 'tag-green' : 'tag-red'}`} onClick={() => toggle(c)} style={{ cursor: 'pointer' }}>{c.ativo ? 'ativo' : 'inativo'}</button>
           </div>
         </div>
