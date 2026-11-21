@@ -84,7 +84,7 @@ export default function AReceber() {
         .eq('grupo_id', gid).not('pessoa_id', 'is', null),
       supabase.from('parcelas')
         .select('id, numero, valor, data_vencimento, recebido, reembolso_entrada_id, parcelamentos!inner(descricao, num_parcelas, pessoa_id, cartao_id, pessoas(nome))')
-        .eq('grupo_id', gid).not('parcelamentos.pessoa_id', 'is', null),
+        .eq('grupo_id', gid).eq('antes_do_app', false).not('parcelamentos.pessoa_id', 'is', null),
       supabase.from('a_receber')
         .select('id, descricao, valor, data, recebido, recebido_em, entrada_id, recorrente, serie_id, parcela_num, parcela_total, pessoa_id, conta_fixa_id, gasto_id, parcelamento_id, assinatura_id, por_conta, pessoas(nome), contas_fixas(nome)')
         .eq('grupo_id', gid),

@@ -83,7 +83,7 @@ export default function ContasDoMes() {
       supabase.from('fixas_lancamentos').select('*').eq('grupo_id', gid).eq('competencia', competencia),
       supabase.from('cartoes').select('id, nome, bandeira, dia_fechamento, dia_vencimento, compra_no_fechamento').eq('grupo_id', gid).eq('ativo', true),
       Promise.resolve({ data: [] }), // faturas agora vêm do motor único (abaixo)
-      supabase.from('parcelas').select('valor, data_vencimento, numero, paga, id, parcelamentos!inner(descricao, categoria, num_parcelas, cartao_id)').eq('grupo_id', gid).gte('data_vencimento', ini).lte('data_vencimento', fim),
+      supabase.from('parcelas').select('valor, data_vencimento, numero, paga, id, parcelamentos!inner(descricao, categoria, num_parcelas, cartao_id)').eq('grupo_id', gid).eq('antes_do_app', false).gte('data_vencimento', ini).lte('data_vencimento', fim),
       supabase.from('assinaturas').select('id, nome, valor, dia_cobranca, cartao_id, cobrada_desde, criado_em, ativo, cancelada_em').eq('grupo_id', gid).or('ativo.eq.true,cancelada_em.not.is.null'), // cancelada continua nos meses de antes (A8.3)
       supabase.from('contas_pagas').select('*').eq('grupo_id', gid).eq('competencia', competencia),
       carregarMotor(gid, { compIni: competencia, compFim: competencia }).catch(e => { console.error('[contas do mês] motor', e); return null }),

@@ -747,6 +747,12 @@ alter table public.cupons add column if not exists desconto_pct int;
 -- meus_comunicados/comunicado_marcar (app). Envio: Edge Function admin-comunicado (admin + aal2).
 alter table public.usuarios add column if not exists recebe_comunicados boolean not null default true;
 
+-- 0087 (21/11): admin_excluir_cupom — só cupom sem uso (usado só desativa).
+-- 0088 (21/11): A8.9 — parcelas.antes_do_app (parcela "já paguei" com vencimento antes do 1º mês do grupo no
+-- app). Trigger marca na criação/edição; as telas de mês (motor-dados, Gastos, Contas do mês, A receber,
+-- Importar) filtram antes_do_app = false. Nada é apagado; "3 de 10" continua certo.
+alter table public.parcelas add column if not exists antes_do_app boolean not null default false;
+
 -- ============================================================
 -- FIM
 -- ============================================================

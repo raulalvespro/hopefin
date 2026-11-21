@@ -1346,7 +1346,7 @@ export const copy = {
         nome: 'Parcelamentos',
         perguntas: [
           { p: 'Parcelado no cartão ou no carnê?', r: 'No cartão, cada parcela entra na fatura do mês dela. Sem cartão (carnê, boleto, empréstimo), a parcela aparece em Contas do mês pra você marcar como paga.' },
-          { p: 'Comprei antes de usar o app e já paguei algumas parcelas', r: 'Ao cadastrar, informe quantas já foram pagas: elas entram como pagas e só as que faltam contam nos próximos meses.' },
+          { p: 'Comprei antes de usar o app e já paguei algumas parcelas', r: 'Ao cadastrar, informe quantas já foram pagas: elas entram como pagas e só as que faltam contam nos próximos meses. As que venceram antes de você começar a usar o app ficam guardadas (a contagem "3 de 10" continua certa), mas não aparecem nas faturas e no Fechamento desses meses antigos.' },
           { p: 'Como edito um parcelado?', r: 'Toque nele pra mudar valor, número de parcelas ou a data da 1ª. As parcelas são refeitas com o valor novo.' },
           { p: 'Uma parcela caiu na fatura errada', r: 'Em Cartões, abra a fatura e use as setas ← → na parcela: as seguintes da mesma compra vão junto.' },
           { p: 'Como acho uma compra parcelada?', r: 'Digite na busca do alto o nome da compra.', chave: 'busca_filtros' },

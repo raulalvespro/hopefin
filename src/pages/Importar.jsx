@@ -215,7 +215,7 @@ export default function Importar() {
         const [gastos, entradas, parcelas, assinaturas] = await Promise.all([
           buscarTudo(() => supabase.from('gastos').select('data, valor').eq('grupo_id', gid).gte('data', faixa.de).lte('data', faixa.ate)),
           buscarTudo(() => supabase.from('entradas').select('data, valor').eq('grupo_id', gid).gte('data', faixa.de).lte('data', faixa.ate)),
-          buscarTudo(() => supabase.from('parcelas').select('valor, data_vencimento, parcelamentos!inner(cartao_id)').eq('grupo_id', gid).gte('data_vencimento', ini).lt('data_vencimento', fim)),
+          buscarTudo(() => supabase.from('parcelas').select('valor, data_vencimento, parcelamentos!inner(cartao_id)').eq('grupo_id', gid).eq('antes_do_app', false).gte('data_vencimento', ini).lt('data_vencimento', fim)),
           buscarTudo(() => supabase.from('assinaturas').select('cartao_id, valor, dia_cobranca, cobrada_desde, criado_em, ativo, cancelada_em').eq('grupo_id', gid)),
         ])
         if (vivo) setJaNoApp({ gastos, entradas, parcelas, assinaturas })

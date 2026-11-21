@@ -90,7 +90,7 @@ export default function Gastos() {
 
     const [{ data: gastos }, { data: parcelas }] = await Promise.all([
       supabase.from('gastos').select('*, cartoes(nome), usuarios(nome), pessoas(nome)').eq('grupo_id', gid).gte('data', inicio).lte('data', fim),
-      supabase.from('parcelas').select('*, parcelamentos(descricao, categoria, num_parcelas, pessoa_id, cartoes(nome), usuarios(nome), pessoas(nome))').eq('grupo_id', gid).gte('data_vencimento', inicio).lte('data_vencimento', fim),
+      supabase.from('parcelas').select('*, parcelamentos(descricao, categoria, num_parcelas, pessoa_id, cartoes(nome), usuarios(nome), pessoas(nome))').eq('grupo_id', gid).eq('antes_do_app', false).gte('data_vencimento', inicio).lte('data_vencimento', fim),
     ])
 
     const gastosItens = (gastos || []).map(paraItemGasto)
