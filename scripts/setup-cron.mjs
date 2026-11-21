@@ -40,6 +40,7 @@ const urlVenc = `https://${REF}.supabase.co/functions/v1/lembrete-vencimento`
 const urlResumo = `https://${REF}.supabase.co/functions/v1/resumo-mensal`
 const urlRenovar = `https://${REF}.supabase.co/functions/v1/renovar-cartao`
 const urlSaude = `https://${REF}.supabase.co/functions/v1/saude-alerta`
+const urlAvisoChamado = `https://${REF}.supabase.co/functions/v1/suporte-aviso-dono`
 const sql = `
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
@@ -145,6 +146,27 @@ select cron.schedule('hopefin-saude-alerta', '0 * * * *', $cron$
     body := '{}'::jsonb
   );
 $cron$);
+
+-- Aviso de chamado novo pro dono — a cada 5 min, mas SÓ chama a função quando há chamado sem aviso (0083)
+do $unsched$ begin
+  perform cron.unschedule('hopefin-suporte-aviso');
+exception when others then null; end $unsched$;
+
+select cron.schedule('hopefin-suporte-aviso', '*/5 * * * *', $cron$
+  select net.http_post(
+    url := '${urlAvisoChamado}',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'apikey', '${ANON}',
+      'x-cron-secret', '${CRON}'
+    ),
+    body := '{}'::jsonb
+  )
+  where exists (
+    select 1 from public.suporte_emails
+     where origem = 'app' and aviso_dono_em is null and recebido_em > now() - interval '2 days'
+  );
+$cron$);
 `
 
 const res = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/query`, {
@@ -160,5 +182,6 @@ console.log('  • hopefin-vencimentos     (08:30 BRT / 11:30 UTC) — lembrete 
 console.log('  • hopefin-fim-de-trial    (09:00 BRT / 12:00 UTC) — avisos de fim de trial')
 console.log('  • hopefin-renovar-cartao   (10:00 BRT / 13:00 UTC) — renovação do anual no cartão')
 console.log('  • hopefin-saude-alerta     (de hora em hora) — alerta de saúde ao dono quando há problema novo')
+console.log('  • hopefin-suporte-aviso     (a cada 5 min, só quando há chamado novo) — e-mail + push pro dono')
 console.log('  • hopefin-resumo-mensal   (dia 1, 09:30 BRT / 12:30 UTC) — resumo do mês anterior')
 console.log(text.slice(0, 500))

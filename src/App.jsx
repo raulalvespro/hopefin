@@ -80,7 +80,10 @@ function RotaProtegida({ children }) {
 function IrParaPainel() {
   useEffect(() => {
     const local = ['localhost', '127.0.0.1'].includes(window.location.hostname)
-    window.location.replace(local ? '/?admin=1' : 'https://admin.hopefin.com.br')
+    // Leva a aba junto (ex.: a notificação de chamado novo abre /admin?aba=suporte).
+    const aba = new URLSearchParams(window.location.search).get('aba')
+    const q = aba && /^[a-z]+$/.test(aba) ? `aba=${aba}` : ''
+    window.location.replace(local ? `/?admin=1${q ? `&${q}` : ''}` : `https://admin.hopefin.com.br${q ? `/?${q}` : ''}`)
   }, [])
   return null
 }

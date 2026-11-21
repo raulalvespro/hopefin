@@ -62,7 +62,11 @@ export default function AdminApp() {
 
 function Painel({ logout, email, isDono }) {
   const { tema, setTema } = useTema()
-  const [aba, setAba] = useState('visao')
+  // ?aba=suporte abre direto numa aba (link do e-mail/notificação de chamado novo).
+  const [aba, setAba] = useState(() => {
+    const a = new URLSearchParams(window.location.search).get('aba')
+    return a && TITULOS[a] ? a : 'visao'
+  })
   const [sideAberta, setSideAberta] = useState(false)
   const [metr, setMetr] = useState(null)
   const [consumo, setConsumo] = useState(null)

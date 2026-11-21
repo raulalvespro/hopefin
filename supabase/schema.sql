@@ -725,6 +725,13 @@ alter table public.suporte_emails
 -- 0082 (20/11, tarde): Joca — wa_salvar_lancamento aceita tipo_pagamento 'dinheiro' no gasto sem
 -- cartão (o resto continua 'pix'); wa_ultimo_lancamento devolve tipo_pagamento. Só service_role.
 
+-- 0083 (21/11): aviso pro dono quando chega chamado novo. A Edge Function suporte-aviso-dono
+-- (cron hopefin-suporte-aviso, a cada 5 min, só quando há chamado sem aviso) manda e-mail + push
+-- pros admins e marca aviso_dono_em. Os chamados antigos entraram já marcados.
+alter table public.suporte_emails add column if not exists aviso_dono_em timestamptz;
+create index if not exists idx_suporte_emails_sem_aviso
+  on public.suporte_emails (recebido_em) where aviso_dono_em is null and origem = 'app';
+
 -- ============================================================
 -- FIM
 -- ============================================================

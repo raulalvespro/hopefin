@@ -58,3 +58,17 @@ describe('textos', () => {
     expect(conteudoAntigo0d('Ana').assunto).toBe('Seu teste do HopeFin termina hoje')
   })
 })
+
+describe('push da régua', () => {
+  it('cada e-mail da régua tem uma notificação curta, sem preço, que abre os planos', async () => {
+    const { pushRegua } = await import('../supabase/functions/fim-de-trial/regua.js')
+    for (const tipo of ['fim_trial_3d', 'fim_trial_2d', 'fim_trial_0d', 'fim_trial_d1']) {
+      const p = pushRegua(tipo)
+      expect(p.url).toBe('/planos')
+      expect(p.title.length).toBeLessThanOrEqual(40)
+      expect(p.body.length).toBeLessThanOrEqual(90)
+      expect(`${p.title} ${p.body}`).not.toMatch(/R\$|fundador/i)
+    }
+    expect(pushRegua('outro')).toBeNull()
+  })
+})

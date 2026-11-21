@@ -107,3 +107,17 @@ export function conteudoAntigo0d(nome) {
     cta: { texto: 'Assinar o HopeFin', url: 'https://app.hopefin.com.br/planos' },
   }
 }
+
+// Notificação no celular que acompanha cada e-mail da régua (A6.2 "reforço no app/push", 21/11/2026).
+// Vai pros aparelhos de TODO o grupo (o teste é do grupo). Curta, sem preço (o preço fica no e-mail
+// e no Meu plano). null = esse tipo não tem push.
+export function pushRegua(tipo) {
+  const url = '/planos'
+  switch (tipo) {
+    case 'fim_trial_3d': return { title: 'Faltam 3 dias do seu teste 💚', body: 'Assine pra continuar com tudo como está. Toque para ver os planos.', url, tag: 'fim-trial' }
+    case 'fim_trial_2d': return { title: 'Faltam 2 dias do seu teste 💚', body: 'Assine pra continuar com tudo como está. Toque para ver os planos.', url, tag: 'fim-trial' }
+    case 'fim_trial_0d': return { title: 'Seu teste termina hoje', body: 'Assine hoje e nada se perde. Toque para ver os planos.', url, tag: 'fim-trial' }
+    case 'fim_trial_d1': return { title: 'Sentimos sua falta 💚', body: 'Seus dados continuam guardados. Assine e volte a lançar de onde parou.', url, tag: 'fim-trial' }
+    default: return null
+  }
+}

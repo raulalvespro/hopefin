@@ -15,6 +15,7 @@
 //
 // Corpo opcional (JSON):
 //   { so_grupo?: uuid }                          // restringe a um grupo (teste/reenvio)
+// Cada e-mail enviado leva junto uma notificação nos celulares do grupo (pushRegua, 21/11/2026).
 //   { acao: 'previa', nome?: string, fim?: 'YYYY-MM-DD' }
 //      -> devolve o HTML dos e-mails das duas réguas, SEM enviar nada e SEM gravar no
 //         email_log nem encerrar teste/assinatura (pro Raul aprovar os textos).
@@ -22,7 +23,8 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { layoutEmail, enviarEmail } from '../_shared/email.ts'
-import { tipoDoDia, recebe, conteudoRegua, conteudoAntigo0d } from './regua.js'
+import { tipoDoDia, recebe, conteudoRegua, conteudoAntigo0d, pushRegua } from './regua.js'
+import { pushParaGrupo } from '../_shared/push.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -131,7 +133,14 @@ Deno.serve(async (req) => {
     const env = await enviarEmail({ para: u.email, assunto: c.assunto, html: montar(c) })
     if (env.ok) {
       await admin.from('email_log').update({ status: 'enviado', resend_id: env.id }).eq('id', ins.data!.id)
-      out.enviados++; out.detalhes.push({ grupo: t.grupo_id, tipo, para: u.email, id: env.id })
+      // Reforço no celular (A6.2): só depois do e-mail sair, então também sai uma vez por teste.
+      let push = 0
+      const p = pushRegua(tipo)
+      if (p) {
+        try { push = (await pushParaGrupo(admin, t.grupo_id as string, p)).enviados || 0 }
+        catch (e) { console.error('push da régua falhou', (e as Error).message) }
+      }
+      out.enviados++; out.detalhes.push({ grupo: t.grupo_id, tipo, para: u.email, id: env.id, push })
     } else {
       // apaga pra permitir nova tentativa amanhã
       await admin.from('email_log').delete().eq('id', ins.data!.id)
