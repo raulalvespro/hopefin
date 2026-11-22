@@ -6,6 +6,10 @@
 //   `modelo` = o que está na tela (mesmo sem salvar); campos que faltarem vêm do banco.
 //   previa → devolve { assunto, html, remetente } com dados de exemplo (nada é enviado nem gravado).
 //   teste  → manda pra quem está no painel, com [Teste] no assunto, pelo mesmo remetente do e-mail de verdade.
+//            Fica no email_log com tipo 'teste:<chave>' (não entra nos números do e-mail de verdade), e o
+//            resend-webhook marca entregue/aberto/clicado nele como em qualquer outro.
+//   teste_status → { ok, teste: { enviado_em, entregue_em, aberto_em, clicado_em, problema } | null }
+//            o último teste DESSE e-mail mandado por quem está no painel (o editor mostra).
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { nivelDaSessao } from '../_shared/sessao.ts'
 import { enviarEmail, REMETENTE } from '../_shared/email.ts'
@@ -40,8 +44,16 @@ Deno.serve(async (req) => {
   if (nivelDaSessao(jwt) !== 'aal2') return json({ erro: 'confirme o código do celular no painel' }, 403)
 
   const b = await req.json().catch(() => ({}))
-  const acao = b?.acao === 'teste' ? 'teste' : 'previa'
+  const acao = b?.acao === 'teste' ? 'teste' : b?.acao === 'teste_status' ? 'teste_status' : 'previa'
   const chave = String(b?.chave || '')
+  const tipoTeste = `teste:${chave}`.slice(0, 120)
+
+  if (acao === 'teste_status') {
+    const { data: t } = await admin.from('email_log')
+      .select('criado_em, status, entregue_em, aberto_em, clicado_em, problema')
+      .eq('tipo', tipoTeste).eq('titular_id', uid).order('criado_em', { ascending: false }).limit(1).maybeSingle()
+    return json({ ok: true, teste: t ? { enviado_em: t.criado_em, status: t.status, entregue_em: t.entregue_em, aberto_em: t.aberto_em, clicado_em: t.clicado_em, problema: t.problema } : null })
+  }
   const base = await lerModelo(admin, chave)
   if (!base) return json({ erro: 'e-mail não encontrado' }, 404)
   if (!base.editavel) return json({ erro: 'esse aviso não tem texto editável' }, 400)
@@ -64,5 +76,9 @@ Deno.serve(async (req) => {
   const env = await enviarEmail({ para: email, assunto: montado.assunto, html: montado.html, de: rem.de, responderPara: rem.responderPara })
   await admin.from('admin_log').insert({ admin_id: uid, acao: 'email_modelo_teste', detalhe: { chave, ok: env.ok, erro: env.erro || null } })
   if (!env.ok) return json({ erro: env.erro || 'falha no envio' }, 502)
-  return json({ ok: true, para: email })
+  // Registra o teste pra acompanhar entregue/aberto/clicado no painel (grupo vazio: não conta em nada do cliente).
+  const enviadoEm = new Date().toISOString()
+  await admin.from('email_log').insert({ grupo_id: null, titular_id: uid, tipo: tipoTeste, ref: env.id || enviadoEm,
+    destino: email, assunto: montado.assunto, resend_id: env.id || null, status: 'enviado', criado_em: enviadoEm })
+  return json({ ok: true, para: email, teste: { enviado_em: enviadoEm, status: 'enviado', entregue_em: null, aberto_em: null, clicado_em: null, problema: null } })
 })

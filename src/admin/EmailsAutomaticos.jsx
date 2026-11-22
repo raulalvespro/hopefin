@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Mail, Plus, Pencil, Eye, FlaskConical, Save, Trash2, X, Pause, Play, UserMinus, Repeat, Lock, Sparkles } from 'lucide-react'
+import { Mail, Plus, Pencil, Eye, FlaskConical, Save, Trash2, X, Pause, Play, UserMinus, Repeat, Lock, Sparkles, RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
 import { dataHora, dataCurta } from './secoes'
@@ -86,6 +86,33 @@ function quandoSai(m) {
   return m.descricao
 }
 
+// Linha "Último teste": enviado → entregue → abriu → clicou (o teste não entra nos números do e-mail).
+function UltimoTeste({ t, lendo, onAtualizar }) {
+  const passo = (ok, txt) => (
+    <span style={{ color: ok ? 'var(--accent-text)' : 'var(--text2)', fontWeight: ok ? 600 : 400 }}>{ok ? '✓' : '·'} {txt}</span>
+  )
+  const hora = (d) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''
+  return (
+    <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--bg2)', border: '1px solid var(--border2)', fontSize: 12.5, lineHeight: 1.6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <strong>Último teste</strong>
+        <span style={{ color: 'var(--text2)' }}>{dataHora(t.enviado_em)}</span>
+        <button className="btn-ghost" onClick={onAtualizar} disabled={lendo} title="Atualizar" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <RefreshCw size={12} /> {lendo ? 'Olhando…' : 'Atualizar'}
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {passo(true, 'enviado')}
+        {passo(!!t.entregue_em, `entregue ${hora(t.entregue_em)}`)}
+        {passo(!!t.aberto_em, `abriu ${hora(t.aberto_em)}`)}
+        {passo(!!t.clicado_em, `clicou ${hora(t.clicado_em)}`)}
+        {t.problema && <span style={{ color: 'var(--red-text)', fontWeight: 600 }}>{t.problema === 'spam' ? 'marcado como spam' : 'voltou (devolvido)'}</span>}
+      </div>
+      <p style={{ color: 'var(--text2)', fontSize: 11.5, marginTop: 2 }}>Abra o e-mail e toque no botão: aparece aqui em poucos segundos. Teste não conta nos números do e-mail.</p>
+    </div>
+  )
+}
+
 // ───────────── Editor (criar / editar um e-mail) ─────────────
 function Editor({ modelo, novo, onFechar, onSalvo }) {
   const { toast } = useToast()
@@ -98,7 +125,25 @@ function Editor({ modelo, novo, onFechar, onSalvo }) {
   })
   const [previa, setPrevia] = useState(null)
   const [ocupado, setOcupado] = useState(null)
+  const [ultimoTeste, setUltimoTeste] = useState(null)
+  const [lendoTeste, setLendoTeste] = useState(false)
   const corpoRef = useRef(null)
+
+  // Último teste deste e-mail (entregue/aberto/clicado vêm do Resend pelo webhook).
+  const lerTeste = useCallback(async () => {
+    if (novo) return
+    setLendoTeste(true)
+    const { data } = await supabase.functions.invoke('admin-email', { body: { acao: 'teste_status', chave: modelo.chave } })
+    setLendoTeste(false)
+    if (data?.ok) setUltimoTeste(data.teste)
+  }, [novo, modelo.chave])
+  useEffect(() => { lerTeste() }, [lerTeste])
+  // Enquanto o teste não foi aberto e clicado, confere de novo a cada 15 s (só com o editor aberto).
+  useEffect(() => {
+    if (!ultimoTeste || (ultimoTeste.aberto_em && ultimoTeste.clicado_em) || ultimoTeste.problema) return
+    const t = setInterval(lerTeste, 15000)
+    return () => clearInterval(t)
+  }, [ultimoTeste, lerTeste])
   const set = (k, v) => setF(x => ({ ...x, [k]: v }))
   const botaoLink = f.tela === 'outro' ? f.link.trim() : f.tela
   const variaveis = modelo.variaveis?.length ? modelo.variaveis : ['ola', 'nome', 'oferta']
@@ -136,7 +181,7 @@ function Editor({ modelo, novo, onFechar, onSalvo }) {
       toast(msg || 'Não deu certo.', 'erro'); return
     }
     if (acao === 'previa') setPrevia(data)
-    else toast(`Teste enviado pra ${data.para}. Confira a caixa de entrada (e a aba Promoções).`, 'ok')
+    else { toast(`Teste enviado pra ${data.para}. Confira a caixa de entrada (e a aba Promoções).`, 'ok'); if (data.teste) setUltimoTeste(data.teste) }
   }
 
   async function salvar() {
@@ -256,6 +301,7 @@ function Editor({ modelo, novo, onFechar, onSalvo }) {
         )}
       </div>
       {!novo && <p style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8 }}>A prévia e o teste usam o que está na tela, mesmo sem salvar, com dados de exemplo.</p>}
+      {!novo && ultimoTeste && <UltimoTeste t={ultimoTeste} lendo={lendoTeste} onAtualizar={lerTeste} />}
 
       {previa && (
         <div style={{ marginTop: 14 }}>

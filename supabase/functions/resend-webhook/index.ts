@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
   const quando = ev?.created_at && !isNaN(Date.parse(ev.created_at)) ? new Date(ev.created_at).toISOString() : new Date().toISOString()
 
   const { data: linha } = await admin.from('email_log')
-    .select('id, titular_id, entregue_em, aberto_em, clicado_em').eq('resend_id', resendId).maybeSingle()
+    .select('id, tipo, titular_id, entregue_em, aberto_em, clicado_em').eq('resend_id', resendId).maybeSingle()
   if (!linha) return json({ ok: true, ignorado: 'e-mail não registrado' }) // ex.: comunicado, alerta interno
 
   const campo = CAMPO[tipo]
@@ -80,7 +80,8 @@ Deno.serve(async (req) => {
   if (tipo === 'email.bounced' || tipo === 'email.complained') {
     const problema = tipo === 'email.bounced' ? 'devolvido' : 'spam'
     await admin.from('email_log').update({ problema, problema_em: quando }).eq('id', linha.id)
-    if (problema === 'spam' && linha.titular_id) {
+    // E-mail de teste do painel (tipo 'teste:...'): só marca, não tira o admin das listas.
+    if (problema === 'spam' && linha.titular_id && !String(linha.tipo || '').startsWith('teste:')) {
       await admin.from('usuarios').update({ recebe_comunicados: false }).eq('id', linha.titular_id)
       await admin.from('remarketing_pessoas').update({ status: 'saiu', status_em: new Date().toISOString() })
         .eq('usuario_id', linha.titular_id).in('status', ['ativo', 'pausado'])
