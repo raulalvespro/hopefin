@@ -68,6 +68,8 @@ if (env.ASAAS_API_KEY) {
 if (env.ANTHROPIC_API_KEY) secrets.push({ name: 'ANTHROPIC_API_KEY', value: env.ANTHROPIC_API_KEY })
 if (env.OPENAI_API_KEY)    secrets.push({ name: 'OPENAI_API_KEY', value: env.OPENAI_API_KEY })
 if (env.RESEND_API_KEY)    secrets.push({ name: 'RESEND_API_KEY', value: env.RESEND_API_KEY })
+// Assinatura dos avisos do Resend (função resend-webhook). Começa com "whsec_", vem do painel do Resend → Webhooks.
+if (env.RESEND_WEBHOOK_SECRET) secrets.push({ name: 'RESEND_WEBHOOK_SECRET', value: env.RESEND_WEBHOOK_SECRET })
 
 // WhatsApp (Cloud API — webhook de lançamento, prompt 11.1). Só entram se preenchidos.
 for (const n of ['WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_TOKEN', 'WHATSAPP_VERIFY_TOKEN', 'WHATSAPP_APP_SECRET', 'WHATSAPP_STICKER_JOCA_ID']) {
