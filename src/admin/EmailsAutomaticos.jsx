@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Mail, Plus, Pencil, Eye, FlaskConical, Save, Trash2, X, Pause, Play, UserMinus, Repeat, Lock, Sparkles, RefreshCw } from 'lucide-react'
+import { Mail, Plus, Pencil, Eye, FlaskConical, Save, Trash2, X, Pause, Play, UserMinus, Repeat, Lock, Sparkles, RefreshCw, BarChart3, AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
 import { dataHora, dataCurta } from './secoes'
@@ -482,6 +482,144 @@ function Remarketing({ painel, recarregar, editando, setEditando, ligarModelo })
   )
 }
 
+// ───────────── Resultados (0094) ─────────────
+// Taxas sobre os e-mails RASTREADOS (enviados depois que o rastreio do Resend foi ligado, 22/11).
+// Alerta: devolvido acima de 4% ou spam acima de 0,1% derrubam a reputação do domínio.
+const PERIODOS = [[7, '7 dias'], [30, '30 dias'], [90, '90 dias']]
+const LIMITE_DEVOLVIDO = 0.04
+const LIMITE_SPAM = 0.001
+
+function Resultados() {
+  const { toast } = useToast()
+  const [dias, setDias] = useState(30)
+  const [r, setR] = useState(null)
+  const [ordem, setOrdem] = useState('enviados')
+
+  const carregar = useCallback(async () => {
+    setR(null)
+    const { data, error } = await supabase.rpc('admin_email_resultados', { p_dias: dias })
+    if (error) { toast(msgErro(error), 'erro'); return }
+    setR(data)
+  }, [dias]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar() }, [carregar])
+
+  const linhas = useMemo(() => {
+    if (!r) return []
+    const taxa = (x, k) => (x.rastreados ? x[k] / x.rastreados : -1)
+    const val = (x) => ordem === 'enviados' ? x.enviados : ordem === 'assinaram' ? (x.assinaram_depois ?? -1) : taxa(x, ordem)
+    return [...r.por_email].sort((a, b) => val(b) - val(a))
+  }, [r, ordem])
+
+  if (!r) return <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando…</p>
+  const t = r.totais
+  const base = t.rastreados
+  const alertaDev = base > 0 && t.devolvidos / base > LIMITE_DEVOLVIDO
+  const alertaSpam = base > 0 && t.spam / base > LIMITE_SPAM
+  const cards = [
+    { label: 'Enviados', valor: t.enviados, sub: t.erros ? `${t.erros} com erro` : null },
+    { label: 'Entregues', valor: pct(t.entregues, base), sub: `${t.entregues} de ${base}` },
+    { label: 'Abriram', valor: pct(t.abertos, base), sub: `${t.abertos} de ${base}` },
+    { label: 'Clicaram', valor: pct(t.clicados, base), sub: `${t.clicados} de ${base}` },
+    { label: 'Devolvidos', valor: t.devolvidos, sub: base ? pct(t.devolvidos, base) : null, alerta: alertaDev },
+    { label: 'Spam', valor: t.spam, sub: base ? pct(t.spam, base) : null, alerta: alertaSpam },
+  ]
+  const thBtn = (k, n) => (
+    <th><button onClick={() => setOrdem(k)} style={{ fontWeight: ordem === k ? 700 : 500, color: ordem === k ? 'var(--accent-text)' : 'inherit' }}>{n}{ordem === k ? ' ↓' : ''}</button></th>
+  )
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        {PERIODOS.map(([d, n]) => (
+          <button key={d} onClick={() => setDias(d)} aria-pressed={dias === d} className="btn-ghost"
+            style={{ padding: '5px 12px', fontSize: 12.5, borderColor: dias === d ? 'var(--accent)' : undefined, color: dias === d ? 'var(--accent-text)' : undefined, fontWeight: dias === d ? 700 : 500 }}>
+            {n}
+          </button>
+        ))}
+        <button className="btn-ghost" onClick={carregar} style={{ marginLeft: 'auto', padding: '5px 10px', fontSize: 12, display: 'flex', gap: 4, alignItems: 'center' }}><RefreshCw size={12} /> Atualizar</button>
+      </div>
+
+      {t.enviados > base && (
+        <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
+          O rastreio começou em {dataCurta(r.rastreio_desde)}: as porcentagens contam só os {base} e-mails enviados desde então
+          (os {t.enviados - base} anteriores não têm entregue, abriu nem clicou).
+        </p>
+      )}
+
+      <div className="adm-cards">
+        {cards.map(c => (
+          <div key={c.label} className="adm-card" style={c.alerta ? { borderColor: 'var(--red)' } : undefined}>
+            <div className="k">{c.alerta && <AlertTriangle size={13} color="var(--red-text)" />} {c.label}</div>
+            <div className="v" style={c.alerta ? { color: 'var(--red-text)' } : undefined}>{c.valor}</div>
+            {c.sub && <div style={{ fontSize: 11.5, color: 'var(--text2)', marginTop: 2 }}>{c.sub}</div>}
+          </div>
+        ))}
+      </div>
+      {(alertaDev || alertaSpam) && (
+        <p style={{ fontSize: 12.5, color: 'var(--red-text)', margin: '8px 0', lineHeight: 1.5 }}>
+          {alertaDev && 'Devolvidos acima de 4%: confira os endereços na lista de problemas abaixo. '}
+          {alertaSpam && 'Spam acima de 0,1%: algum e-mail está incomodando. Veja qual e pause ou mude o texto.'}
+        </p>
+      )}
+
+      <h3 style={{ fontSize: 14, margin: '18px 0 6px' }}>Por e-mail</h3>
+      {linhas.length === 0 ? <p style={{ fontSize: 12.5, color: 'var(--text2)' }}>Nenhum e-mail enviado nesse período.</p> : (
+        <div className="adm-tbl-wrap">
+          <table className="adm-tbl">
+            <thead><tr><th>E-mail</th>{thBtn('enviados', 'Enviados')}{thBtn('entregues', 'Entregues')}{thBtn('abertos', 'Abriram')}{thBtn('clicados', 'Clicaram')}{thBtn('assinaram', 'Assinaram depois')}</tr></thead>
+            <tbody>
+              {linhas.map(x => (
+                <tr key={x.chave}>
+                  <td>{x.nome}{x.problemas > 0 && <span className="tag tag-red" style={{ marginLeft: 6 }}>{x.problemas} problema{x.problemas > 1 ? 's' : ''}</span>}</td>
+                  <td>{x.enviados}</td>
+                  <td>{pct(x.entregues, x.rastreados)}</td>
+                  <td>{pct(x.abertos, x.rastreados)}</td>
+                  <td>{pct(x.clicados, x.rastreados)}</td>
+                  <td>{x.assinaram_depois ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h3 style={{ fontSize: 14, margin: '18px 0 6px' }}>Remarketing no período</h3>
+      <div className="adm-tbl-wrap">
+        <table className="adm-tbl">
+          <thead><tr><th>Sequência</th><th>Entraram</th><th>Assinaram</th><th>Conversão</th><th>Pediram pra sair</th><th>Na sequência agora</th></tr></thead>
+          <tbody>
+            {r.remarketing.map(q => (
+              <tr key={q.chave}>
+                <td>{q.nome}{!q.ligada && <span className="tag tag-amber" style={{ marginLeft: 6 }}>desligada</span>}</td>
+                <td>{q.entraram}</td><td>{q.assinaram}</td><td>{pct(q.assinaram, q.entraram)}</td><td>{q.sairam}</td><td>{q.ativos}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style={{ fontSize: 14, margin: '18px 0 6px' }}>Problemas recentes</h3>
+      {r.problemas.length === 0
+        ? <p style={{ fontSize: 12.5, color: 'var(--text2)' }}>Nenhum e-mail devolvido ou marcado como spam nesse período.</p>
+        : (
+          <div className="adm-tbl-wrap">
+            <table className="adm-tbl">
+              <thead><tr><th>Quando</th><th>Pessoa</th><th>E-mail</th><th>Qual e-mail</th><th>O que houve</th></tr></thead>
+              <tbody>
+                {r.problemas.map((p, i) => (
+                  <tr key={i}>
+                    <td>{dataHora(p.problema_em)}</td><td>{p.nome || '—'}</td><td>{p.email || '—'}</td><td>{p.email_nome}</td>
+                    <td><span className={`tag ${p.problema === 'spam' ? 'tag-red' : 'tag-amber'}`}>{p.problema === 'spam' ? 'marcou como spam (saiu das novidades)' : 'devolvido (endereço não existe ou caixa cheia)'}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+    </div>
+  )
+}
+
 // ───────────── Tela ─────────────
 export default function EmailsAutomaticos() {
   const { toast } = useToast()
@@ -517,7 +655,7 @@ export default function EmailsAutomaticos() {
         Os de “Comunicados” ficam na tela deles.
       </p>
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-        {[['emails', 'E-mails', Mail], ['remarketing', 'Remarketing', Repeat]].map(([v, n, Icon]) => (
+        {[['emails', 'E-mails', Mail], ['remarketing', 'Remarketing', Repeat], ['resultados', 'Resultados', BarChart3]].map(([v, n, Icon]) => (
           <button key={v} onClick={() => { setAba(v); setEditando(null) }} aria-pressed={aba === v}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, fontSize: 13, fontWeight: 600,
               border: `1.5px solid ${aba === v ? 'var(--accent)' : 'var(--border2)'}`, background: aba === v ? 'var(--accent-dim)' : 'var(--bg2)', color: aba === v ? 'var(--accent-text)' : 'var(--text2)' }}>
@@ -526,7 +664,8 @@ export default function EmailsAutomaticos() {
         ))}
       </div>
 
-      {!painel ? <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando…</p>
+      {aba === 'resultados' ? <Resultados />
+        : !painel ? <p style={{ fontSize: 13, color: 'var(--text2)' }}>Carregando…</p>
         : aba === 'remarketing'
           ? <Remarketing painel={painel} recarregar={carregar} editando={editando} setEditando={setEditando} ligarModelo={ligarModelo} />
           : grupos.map(g => (
