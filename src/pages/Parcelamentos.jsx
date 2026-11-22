@@ -22,7 +22,7 @@ import { filtrar, filtroVazio, temFiltro, distintos } from '../lib/busca'
 
 const isoDe = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir, onEditar, destacado = false }) {
+function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir, onEditar, onVirar, destacado = false }) {
   // Vindo do "ver todas" de uma parcela (A3.5): já abre com as parcelas à mostra e com destaque.
   const [aberto, setAberto] = useState(destacado)
   const progresso = Math.round((p.pagas / p.total) * 100)
@@ -42,6 +42,13 @@ function CardParcelamento({ p, emojiDe, onToggleParcela, onExcluir, onEditar, de
             <p style={{ fontSize: 12, color: 'var(--text2)' }}>{p.cartoes?.nome || 'Sem cartão'}</p>
           </div>
         </div>
+        {/* Virar financiamento (A8.19): só parcelado sem cartão, com a chave "financiamentos" */}
+        {onVirar && !p.cartao_id && (
+          <button onClick={() => onVirar(p)} title={copy.financiamentos.virarAjuda}
+            style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--accent-text)', border: '1px solid var(--border)', borderRadius: 'var(--radius-pill, 999px)', padding: '4px 10px', minHeight: 32, flexShrink: 0 }}>
+            {copy.financiamentos.virar}
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 12, marginBottom: 12 }}>
@@ -277,6 +284,7 @@ export default function Parcelamentos() {
     const p = parcelamentos.find(x => x.id === ver)
     if (p?.financiamentos) navigate(`/financiamentos?id=${p.financiamentos.id}`, { replace: true })
   }, [fin, ver, loading, parcelamentos]) // eslint-disable-line react-hooks/exhaustive-deps
+  const virar = (p) => navigate(`/financiamentos?converter=${p.id}`)
 
   const hoje = hojeISO()
   const comInfo = parcelamentos.filter(p => !(fin && p.financiamentos)).map(p => {
@@ -341,14 +349,14 @@ export default function Parcelamentos() {
                 <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Syne' }}>Em andamento</span>
                 <span style={{ fontSize: 12, color: 'var(--text2)' }}>falta pagar {fmt(totalRestante)}</span>
               </div>
-              {ativos.map(p => <CardParcelamento key={p.id} p={p} emojiDe={emojiDe} onToggleParcela={toggleParcela} onExcluir={excluir} onEditar={abrirEdicao} destacado={p.id === ver} />)}
+              {ativos.map(p => <CardParcelamento key={p.id} p={p} emojiDe={emojiDe} onToggleParcela={toggleParcela} onExcluir={excluir} onEditar={abrirEdicao} onVirar={fin ? virar : null} destacado={p.id === ver} />)}
             </>
           )}
 
           {quitados.length > 0 && (
             <>
               <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Syne', margin: '20px 0 10px' }}>Quitados</p>
-              {quitados.map(p => <CardParcelamento key={p.id} p={p} emojiDe={emojiDe} onToggleParcela={toggleParcela} onExcluir={excluir} onEditar={abrirEdicao} destacado={p.id === ver} />)}
+              {quitados.map(p => <CardParcelamento key={p.id} p={p} emojiDe={emojiDe} onToggleParcela={toggleParcela} onExcluir={excluir} onEditar={abrirEdicao} onVirar={fin ? virar : null} destacado={p.id === ver} />)}
             </>
           )}
         </>

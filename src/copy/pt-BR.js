@@ -1260,6 +1260,15 @@ export const copy = {
     quitado: 'Quitado',
     deQuem: (nome) => `de ${nome}`,
     daFamilia: 'da família',
+    aReceber: (nome) => (nome ? `a receber · ${nome}` : 'a receber'),
+    aReceberAjuda: (nome) => `É de ${nome || 'outra pessoa'}: cada parcela vira um “A receber” no mês em que vence.`,
+    // virar financiamento (A8.19): um parcelado sem cartão ganha a ficha, sem mexer nas parcelas
+    virar: 'Virar financiamento',
+    virarAjuda: 'Leva este parcelado pra Financiamentos, com saldo devedor e simulação. As parcelas e o que já foi pago continuam iguais.',
+    virarSoSemCartao: 'Só parcelado sem cartão vira financiamento.',
+    virarJaE: 'Este parcelado já é um financiamento.',
+    virarNaoAchei: 'Não achei esse parcelado.',
+    virado: 'Pronto: agora está em Financiamentos',
     abrir: 'Ver detalhes',
     // detalhe
     voltar: 'Voltar',
@@ -1317,6 +1326,8 @@ export const copy = {
     form: {
       tituloNovo: 'Novo financiamento',
       tituloEditar: 'Editar financiamento',
+      tituloVirar: 'Virar financiamento',
+      avisoVirar: 'Já trouxemos as parcelas e o que foi pago. Complete o que souber (banco, valor financiado, juros). Se não mudar o número, o valor e as datas das parcelas, elas ficam exatamente como estão.',
       nome: 'Nome',
       nomePh: 'Ex.: Apartamento, Onix, Consignado',
       tipo: 'Tipo',

@@ -79,3 +79,17 @@ describe('financiamento — parcelas, resumo e amortização', () => {
     expect(semJuros.economia).toBe(0)
   })
 })
+
+describe('virar financiamento (A8.19) — parcelado existente', () => {
+  it('a "próxima parcela" refaz as mesmas datas do parcelado (terreno 130x, 11ª em 20/12/2026)', () => {
+    const primeira = primeiraParcelaDe(11, '2026-12-20')
+    expect(primeira).toBe('2026-02-20')
+    expect(dataDaParcela(primeira, 1)).toBe('2026-02-20')
+    expect(dataDaParcela(primeira, 130)).toBe('2036-11-20')
+  })
+  it('parcela fixa mantém todos os valores iguais (não precisa refazer as parcelas)', () => {
+    const v = valoresDasParcelas({ sistema: 'fixa', n: 130, parcela: 291, pv: null, i: null, ref: 11 })
+    expect(v).toHaveLength(130)
+    expect(v.every((x) => x === 291)).toBe(true)
+  })
+})

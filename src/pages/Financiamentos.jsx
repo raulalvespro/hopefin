@@ -27,6 +27,20 @@ const pct = (f) => (f == null ? '' : (f * 100).toLocaleString('pt-BR', { maximum
 const mesAno = (iso) => (iso ? fmtData(iso, 'MMM/yyyy') : '')
 const r2 = (v) => Math.round(v * 100) / 100
 
+// Campos do parcelado que a tela usa (pessoa_id = parcelado de outra pessoa, que vira "a receber").
+const CAMPOS_PARC = 'id, descricao, categoria, cartao_id, pessoa_id, pessoas(nome), num_parcelas, valor_parcela, valor_total, data_primeira_parcela, parcelas_pagas, parcelas(id, numero, valor, data_vencimento, paga, recebido, reembolso_entrada_id)'
+
+// Tipo provável pela categoria/nome do parcelado (a pessoa troca se não for).
+function tipoProvavel(p) {
+  const x = `${p.categoria || ''} ${p.descricao || ''}`.toLowerCase()
+  if (/im[oó]v|terreno|casa|apart|lote/.test(x)) return 'imovel'
+  if (/carro|ve[ií]cul|moto/.test(x)) return 'carro'
+  if (/consignad/.test(x)) return 'consignado'
+  if (/estud|faculdade|fies/.test(x)) return 'estudantil'
+  if (/empr[eé]st/.test(x)) return 'pessoal'
+  return 'outro'
+}
+
 const formVazio = () => ({
   descricao: '', tipo: 'imovel', banco: '', valor_financiado: '', entrada: '', num_parcelas: '', valor_parcela: '',
   sistema: 'price', taxa_valor: '', taxa_periodo: 'mes', proxima: '1', data_proxima: hojeISO(),
@@ -125,11 +139,13 @@ export default function Financiamentos() {
   const { pessoas, garantirPessoa } = usePessoas(perfil?.grupo_id)
   const [params, setParams] = useSearchParams()
   const abertoId = params.get('id')
+  const converterId = params.get('converter') // "Virar financiamento" vindo de Parcelamentos (A8.19)
   const [lista, setLista] = useState([])
   const [membros, setMembros] = useState([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(null) // null = fechado
   const [editandoId, setEditandoId] = useState(null)
+  const [convertendo, setConvertendo] = useState(null) // parcelado (sem ficha) virando financiamento
   const [salvando, setSalvando] = useState(false)
   const [verParcelas, setVerParcelas] = useState(false)
   const [todasParcelas, setTodasParcelas] = useState(false)
@@ -143,7 +159,7 @@ export default function Financiamentos() {
     const gid = perfil.grupo_id
     const [{ data }, { data: us }] = await Promise.all([
       supabase.from('financiamentos')
-        .select('*, parcelamentos(id, descricao, categoria, num_parcelas, valor_parcela, valor_total, data_primeira_parcela, parcelas_pagas, parcelas(id, numero, valor, data_vencimento, paga))')
+        .select(`*, parcelamentos(${CAMPOS_PARC})`)
         .eq('grupo_id', gid).order('criado_em', { ascending: false }),
       supabase.from('usuarios').select('id, nome').eq('grupo_id', gid).order('criado_em'),
     ])
@@ -158,11 +174,15 @@ export default function Financiamentos() {
   const nomeMembro = (id) => membros.find((m) => m.id === id)?.nome?.split(' ')[0] || null
 
   // ------------------------------------------------ formulário
-  function abrirNovo() { setEditandoId(null); setForm(formVazio()) }
+  function abrirNovo() { setEditandoId(null); setConvertendo(null); setForm(formVazio()) }
+  function fecharForm() {
+    setForm(null); setConvertendo(null)
+    if (converterId) setParams({}, { replace: true })
+  }
   function abrirEdicao(f) {
     const r = f.r
     const prox = r.proxima || r.ultima
-    setEditandoId(f.id)
+    setEditandoId(f.id || null)
     setForm({
       descricao: f.parcelamentos.descricao, tipo: f.tipo, banco: f.banco || '',
       valor_financiado: f.valor_financiado != null ? String(f.valor_financiado) : '', entrada: f.entrada != null ? String(f.entrada) : '',
@@ -184,6 +204,26 @@ export default function Financiamentos() {
         }))
       })
   }
+  // "Virar financiamento" (A8.19): abre o formulário já preenchido com o parcelado.
+  useEffect(() => {
+    if (!converterId || !perfil?.grupo_id || loading) return
+    let vivo = true
+    supabase.from('parcelamentos').select(`${CAMPOS_PARC}, financiamentos(id)`).eq('id', converterId).eq('grupo_id', perfil.grupo_id).maybeSingle()
+      .then(({ data: p }) => {
+        if (!vivo) return
+        const fichaId = Array.isArray(p?.financiamentos) ? p.financiamentos[0]?.id : p?.financiamentos?.id
+        if (!p) { toast(t.virarNaoAchei, 'erro'); setParams({}, { replace: true }); return }
+        if (fichaId) { toast(t.virarJaE, 'erro'); setParams({ id: fichaId }, { replace: true }); return }
+        if (p.cartao_id) { toast(t.virarSoSemCartao, 'erro'); setParams({}, { replace: true }); return }
+        const pseudo = { id: null, tipo: tipoProvavel(p), banco: null, valor_financiado: null, entrada: null, sistema: 'fixa',
+          taxa_valor: null, taxa_periodo: 'mes', dono_id: null, observacao: null, parcelamento_id: p.id, parcelamentos: p }
+        pseudo.r = resumoFinanciamento(pseudo, p.parcelas || [], hojeISO())
+        setConvertendo(pseudo)
+        abrirEdicao(pseudo)
+      })
+    return () => { vivo = false }
+  }, [converterId, perfil?.grupo_id, loading]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const set = (campo) => (e) => setForm((f) => {
     const v = e?.target ? (e.target.type === 'checkbox' ? e.target.checked : e.target.value) : e
     const novo = { ...f, [campo]: v }
@@ -209,8 +249,11 @@ export default function Financiamentos() {
     const total = r2(valores.reduce((s, v) => s + v, 0))
     const primeira = primeiraParcelaDe(prox, form.data_proxima)
     const pagas = prox - 1
+    const editando = comResumo.find((f) => f.id === editandoId)
+    const base = editando || convertendo // já existe um parcelado por trás
+    const pessoaId = base?.parcelamentos?.pessoa_id || null // de outra pessoa: segue "a receber"
     let partesOk = []
-    if (form.dividir) {
+    if (form.dividir && !pessoaId) {
       const rp = resumoPartes(total, form.partes)
       if (!rp.ok.length || rp.vazias) return toast(copy.dividir.faltaPessoa, 'erro')
       if (rp.excede) return toast(copy.dividir.passou, 'erro')
@@ -226,7 +269,7 @@ export default function Financiamentos() {
       const gid = perfil.grupo_id
       const dadosParc = {
         descricao: form.descricao.trim(), categoria: form.categoria, cartao_id: null, valor_total: total, num_parcelas: n,
-        valor_parcela: r2(parcela), data_primeira_parcela: primeira, parcelas_pagas: pagas, pessoa_id: null,
+        valor_parcela: r2(parcela), data_primeira_parcela: primeira, parcelas_pagas: pagas, pessoa_id: pessoaId,
       }
       const ficha = {
         tipo: form.tipo, banco: form.banco.trim() || null, valor_financiado: pv > 0 ? pv : null,
@@ -234,14 +277,13 @@ export default function Financiamentos() {
         taxa_valor: numero(form.taxa_valor), taxa_periodo: form.taxa_periodo, dono_id: form.dono_id || null,
         observacao: form.observacao.trim() || null,
       }
-      const editando = comResumo.find((f) => f.id === editandoId)
-      let parcelamentoId = editando?.parcelamento_id
+      let parcelamentoId = base?.parcelamento_id
       let antigas = new Map()
 
-      if (editando) {
+      if (base) {
         const { error } = await run(supabase.from('parcelamentos').update(dadosParc).eq('id', parcelamentoId))
         if (error) return
-        antigas = new Map((editando.parcelamentos.parcelas || []).map((p) => [p.numero, p]))
+        antigas = new Map((base.parcelamentos.parcelas || []).map((p) => [p.numero, p]))
       } else {
         const { data, error } = await run(supabase.from('parcelamentos').insert({ ...dadosParc, grupo_id: gid, usuario_id: perfil.id }).select('id').single())
         if (error || !data?.id) return
@@ -250,14 +292,23 @@ export default function Financiamentos() {
 
       // Parcelas: SAC (valores diferentes) e edição refazem as linhas. As já pagas (antes ou no
       // app) continuam pagas e com o valor que tinham.
-      const precisaRefazer = !!editando || valores.some((v) => Math.abs(v - r2(parcela)) > 0.004)
+      // Virando financiamento: só refaz se o número, o valor, a data ou o "pago" mudar — senão as
+      // parcelas ficam intactas. De outra pessoa: guarda o "recebido" e o reembolso (como Parcelamentos).
+      const rows = valores.map((v, k) => {
+        const num = k + 1
+        const a = antigas.get(num)
+        const paga = num <= pagas || !!a?.paga
+        return {
+          grupo_id: gid, parcelamento_id: parcelamentoId, numero: num, valor: a?.paga ? Number(a.valor) : v, data_vencimento: dataDaParcela(primeira, num), paga,
+          recebido: !!pessoaId && (paga || !!a?.recebido), reembolso_entrada_id: pessoaId ? (a?.reembolso_entrada_id || null) : null,
+        }
+      })
+      const igualAntes = antigas.size === rows.length && rows.every((x) => {
+        const a = antigas.get(x.numero)
+        return a && Math.abs(Number(a.valor) - x.valor) < 0.005 && String(a.data_vencimento).slice(0, 10) === x.data_vencimento && !!a.paga === x.paga
+      })
+      const precisaRefazer = editando ? true : convertendo ? !igualAntes : valores.some((v) => Math.abs(v - r2(parcela)) > 0.004)
       if (precisaRefazer) {
-        const rows = valores.map((v, k) => {
-          const num = k + 1
-          const a = antigas.get(num)
-          const paga = num <= pagas || !!a?.paga
-          return { grupo_id: gid, parcelamento_id: parcelamentoId, numero: num, valor: a?.paga ? Number(a.valor) : v, data_vencimento: dataDaParcela(primeira, num), paga }
-        })
         const del = await supabase.from('parcelas').delete().eq('parcelamento_id', parcelamentoId)
         if (del.error) { toast(tf.erros.salvar, 'erro'); return }
         for (let k = 0; k < rows.length; k += 300) {
@@ -268,12 +319,15 @@ export default function Financiamentos() {
         if (Math.abs(novoTotal - total) > 0.004) await supabase.from('parcelamentos').update({ valor_total: novoTotal }).eq('id', parcelamentoId)
       }
 
+      let novaFichaId = null
       if (editando) {
         const { error } = await run(supabase.from('financiamentos').update(ficha).eq('id', editando.id))
         if (error) return
       } else {
-        const { error } = await run(supabase.from('financiamentos').insert({ ...ficha, grupo_id: gid, parcelamento_id: parcelamentoId }))
-        if (error) { await supabase.from('parcelamentos').delete().eq('id', parcelamentoId); return }
+        const { data, error } = await run(supabase.from('financiamentos').insert({ ...ficha, grupo_id: gid, parcelamento_id: parcelamentoId }).select('id').single())
+        // Se a ficha falhar, só apaga o parcelado recém-criado — NUNCA um que já existia (virar financiamento).
+        if (error) { if (!convertendo) await supabase.from('parcelamentos').delete().eq('id', parcelamentoId); return }
+        novaFichaId = data?.id || null
       }
 
       const okPartes = await salvarPartes(supabase, {
@@ -281,8 +335,10 @@ export default function Financiamentos() {
         partes: partesOk, cartao: null, aPartirDe: form.aPartirDe || prox,
       })
       if (!okPartes) toast(copy.dividir.erroSalvar, 'erro')
-      else toast(tf.salvo, 'ok')
-      setForm(null); setEditandoId(null)
+      else toast(convertendo ? t.virado : tf.salvo, 'ok')
+      const virou = !!convertendo
+      setForm(null); setEditandoId(null); setConvertendo(null)
+      if (virou) setParams(novaFichaId ? { id: novaFichaId } : {}, { replace: true })
       carregar({ silencioso: true })
     } finally {
       setSalvando(false)
@@ -314,11 +370,14 @@ export default function Financiamentos() {
   // ------------------------------------------------ partes da tela
   const nForm = parseInt(form?.num_parcelas) || 0
   const totalForm = form ? r2((numero(form.valor_parcela) || 0) * nForm) : 0
+  const baseForm = convertendo || comResumo.find((f) => f.id === editandoId)
+  const pessoaForm = baseForm?.parcelamentos?.pessoa_id ? (baseForm.parcelamentos.pessoas?.nome || '') : null
 
   const formulario = form && (
-    <div className="modal-overlay" onClick={() => !salvando && setForm(null)}>
+    <div className="modal-overlay" onClick={() => !salvando && fecharForm()}>
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="fin-form-titulo" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '88vh', overflowY: 'auto' }}>
-        <h2 id="fin-form-titulo" style={{ fontSize: 18, marginBottom: 18 }}>{editandoId ? tf.tituloEditar : tf.tituloNovo}</h2>
+        <h2 id="fin-form-titulo" style={{ fontSize: 18, marginBottom: 18 }}>{convertendo ? tf.tituloVirar : editandoId ? tf.tituloEditar : tf.tituloNovo}</h2>
+        {convertendo && <p style={{ fontSize: 12, color: 'var(--text2)', margin: '-8px 0 14px', lineHeight: 1.4 }}>{tf.avisoVirar}</p>}
         <div className="form-group"><label htmlFor="fin-nome">{tf.nome}</label><input id="fin-nome" value={form.descricao} onChange={set('descricao')} placeholder={tf.nomePh} /></div>
         <div className="form-row">
           <div className="form-group"><label htmlFor="fin-tipo">{tf.tipo}</label>
@@ -364,6 +423,9 @@ export default function Financiamentos() {
             </select>
           </div>
         </div>
+        {pessoaForm != null ? (
+          <p style={{ fontSize: 12, color: 'var(--amber-text)', margin: '0 0 14px', lineHeight: 1.4 }}>{t.aReceberAjuda(pessoaForm)}</p>
+        ) : (
         <div style={{ marginBottom: 14 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
             <input type="checkbox" checked={!!form.dividir} onChange={set('dividir')} />
@@ -375,10 +437,11 @@ export default function Financiamentos() {
               onAPartirDe={(k) => setForm((f) => ({ ...f, aPartirDe: k }))} />
           )}
         </div>
+        )}
         <div className="form-group"><label htmlFor="fin-obs">{tf.obs}</label><input id="fin-obs" value={form.observacao} onChange={set('observacao')} /></div>
         {editandoId && <p style={{ fontSize: 11.5, color: 'var(--text2)', margin: '0 0 14px', lineHeight: 1.4 }}>{tf.avisoEditar}</p>}
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn-ghost" style={{ flex: 1 }} onClick={() => setForm(null)} disabled={salvando}>{tf.cancelar}</button>
+          <button className="btn-ghost" style={{ flex: 1 }} onClick={fecharForm} disabled={salvando}>{tf.cancelar}</button>
           <button className="btn-primary" style={{ flex: 1, opacity: salvando ? 0.6 : 1 }} onClick={salvar} disabled={salvando}>{salvando ? tf.salvando : tf.salvar}</button>
         </div>
       </div>
@@ -407,6 +470,7 @@ export default function Financiamentos() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2 style={{ fontSize: 20 }}>{f.parcelamentos.descricao}</h2>
             <p style={{ fontSize: 12, color: 'var(--text2)' }}>{[t.tipos[f.tipo], f.banco, t.sistemaCurto[f.sistema], nomeMembro(f.dono_id) ? t.deQuem(nomeMembro(f.dono_id)) : t.daFamilia].filter(Boolean).join(' · ')}</p>
+            {f.parcelamentos.pessoa_id && <p style={{ fontSize: 12, color: 'var(--amber-text)', marginTop: 2 }}>{t.aReceber(f.parcelamentos.pessoas?.nome)}</p>}
           </div>
           <button onClick={() => abrirEdicao(f)} aria-label={t.editar} title={t.editar} style={{ padding: 8, color: 'var(--text2)' }}><Pencil size={18} /></button>
           <button onClick={() => apagar(f)} aria-label={t.apagar} title={t.apagar} style={{ padding: 8, color: 'var(--red)' }}><Trash2 size={18} /></button>
@@ -475,6 +539,7 @@ export default function Financiamentos() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontWeight: 600, fontSize: 15 }}>{f.parcelamentos.descricao}</p>
             <p style={{ fontSize: 12, color: 'var(--text2)' }}>{[f.banco || t.tipos[f.tipo], nomeMembro(f.dono_id) ? t.deQuem(nomeMembro(f.dono_id)) : null].filter(Boolean).join(' · ')}</p>
+            {f.parcelamentos.pessoa_id && <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--amber-text)', marginTop: 2 }}>{t.aReceber(f.parcelamentos.pessoas?.nome)}</p>}
           </div>
           <span aria-hidden="true" style={{ fontSize: 18 }}>{emojiDe(f.parcelamentos.categoria)}</span>
         </div>
