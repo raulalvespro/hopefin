@@ -9,7 +9,7 @@ import { codChamado, mensagemErroChamado, telaAtual, rotuloCategoriaChamado, dia
 const app = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
 const rotas = new Set(['/', ...[...app.matchAll(/<Route path="([a-z-]+)"/g)].map((m) => `/${m[1]}`)])
 const migracao = readFileSync(new URL('../supabase/migrations/0081_chamados_suporte.sql', import.meta.url), 'utf8')
-const CHAVES = ['ajuda', 'busca_filtros', 'importar', 'whatsapp_app']
+const CHAVES = ['ajuda', 'busca_filtros', 'importar', 'whatsapp_app', 'financiamentos']
 const todas = () => [...Object.values(copy.ajuda.telas).flatMap((t) => t.perguntas), ...copy.ajuda.perguntasGerais]
 
 describe('Ajuda — perguntas por tela', () => {

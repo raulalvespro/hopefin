@@ -40,6 +40,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // O pacote principal chegou a ~2,1 MB (22/11/2026) e passou do teto padrão de 2 MB: sem isto
+        // ele sai do modo offline e o build falha. 3 MB dá folga; dividir o pacote é a solução de verdade.
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         navigateFallback: '/index.html',
         // Nunca interceptar chamadas ao Supabase (API/auth/realtime)
         navigateFallbackDenylist: [/^\/api/, /supabase\.co/],

@@ -133,7 +133,7 @@ export default function Parcelamentos() {
     if (!opcoes?.silencioso) setLoading(true) // atualizando sozinha: sem "Carregando"
     const { data } = await supabase
       .from('parcelamentos')
-      .select('*, cartoes(nome), pessoas(nome), parcelas(id, numero, valor, data_vencimento, paga)')
+      .select('*, cartoes(nome), pessoas(nome), parcelas(id, numero, valor, data_vencimento, paga), financiamentos(id)')
       .eq('grupo_id', perfil.grupo_id)
       .order('criado_em', { ascending: false })
     setParcelamentos(data || [])
@@ -186,9 +186,10 @@ export default function Parcelamentos() {
     setVoltarPara(destinoVoltar(params)) // Gastos ou a mesma fatura do cartão (A8.7)
     setParams({}, { replace: true })
     const p = parcelamentos.find(x => x.id === editarId)
-    if (p) abrirEdicao(p)
+    if (p?.financiamentos && flags?.financiamentos) navigate(`/financiamentos?id=${p.financiamentos.id}`, { replace: true })
+    else if (p) abrirEdicao(p)
     else toast(copy.gastos.naoAchei, 'erro')
-  }, [editarId, loading, parcelamentos]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [editarId, loading, parcelamentos, flags]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function salvarEdicao() {
     if (!form.descricao.trim()) { toast('Informe a descrição.', 'erro'); return }
@@ -268,8 +269,17 @@ export default function Parcelamentos() {
     if (!error) carregar()
   }
 
+  // Financiamentos (0120) têm tela própria: com a chave ligada, saem desta lista (o "ver todas"
+  // de uma parcela de financiamento leva pra lá).
+  const fin = !!flags?.financiamentos
+  useEffect(() => {
+    if (!fin || !ver || loading) return
+    const p = parcelamentos.find(x => x.id === ver)
+    if (p?.financiamentos) navigate(`/financiamentos?id=${p.financiamentos.id}`, { replace: true })
+  }, [fin, ver, loading, parcelamentos]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const hoje = hojeISO()
-  const comInfo = parcelamentos.map(p => {
+  const comInfo = parcelamentos.filter(p => !(fin && p.financiamentos)).map(p => {
     const parcelas = p.parcelas || []
     const pagas = parcelas.filter(x => x.paga).length
     const total = parcelas.length || p.num_parcelas
@@ -314,12 +324,12 @@ export default function Parcelamentos() {
         </p>
       </div>
 
-      {buscaLigada && parcelamentos.length > 0 && (
+      {buscaLigada && comInfo.length > 0 && (
         <BuscaFiltros filtro={filtro} onChange={setFiltro} opcoes={opcoesBusca} periodo placeholder={tb.buscarParcelados}
           resumo={tb.resumoParcelados(visiveis.length, fmt(visiveis.reduce((s, p) => s + p.restante, 0)))} />
       )}
 
-      {loading ? <div className="empty-state">Carregando...</div> : parcelamentos.length === 0 ? (
+      {loading ? <div className="empty-state">Carregando...</div> : comInfo.length === 0 ? (
         <div className="empty-state">Nenhuma compra parcelada</div>
       ) : filtrando && visiveis.length === 0 ? (
         <div className="empty-state">{tb.nada}</div>

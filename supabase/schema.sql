@@ -130,6 +130,24 @@ create table if not exists public.parcelas (
   criado_em       timestamptz not null default now()
 );
 
+-- Financiamentos (0120): ficha do financiamento; as parcelas ficam em parcelamentos/parcelas
+-- (sem cartão). RLS por grupo + trava de lançamento (grupo_pode_lancar) no insert.
+create table if not exists public.financiamentos (
+  id                uuid primary key default gen_random_uuid(),
+  grupo_id          uuid not null references public.grupos(id) on delete cascade,
+  parcelamento_id   uuid not null unique references public.parcelamentos(id) on delete cascade,
+  tipo              text not null default 'outro',   -- imovel|carro|consignado|pessoal|estudantil|outro
+  banco             text,
+  valor_financiado  numeric(14,2),
+  entrada           numeric(14,2),
+  sistema           text not null default 'price',   -- price|sac|fixa
+  taxa_valor        numeric(8,4),                    -- % como a pessoa informou
+  taxa_periodo      text not null default 'mes',     -- mes|ano
+  dono_id           uuid,                            -- membro do grupo (sem FK); null = da família
+  observacao        text,
+  criado_em         timestamptz not null default now()
+);
+
 -- Cofrinhos / investimentos / reservas
 create table if not exists public.cofrinhos (
   id          uuid primary key default gen_random_uuid(),

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { supabase } from './lib/supabase'
@@ -19,6 +19,8 @@ import ContasFixas from './pages/ContasFixas'
 import ContasDoMes from './pages/ContasDoMes'
 import Assinaturas from './pages/Assinaturas'
 import Parcelamentos from './pages/Parcelamentos'
+// Financiamentos (0120): carrega só quando abre (fica fora do pacote principal, que tem teto de 2 MB no modo offline)
+const Financiamentos = lazy(() => import('./pages/Financiamentos'))
 import Projecao from './pages/Projecao'
 import Cofrinhos from './pages/Cofrinhos'
 import Orcamento from './pages/Orcamento'
@@ -161,6 +163,7 @@ export default function App() {
         <Route path="contas-do-mes" element={<ContasDoMes />} />
         <Route path="assinaturas" element={<Assinaturas />} />
         <Route path="parcelamentos" element={<Parcelamentos />} />
+        <Route path="financiamentos" element={<SoComChave chave="financiamentos" senao="/parcelamentos"><Suspense fallback={null}><Financiamentos /></Suspense></SoComChave>} />
         <Route path="a-receber" element={<AReceber />} />
         <Route path="pessoas" element={<Pessoas />} />
         <Route path="projecao" element={<Projecao />} />

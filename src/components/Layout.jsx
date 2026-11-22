@@ -3,7 +3,7 @@ import { tourVisto } from '../lib/tour'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar,
-  MoreHorizontal, X, Target, PiggyBank, CalendarCheck, Repeat, ClipboardCheck, Bell, Clock, History, Coins,
+  MoreHorizontal, X, Target, PiggyBank, CalendarCheck, Repeat, ClipboardCheck, Bell, Clock, History, Coins, Landmark,
 } from 'lucide-react'
 import { useState } from 'react'
 import InstalarApp from './InstalarApp'
@@ -42,6 +42,8 @@ const navMais = [
     { to: '/contas-fixas', label: 'Contas fixas', icon: FileText },
     { to: '/contas-do-mes', label: 'Contas do mês', icon: CalendarCheck },
     { to: '/parcelamentos', label: 'Parcelamentos', icon: Layers },
+    // Financiamentos (0120): só com a chave de recurso "financiamentos", até o Raul liberar
+    { to: '/financiamentos', label: copy.financiamentos.menu, icon: Landmark, chave: 'financiamentos' },
     { to: '/assinaturas', label: 'Assinaturas', icon: Repeat },
     { to: '/a-receber', label: 'A receber', icon: Coins },
   ] },
@@ -245,7 +247,7 @@ export default function Layout() {
               <div key={secao} style={{ marginBottom: 18 }}>
                 <p style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 2px 8px' }}>{secao}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {itens.map(({ to, label, icon: Icon }) => (
+                  {itens.filter(n => !n.chave || flags?.[n.chave]).map(({ to, label, icon: Icon }) => (
                     <Link
                       key={to}
                       to={to}
