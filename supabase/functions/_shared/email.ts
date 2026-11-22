@@ -117,18 +117,23 @@ export async function enviarEmail(opts: {
   para: string | string[]
   assunto: string
   html: string
+  de?: string           // remetente (padrão: avisos@). Remarketing: "Lari, do HopeFin <novidades@...>"
+  responderPara?: string
+  etiqueta?: string     // nome do modelo (email_modelos.chave), vai como tag no Resend
 }): Promise<{ ok: boolean; id?: string; erro?: string }> {
   if (!RESEND_API_KEY) return { ok: false, erro: 'RESEND_API_KEY não configurada' }
+  const corpo: Record<string, unknown> = {
+    from: opts.de || REMETENTE,
+    to: Array.isArray(opts.para) ? opts.para : [opts.para],
+    reply_to: opts.responderPara || REPLY_TO,
+    subject: opts.assunto,
+    html: opts.html,
+  }
+  if (opts.etiqueta && /^[A-Za-z0-9_-]{1,100}$/.test(opts.etiqueta)) corpo.tags = [{ name: 'modelo', value: opts.etiqueta }]
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: REMETENTE,
-      to: Array.isArray(opts.para) ? opts.para : [opts.para],
-      reply_to: REPLY_TO,
-      subject: opts.assunto,
-      html: opts.html,
-    }),
+    body: JSON.stringify(corpo),
   })
   const data = await r.json().catch(() => ({}))
   if (!r.ok) return { ok: false, erro: data?.message || data?.name || `HTTP ${r.status}` }

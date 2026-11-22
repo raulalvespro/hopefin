@@ -1280,6 +1280,9 @@ export const copy = {
       mensagemLabel: 'Conte pra gente',
       mensagemPh: 'O que você estava fazendo, o que esperava e o que aconteceu. Quanto mais detalhe, mais rápido a gente resolve.',
       contador: (n, max) => `${n} de ${max}`,
+      minimo: (min) => `mínimo ${min} caracteres`,
+      // Explica o botão cinza enquanto falta texto (pedido do Raul, 22/11/2026).
+      porqueCinza: (falta, min) => `O botão libera quando a mensagem tiver pelo menos ${min} caracteres — falta${falta === 1 ? '' : 'm'} ${falta}.`,
       cuidado: 'Não mande senha nem número de cartão por aqui.',
       enviar: 'Enviar chamado',
       enviando: 'Enviando…',

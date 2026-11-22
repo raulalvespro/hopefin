@@ -20,6 +20,8 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { layoutEmail, enviarEmail, esc } from '../_shared/email.ts'
+import { lerModelo, montarModelo, type Modelo } from '../_shared/modelos.ts'
+import { varsBase } from '../_shared/modelo.js'
 import { contasAVencer, hojeBRT, addDias, compDe } from '../_shared/motor.js'
 import { carregarDadosMotor } from '../_shared/motor-dados.js'
 
@@ -77,6 +79,10 @@ function nomeItem(i: Item): string {
 }
 
 function corpoVencimentos(hoje: string, itens: Item[], total: number): string {
+  return `Uma lembrança rápida das contas da sua família que estão chegando:<br><br>${tabelaVencimentos(hoje, itens, total)}`
+}
+
+function tabelaVencimentos(hoje: string, itens: Item[], total: number): string {
   const amanha = addDias(hoje, 1)
   const linhas = itens.map((i) => {
     const quando = i.venc === hoje ? 'vence hoje' : i.venc === amanha ? 'vence amanhã' : `vence ${diaMes(i.venc)}`
@@ -86,17 +92,26 @@ function corpoVencimentos(hoje: string, itens: Item[], total: number): string {
       <td style="padding:7px 0;border-bottom:1px solid #eef1f5;font-size:15px;color:#0f172a;text-align:right;white-space:nowrap;">${brl(i.valor)}</td>
     </tr>`
   }).join('')
-  return `Uma lembrança rápida das contas da sua família que estão chegando:<br><br>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
       ${linhas}
       <tr><td style="padding:10px 0 0;font-size:15px;color:#0f172a;font-weight:700;">Total</td>
         <td style="padding:10px 0 0;font-size:15px;color:#0f172a;font-weight:700;text-align:right;">${brl(total)}</td></tr>
     </table>`
 }
 
-function montarEmail(g: Destino, hoje: string, itens: Item[]) {
+async function montarEmail(g: Destino, hoje: string, itens: Item[], mod: Modelo | null) {
   const qtd = itens.length
   const total = Math.round(itens.reduce((s, i) => s + Number(i.valor), 0) * 100) / 100
+  // Texto do Painel (E-mails automáticos, 0090); sem ele, o de sempre.
+  if (mod && mod.assunto && mod.corpo) {
+    try {
+      const m = await montarModelo(mod, {
+        ...varsBase(g.nome), qtd_contas: qtd === 1 ? '1 conta' : `${qtd} contas`, total: brl(total),
+        lista_contas: { html: tabelaVencimentos(hoje, itens, total) },
+      })
+      return { ...m, qtd, total }
+    } catch (e) { console.error('modelo de vencimentos falhou', (e as Error).message) }
+  }
   const assunto = qtd === 1 ? 'Você tem 1 conta a vencer' : `Você tem ${qtd} contas a vencer`
   const ola = g.nome ? `Oi, ${esc(String(g.nome).split(' ')[0])}! ` : 'Oi! '
   const html = layoutEmail({
@@ -129,6 +144,9 @@ Deno.serve(async (req) => {
     return json({ erro: (e as Error).message }, 500)
   }
 
+  const mod = await lerModelo(admin, 'vencimentos')
+  if (mod && mod.assunto && mod.corpo && !mod.ligado && !previa) return json({ ok: true, desligado: true })
+
   const out = { hoje, ate, previa, verificados: lista.length, enviados: 0, sem_contas: 0, pulados: 0, erros: 0, faturas: 0, detalhes: [] as unknown[] }
 
   for (const g of lista) {
@@ -137,7 +155,7 @@ Deno.serve(async (req) => {
       out.erros++; out.detalhes.push({ grupo: g.grupo_id, erro: `motor: ${(e as Error).message}` }); continue
     }
     if (!itens.length) { out.sem_contas++; continue }
-    const email = montarEmail(g, hoje, itens)
+    const email = await montarEmail(g, hoje, itens, mod)
     out.faturas += itens.filter((i) => i.tipo === 'fatura').length
 
     if (previa) {
@@ -155,7 +173,7 @@ Deno.serve(async (req) => {
       if ((ins.error as { code?: string }).code === '23505') { out.pulados++; continue }
       out.erros++; out.detalhes.push({ grupo: g.grupo_id, erro: ins.error.message }); continue
     }
-    const env = await enviarEmail({ para: g.email, assunto: email.assunto, html: email.html })
+    const env = await enviarEmail({ para: g.email, assunto: email.assunto, html: email.html, etiqueta: 'vencimentos' })
     if (env.ok) {
       await admin.from('email_log').update({ status: 'enviado', resend_id: env.id }).eq('id', ins.data!.id)
       out.enviados++; out.detalhes.push({ grupo: g.grupo_id, para: g.email, qtd: email.qtd, id: env.id })

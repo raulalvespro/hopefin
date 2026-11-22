@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   LayoutDashboard, Users, Wallet, Package, Ticket, LifeBuoy, Shield, Webhook, Activity,
   Menu, X, Sun, Moon, LogOut, Loader, ShieldAlert, RefreshCw, TrendingUp, ScrollText, Settings,
-  MessageCircle, FlaskConical, Megaphone,
+  MessageCircle, FlaskConical, Megaphone, Mail,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -14,16 +14,17 @@ import { VisaoGeral, Grupos, Administradores, Cupons, Webhooks, Custos, Servicos
 import { Search } from 'lucide-react'
 import './painel.css'
 import Comunicados from './Comunicados'
+import EmailsAutomaticos from './EmailsAutomaticos'
 
 const MENU = [
   { grupo: 'Principal', itens: [{ id: 'visao', nome: 'Visão geral', icon: LayoutDashboard }] },
   { grupo: 'Clientes', itens: [{ id: 'grupos', nome: 'Clientes', icon: Users }] },
   { grupo: 'Financeiro', itens: [{ id: 'receitas', nome: 'Receitas', icon: TrendingUp }, { id: 'custos', nome: 'Custos', icon: Wallet }, { id: 'servicos', nome: 'Serviços & créditos', icon: Package }] },
-  { grupo: 'Crescimento', itens: [{ id: 'cupons', nome: 'Cupons', icon: Ticket }, { id: 'comunicados', nome: 'Comunicados', icon: Megaphone }] },
+  { grupo: 'Crescimento', itens: [{ id: 'cupons', nome: 'Cupons', icon: Ticket }, { id: 'comunicados', nome: 'Comunicados', icon: Megaphone }, { id: 'emails', nome: 'E-mails automáticos', icon: Mail }] },
   { grupo: 'Atendimento', itens: [{ id: 'suporte', nome: 'Suporte', icon: LifeBuoy }] },
   { grupo: 'Sistema', itens: [{ id: 'admins', nome: 'Administradores', icon: Shield }, { id: 'config', nome: 'Configurações', icon: Settings }, { id: 'auditoria', nome: 'Auditoria', icon: ScrollText }, { id: 'webhooks', nome: 'Webhooks', icon: Webhook }, { id: 'saude', nome: 'Saúde', icon: Activity }] },
 ]
-const TITULOS = { visao: 'Visão geral', grupos: 'Clientes', receitas: 'Receitas', custos: 'Custos', servicos: 'Serviços & créditos', cupons: 'Cupons', comunicados: 'Comunicados', suporte: 'Suporte', admins: 'Administradores', config: 'Configurações', auditoria: 'Auditoria', webhooks: 'Webhooks', saude: 'Saúde do sistema', whatsapp: 'WhatsApp', dev: 'Área de desenvolvimento' }
+const TITULOS = { visao: 'Visão geral', grupos: 'Clientes', receitas: 'Receitas', custos: 'Custos', servicos: 'Serviços & créditos', cupons: 'Cupons', comunicados: 'Comunicados', emails: 'E-mails automáticos', suporte: 'Suporte', admins: 'Administradores', config: 'Configurações', auditoria: 'Auditoria', webhooks: 'Webhooks', saude: 'Saúde do sistema', whatsapp: 'WhatsApp', dev: 'Área de desenvolvimento' }
 
 // Monta o menu conforme o papel. A gestão de WhatsApp fica fixa no painel (todo
 // admin vê — hoje só o dono). A Área de desenvolvimento (controle do que vai pro
@@ -140,6 +141,7 @@ function Painel({ logout, email, isDono }) {
           {aba === 'grupos' && <Grupos />}
           {aba === 'cupons' && <Cupons cupons={cupons} recarregar={carregar} />}
           {aba === 'comunicados' && <Comunicados />}
+          {aba === 'emails' && <EmailsAutomaticos />}
           {aba === 'admins' && <Administradores />}
           {aba === 'webhooks' && <Webhooks webhooks={webhooks} />}
           {aba === 'receitas' && <Receitas />}

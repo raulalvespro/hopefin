@@ -231,7 +231,8 @@ export default function Ajuda({ flags }) {
     setVista('enviado')
   }
 
-  const podeEnviar = mensagem.trim().length >= MENSAGEM_MIN && !enviando
+  const faltaTexto = Math.max(0, MENSAGEM_MIN - mensagem.trim().length)
+  const podeEnviar = faltaTexto === 0 && !enviando
 
   return (
     <>
@@ -353,7 +354,7 @@ export default function Ajuda({ flags }) {
                   <input id="chamado-assunto" value={assunto} onChange={(e) => setAssunto(e.target.value)} maxLength={ASSUNTO_MAX} placeholder={tc.assuntoPh} />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="chamado-mensagem">{tc.mensagemLabel}</label>
+                  <label htmlFor="chamado-mensagem">{tc.mensagemLabel} <span style={{ fontWeight: 400, color: 'var(--text2)' }}>· {tc.minimo(MENSAGEM_MIN)}</span></label>
                   <textarea id="chamado-mensagem" value={mensagem} onChange={(e) => { setMensagem(e.target.value); if (erro) setErro('') }} rows={6} maxLength={MENSAGEM_MAX}
                     placeholder={tc.mensagemPh} style={{ width: '100%', resize: 'vertical' }} aria-describedby="chamado-dica" />
                   <p id="chamado-dica" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
@@ -366,6 +367,9 @@ export default function Ajuda({ flags }) {
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: podeEnviar ? 1 : 0.6 }}>
                   {enviando ? <><Loader size={18} className="spin" aria-hidden="true" /> {tc.enviando}</> : <><MessageSquarePlus size={18} aria-hidden="true" /> {tc.enviar}</>}
                 </button>
+                {faltaTexto > 0 && !enviando && (
+                  <p id="chamado-porque" aria-live="polite" style={{ fontSize: 12.5, color: 'var(--amber-text)', textAlign: 'center', marginTop: 8 }}>{tc.porqueCinza(faltaTexto, MENSAGEM_MIN)}</p>
+                )}
                 <p style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center', marginTop: 8 }}>{tc.prazo}</p>
               </form>
             )}

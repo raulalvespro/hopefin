@@ -23,8 +23,10 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { layoutEmail, enviarEmail } from '../_shared/email.ts'
-import { tipoDoDia, recebe, conteudoRegua, conteudoAntigo0d, pushRegua } from './regua.js'
+import { tipoDoDia, recebe, conteudoRegua, conteudoAntigo0d, pushRegua, oferta } from './regua.js'
 import { pushParaGrupo } from '../_shared/push.ts'
+import { lerModelo, montarModelo, type Modelo } from '../_shared/modelos.ts'
+import { varsBase } from '../_shared/modelo.js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -45,6 +47,7 @@ function dataBRT(d: Date): string {
     timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(d)
 }
+const ddmm = (ymd: string) => { const [, m, d] = ymd.split('-'); return `${d}/${m}` }
 function diffDias(fim: string, hoje: string): number {
   const [ay, am, ad] = fim.split('-').map(Number)
   const [by, bm, bd] = hoje.split('-').map(Number)
@@ -108,34 +111,49 @@ Deno.serve(async (req) => {
 
   const hoje = dataBRT(new Date())
   const precos = nova ? await precosPublicos() : null
+  // Textos, liga/desliga e dias vêm do Painel (E-mails automáticos, 0090). Sem eles, o código de sempre.
+  const modelos: Record<string, Modelo | null> = {}
+  if (nova) for (const k of ['fim_trial_3d', 'fim_trial_0d', 'fim_trial_d1']) modelos[k] = await lerModelo(admin, k)
+  const antes = Math.max(1, Number(modelos.fim_trial_3d?.dias ?? 3) || 3)
+  const depois = Math.max(1, Number(modelos.fim_trial_d1?.dias ?? 1) || 1)
   const out = { regua: nova ? 'nova' : 'hoje', verificados: trials?.length || 0, enviados: 0, pulados: 0, erros: 0, detalhes: [] as unknown[] }
 
   for (const t of trials || []) {
     const fim = dataBRT(new Date(t.trial_ends_at as string))
-    const tipo = tipoDoDia(diffDias(fim, hoje), nova)
+    const tipo = tipoDoDia(diffDias(fim, hoje), nova, { antes, depois })
     if (!tipo || !recebe(t, tipo)) continue
     const ref = fim
+    const mod = modelos[tipo]
+    if (mod && mod.assunto && mod.corpo && !mod.ligado) { out.pulados++; continue } // desligado no Painel
 
     const { data: u } = await admin.from('usuarios').select('email, nome').eq('id', t.titular_id).maybeSingle()
     if (!u?.email) { out.erros++; out.detalhes.push({ grupo: t.grupo_id, tipo, erro: 'sem e-mail do titular' }); continue }
 
     const c = conteudo(tipo, nova, u.nome, fim, precos)
     if (!c) continue
+    let pronto: { assunto: string, html: string } | null = null
+    if (mod && mod.assunto && mod.corpo) {
+      try {
+        const of = oferta(precos)
+        pronto = await montarModelo(mod, { ...varsBase(u.nome), fim: ddmm(fim), dias_restantes: `${antes} dia${antes === 1 ? '' : 's'}`, oferta: of ? { html: of, texto: '' } : '' })
+      } catch (e) { console.error('modelo da régua falhou', (e as Error).message) }
+    }
+    const assunto = pronto?.assunto ?? c.assunto
     // idempotência: insere primeiro; conflito (23505) = já enviado -> pula.
     const ins = await admin.from('email_log')
-      .insert({ grupo_id: t.grupo_id, titular_id: t.titular_id, tipo, ref, destino: u.email, assunto: c.assunto, status: 'enviando' })
+      .insert({ grupo_id: t.grupo_id, titular_id: t.titular_id, tipo, ref, destino: u.email, assunto, status: 'enviando' })
       .select('id').maybeSingle()
     if (ins.error) {
       if ((ins.error as { code?: string }).code === '23505') { out.pulados++; continue }
       out.erros++; out.detalhes.push({ grupo: t.grupo_id, tipo, erro: ins.error.message }); continue
     }
 
-    const env = await enviarEmail({ para: u.email, assunto: c.assunto, html: montar(c) })
+    const env = await enviarEmail({ para: u.email, assunto, html: pronto?.html ?? montar(c), etiqueta: tipo })
     if (env.ok) {
       await admin.from('email_log').update({ status: 'enviado', resend_id: env.id }).eq('id', ins.data!.id)
       // Reforço no celular (A6.2): só depois do e-mail sair, então também sai uma vez por teste.
       let push = 0
-      const p = pushRegua(tipo)
+      const p = pushRegua(tipo, antes)
       if (p) {
         try { push = (await pushParaGrupo(admin, t.grupo_id as string, p)).enviados || 0 }
         catch (e) { console.error('push da régua falhou', (e as Error).message) }

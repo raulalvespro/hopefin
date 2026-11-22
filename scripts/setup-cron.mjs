@@ -42,6 +42,7 @@ const urlRenovar = `https://${REF}.supabase.co/functions/v1/renovar-cartao`
 const urlSaude = `https://${REF}.supabase.co/functions/v1/saude-alerta`
 const urlAvisoChamado = `https://${REF}.supabase.co/functions/v1/suporte-aviso-dono`
 const urlComunicados = `https://${REF}.supabase.co/functions/v1/comunicados-agendados`
+const urlAutomacoes = `https://${REF}.supabase.co/functions/v1/automacoes-email`
 const sql = `
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
@@ -187,6 +188,24 @@ select cron.schedule('hopefin-comunicados-agendados', '*/5 * * * *', $cron$
   where exists (
     select 1 from public.comunicados
      where agendado_para <= now() and enviado_em is null and cancelado_em is null
+  );
+$cron$);
+
+-- Automações de e-mail criadas no Painel + remarketing (0090–0092) — 10:30 BRT (13:30 UTC).
+-- A sequência de remarketing só envia quando ligada no Painel (nasce desligada).
+do $unsched$ begin
+  perform cron.unschedule('hopefin-automacoes-email');
+exception when others then null; end $unsched$;
+
+select cron.schedule('hopefin-automacoes-email', '30 13 * * *', $cron$
+  select net.http_post(
+    url := '${urlAutomacoes}',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'apikey', '${ANON}',
+      'x-cron-secret', '${CRON}'
+    ),
+    body := '{}'::jsonb
   );
 $cron$);
 `

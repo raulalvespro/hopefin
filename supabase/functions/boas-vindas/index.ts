@@ -14,6 +14,8 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { layoutEmail, enviarEmail, esc } from '../_shared/email.ts'
+import { doModelo } from '../_shared/modelos.ts'
+import { varsBase } from '../_shared/modelo.js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -49,7 +51,7 @@ async function enviarUnico(opts: {
     if ((ins.error as { code?: string }).code === '23505') return { status: 'pulado' }
     return { status: 'erro', erro: ins.error.message }
   }
-  const env = await enviarEmail({ para: opts.destino, assunto: opts.assunto, html: opts.html })
+  const env = await enviarEmail({ para: opts.destino, assunto: opts.assunto, html: opts.html, etiqueta: opts.tipo })
   if (env.ok) {
     await admin.from('email_log').update({ status: 'enviado', resend_id: env.id }).eq('id', ins.data!.id)
     return { status: 'enviado', id: env.id }
@@ -97,9 +99,12 @@ Deno.serve(async (req) => {
       preheader: 'Suas finanças da família, no mesmo lugar — comece em poucos minutos.',
       cta: { texto: 'Abrir o HopeFin', url: APP_URL },
     })
+    // Texto do Painel (E-mails automáticos); sem ele, o de cima.
+    const m = await doModelo(admin, 'boas_vindas', varsBase(eu.nome))
+    if (m?.desligado) return json({ ok: true, status: 'desligado' })
     const r = await enviarUnico({
       grupoId: eu.grupo_id, titularId: uid, tipo: 'boas_vindas', ref: uid,
-      destino: eu.email, assunto: 'Bem-vindo ao HopeFin 💚', html,
+      destino: eu.email, assunto: m?.assunto ?? 'Bem-vindo ao HopeFin 💚', html: m?.html ?? html,
     })
     return json({ ok: r.status !== 'erro', ...r })
   }
@@ -126,9 +131,11 @@ Deno.serve(async (req) => {
       preheader: `${quem} entrou no grupo ${esc(g.nome)}.`,
       cta: { texto: 'Abrir o HopeFin', url: APP_URL },
     })
+    const m = await doModelo(admin, 'membro_entrou', { ...varsBase(dono.nome), quem: eu.nome || 'Alguém', grupo: g.nome || '' })
+    if (m?.desligado) return json({ ok: true, status: 'desligado' })
     const r = await enviarUnico({
       grupoId: eu.grupo_id, titularId: g.criado_por, tipo: 'membro_entrou', ref: uid,
-      destino: dono.email, assunto: `${quem} entrou no seu grupo no HopeFin`, html,
+      destino: dono.email, assunto: m?.assunto ?? `${quem} entrou no seu grupo no HopeFin`, html: m?.html ?? html,
     })
     return json({ ok: r.status !== 'erro', ...r })
   }

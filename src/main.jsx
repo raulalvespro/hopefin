@@ -5,7 +5,9 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import App from './App'
-import AdminApp from './admin/AdminApp'
+// O painel do dono só é baixado em admin.hopefin.com.br (fica fora do arquivo principal do app,
+// que tem limite de 2 MB pra funcionar offline — 22/11/2026).
+const AdminApp = React.lazy(() => import('./admin/AdminApp'))
 import { ehHostAdmin } from './admin/host'
 import './index.css'
 import { initSentry, Sentry } from './lib/sentry'
@@ -53,7 +55,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <ThemeProvider>
         <ToastProvider>
           <AuthProvider>
-            {ehAdmin ? <AdminApp /> : <BrowserRouter><App /></BrowserRouter>}
+            {ehAdmin ? <React.Suspense fallback={null}><AdminApp /></React.Suspense> : <BrowserRouter><App /></BrowserRouter>}
           </AuthProvider>
         </ToastProvider>
       </ThemeProvider>

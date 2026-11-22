@@ -19,6 +19,8 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { layoutEmail, enviarEmail, esc } from '../_shared/email.ts'
+import { doModelo } from '../_shared/modelos.ts'
+import { varsBase } from '../_shared/modelo.js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -78,7 +80,10 @@ async function avisarCancelamento(grupoId: string, titularId: string, email: str
       'Mudou de ideia? Você pode assinar de novo a qualquer momento.',
     cta: { texto: 'Ver planos', url: 'https://app.hopefin.com.br/planos' },
   })
-  const env = await enviarEmail({ para: email, assunto, html })
+  const m = await doModelo(admin, 'cancelamento', { ...varsBase(nome), situacao: { html: ate } }) // texto do Painel (essencial)
+  const env = m && !m.desligado
+    ? await enviarEmail({ para: email, assunto: m.assunto, html: m.html, etiqueta: 'cancelamento' })
+    : await enviarEmail({ para: email, assunto, html, etiqueta: 'cancelamento' })
   if (env.ok) await admin.from('email_log').update({ status: 'enviado', resend_id: env.id }).eq('id', ins.data.id)
   else await admin.from('email_log').update({ status: 'erro', erro: env.erro }).eq('id', ins.data.id)
 }

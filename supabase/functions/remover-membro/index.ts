@@ -8,6 +8,8 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { layoutEmail, enviarEmail, esc } from '../_shared/email.ts'
+import { doModelo } from '../_shared/modelos.ts'
+import { varsBase } from '../_shared/modelo.js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -55,7 +57,8 @@ Deno.serve(async (req) => {
 
   // E-mail para quem saiu (best-effort).
   try {
-    if (alvo?.email) {
+    const mod = alvo?.email ? await doModelo(admin, 'remocao_grupo', { ...varsBase(alvo.nome), quem: quem?.nome || 'Quem criou o grupo', grupo: grupo?.nome || '' }) : null
+    if (alvo?.email && !mod?.desligado) {
       const assunto = `Você saiu do grupo ${grupo?.nome || 'no HopeFin'}`
       const ref = `${alvoId}:${Date.now()}`
       const ins = await admin.from('email_log')
@@ -72,7 +75,9 @@ Deno.serve(async (req) => {
             'Se achar que foi engano, fale com quem criou o grupo.',
           cta: { texto: 'Abrir o HopeFin', url: 'https://app.hopefin.com.br' },
         })
-        const env = await enviarEmail({ para: alvo.email, assunto, html })
+        const env = mod && !mod.desligado
+          ? await enviarEmail({ para: alvo.email, assunto: mod.assunto, html: mod.html, etiqueta: 'remocao_grupo' })
+          : await enviarEmail({ para: alvo.email, assunto, html, etiqueta: 'remocao_grupo' })
         if (env.ok) await admin.from('email_log').update({ status: 'enviado', resend_id: env.id }).eq('id', ins.data.id)
         else await admin.from('email_log').update({ status: 'erro', erro: env.erro }).eq('id', ins.data.id)
       }

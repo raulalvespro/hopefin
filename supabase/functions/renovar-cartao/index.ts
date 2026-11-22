@@ -16,6 +16,8 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { layoutEmail, enviarEmail, esc } from '../_shared/email.ts'
+import { doModelo } from '../_shared/modelos.ts'
+import { varsBase } from '../_shared/modelo.js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -61,8 +63,13 @@ async function reservar(grupoId: string, titularId: string | null, tipo: string,
   if (ins.error) return null // 23505 = já feito para este período
   return ins.data!.id as string
 }
-async function enviar(logId: string, para: string, assunto: string, html: string) {
-  const env = await enviarEmail({ para, assunto, html })
+// Texto do Painel (E-mails automáticos, 0090) quando existe; estes são essenciais (não desligam).
+async function enviar(logId: string, para: string, assunto: string, html: string, chave?: string, vars?: Record<string, unknown>) {
+  if (chave) {
+    const m = await doModelo(admin, chave, vars || {})
+    if (m && !m.desligado) { assunto = m.assunto; html = m.html }
+  }
+  const env = await enviarEmail({ para, assunto, html, etiqueta: chave })
   if (env.ok) await admin.from('email_log').update({ status: 'enviado', resend_id: env.id }).eq('id', logId)
   else await admin.from('email_log').update({ status: 'erro', erro: env.erro }).eq('id', logId)
 }
@@ -112,7 +119,7 @@ Deno.serve(async (req) => {
           'o acesso continua até o fim do período já pago e nada será cobrado.',
         cta: { texto: 'Ver minha assinatura', url: 'https://app.hopefin.com.br/configuracoes' },
       })
-      await enviar(logId, u.email, assunto, html)
+      await enviar(logId, u.email, assunto, html, 'renovacao_aviso', { ...varsBase(u.nome), data_renovacao: dataBR(s.current_period_end), valor: brl(s.preco_centavos), forma })
       out.avisos++; out.detalhes.push({ grupo: s.grupo_id, tipo: 'aviso' })
       continue
     }
@@ -151,7 +158,7 @@ Deno.serve(async (req) => {
           preheader: assunto,
           corpoHtml: `${nome}Renovamos o seu plano anual: <strong>${brl(s.preco_centavos)}</strong> (${forma}) no cartão cadastrado. Obrigado por continuar com a gente!`,
           cta: { texto: 'Abrir o HopeFin', url: 'https://app.hopefin.com.br' },
-        }))
+        }), 'renovacao_ok', { ...varsBase(u.nome), valor: brl(s.preco_centavos), forma })
       }
     } catch (e) {
       const msg = (e as Error)?.message || 'erro'
@@ -168,7 +175,7 @@ Deno.serve(async (req) => {
           corpoHtml: `${nome}Tentamos renovar o seu plano anual, mas a cobrança no cartão não passou. ` +
             'Seus dados continuam guardados: você ainda vê e exporta tudo. Para voltar a lançar, é só assinar de novo com um cartão válido (ou pelo Pix).',
           cta: { texto: 'Regularizar agora', url: 'https://app.hopefin.com.br/planos' },
-        }))
+        }), 'renovacao_falha', varsBase(u.nome))
       }
     }
   }

@@ -13,6 +13,8 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { layoutEmail, enviarEmail, esc } from '../_shared/email.ts'
+import { doModelo } from '../_shared/modelos.ts'
+import { varsBase } from '../_shared/modelo.js'
 import { nivelDaSessao } from '../_shared/sessao.ts'
 import { pushParaGrupo } from '../_shared/push.ts'
 
@@ -106,8 +108,22 @@ Deno.serve(async (req) => {
         preheader: 'A equipe HopeFin respondeu o seu chamado.',
         cta: { texto: 'Ver no app', url: LINK_CHAMADOS },
       })
-      const env = await enviarEmail({ para: msg.de_email, assunto: `Respondemos seu chamado ${cod}`, html })
+      // Texto do Painel (E-mails automáticos, 0090) — essencial, não desliga.
+      const m = await doModelo(admin, 'chamado_resposta', {
+        ...varsBase(msg.de_nome), codigo: cod,
+        assunto_chamado: { html: msg.assunto ? ` — “${esc(msg.assunto)}”` : '' },
+        resposta: { html: `<div style="border-left:3px solid #10b981;padding-left:14px;margin:4px 0;">${paraHtml(texto)}</div>` },
+      })
+      const env = m && !m.desligado
+        ? await enviarEmail({ para: msg.de_email, assunto: m.assunto, html: m.html, etiqueta: 'chamado_resposta' })
+        : await enviarEmail({ para: msg.de_email, assunto: `Respondemos seu chamado ${cod}`, html, etiqueta: 'chamado_resposta' })
       email = env.ok ? 'enviado' : `falhou: ${env.erro || 'erro'}`
+      // Registro pro Painel (E-mails automáticos: quantos saíram, aberturas e cliques).
+      try {
+        await admin.from('email_log').insert({ grupo_id: msg.grupo_id || null, titular_id: msg.usuario_id || null, tipo: 'chamado_resposta',
+          ref: `${id}:${agora.toISOString()}`, destino: msg.de_email, assunto: m && !m.desligado ? m.assunto : `Respondemos seu chamado ${cod}`,
+          status: env.ok ? 'enviado' : 'erro', resend_id: env.id || null, erro: env.ok ? null : (env.erro || 'erro') })
+      } catch (_) { /* best-effort */ }
       resendId = env.id
     }
     // 3) Notificação no celular (só os aparelhos de quem abriu).

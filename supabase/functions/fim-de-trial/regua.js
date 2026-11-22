@@ -10,8 +10,9 @@
 const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
 // Qual e-mail sai hoje: d = dias até o fim do teste (2 = faltam 2 dias, 0 = hoje, -1 = foi ontem).
-export function tipoDoDia(d, nova) {
-  if (nova) return d === 3 ? 'fim_trial_3d' : d === 0 ? 'fim_trial_0d' : d === -1 ? 'fim_trial_d1' : null
+// Na régua nova, quantos dias antes/depois vêm do Painel (email_modelos.dias, padrão 3 e 1).
+export function tipoDoDia(d, nova, { antes = 3, depois = 1 } = {}) {
+  if (nova) return d === antes ? 'fim_trial_3d' : d === 0 ? 'fim_trial_0d' : d === -depois ? 'fim_trial_d1' : null
   return d === 2 ? 'fim_trial_2d' : d === 0 ? 'fim_trial_0d' : null
 }
 
@@ -111,10 +112,10 @@ export function conteudoAntigo0d(nome) {
 // Notificação no celular que acompanha cada e-mail da régua (A6.2 "reforço no app/push", 21/11/2026).
 // Vai pros aparelhos de TODO o grupo (o teste é do grupo). Curta, sem preço (o preço fica no e-mail
 // e no Meu plano). null = esse tipo não tem push.
-export function pushRegua(tipo) {
+export function pushRegua(tipo, antes = 3) {
   const url = '/planos'
   switch (tipo) {
-    case 'fim_trial_3d': return { title: 'Faltam 3 dias do seu teste 💚', body: 'Assine pra continuar com tudo como está. Toque para ver os planos.', url, tag: 'fim-trial' }
+    case 'fim_trial_3d': return { title: `Falta${antes === 1 ? '' : 'm'} ${antes} dia${antes === 1 ? '' : 's'} do seu teste 💚`, body: 'Assine pra continuar com tudo como está. Toque para ver os planos.', url, tag: 'fim-trial' }
     case 'fim_trial_2d': return { title: 'Faltam 2 dias do seu teste 💚', body: 'Assine pra continuar com tudo como está. Toque para ver os planos.', url, tag: 'fim-trial' }
     case 'fim_trial_0d': return { title: 'Seu teste termina hoje', body: 'Assine hoje e nada se perde. Toque para ver os planos.', url, tag: 'fim-trial' }
     case 'fim_trial_d1': return { title: 'Sentimos sua falta 💚', body: 'Seus dados continuam guardados. Assine e volte a lançar de onde parou.', url, tag: 'fim-trial' }

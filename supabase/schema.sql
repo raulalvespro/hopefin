@@ -754,6 +754,17 @@ alter table public.usuarios add column if not exists recebe_comunicados boolean 
 alter table public.parcelas add column if not exists antes_do_app boolean not null default false;
 -- 0089 (21/11): comunicados.agendado_para + cancelado_em; admin_comunicado_cancelar; função comunicados-agendados
 -- (cron hopefin-comunicados-agendados, 5 em 5 min, só quando há algum na hora). Entrega em _shared/comunicado.ts.
+-- 0090 (22/11): E-MAILS AUTOMÁTICOS. email_config (linha única: remetente de campanha "Lari, do HopeFin
+-- <novidades@hopefin.com.br>") + email_modelos (chave = email_log.tipo; texto, liga/desliga, essencial, gatilho,
+-- dias, sequência). As funções leem daqui (_shared/modelos.ts) e caem no texto do código se faltar. Sem policy.
+-- 0091 (22/11): email_log ganha entregue_em/aberto_em/clicado_em/problema (função resend-webhook);
+-- email_sequencias (remarketing_teste, remarketing_cancelou — NASCEM DESLIGADAS) + remarketing_pessoas
+-- (ativo|pausado|removido|assinou|saiu); remarketing_atualizar() (só servidor); etapas rmk_* em email_modelos.
+-- 0092 (22/11): automacao_candidatos (só servidor) + admin_email_painel/_modelo_salvar/_modelo_excluir/
+-- _sequencia_salvar, admin_remarketing_pessoas/_pessoa (admin). Motor: função automacoes-email (cron
+-- hopefin-automacoes-email, 10:30 BRT). Prévia/teste: função admin-email (admin + aal2).
+alter table public.email_log add column if not exists aberto_em timestamptz;
+alter table public.email_log add column if not exists clicado_em timestamptz;
 
 -- ============================================================
 -- FIM

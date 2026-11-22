@@ -28,6 +28,8 @@ import { resumoMes, hojeBRT, addMeses, compDe } from '../_shared/motor.js'
 import { carregarDadosMotor } from '../_shared/motor-dados.js'
 import { nivelDaSessao } from '../_shared/sessao.ts'
 import { pushParaGrupo, aparelhosDoGrupo } from '../_shared/push.ts'
+import { lerModelo, montarModelo, type Modelo } from '../_shared/modelos.ts'
+import { varsBase } from '../_shared/modelo.js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -158,7 +160,21 @@ function corpoResumo(n: Numeros): string {
   return html
 }
 
-function montarEmail(g: Grupo, n: Numeros) {
+// Texto do Painel (E-mails automáticos, 0090), lido uma vez por chamada. Sem ele, o texto de sempre.
+let modeloCache: Promise<Modelo | null> | null = null
+const modeloResumo = () => (modeloCache ??= lerModelo(admin, 'resumo_mensal'))
+
+async function montarEmail(g: Grupo, n: Numeros) {
+  const mod = await modeloResumo()
+  if (mod && mod.assunto && mod.corpo) {
+    try {
+      const cta = n.viradaPendente ? { texto: 'Decidir no HopeFin', url: 'https://app.hopefin.com.br/' } : undefined
+      return await montarModelo(mod, {
+        ...varsBase(g.nome), mes: nomeMes(n.comp), saldo: brl(n.saldoDoMes), sobra: brl(n.sobraDoMes),
+        numeros: { html: corpoResumo(n) },
+      }, { cta })
+    } catch (e) { console.error('modelo do resumo falhou', (e as Error).message) }
+  }
   const assunto = assuntoDe(n.comp)
   const ola = g.nome ? `Oi, ${esc(String(g.nome).split(' ')[0])}! ` : 'Oi! '
   const html = layoutEmail({
@@ -234,13 +250,13 @@ async function enviarRetidos(soGrupo: string | null) {
     }
     let email: { assunto: string; html: string }
     try {
-      email = montarEmail(g, await numerosDoMes(g.grupo_id, comp, hoje))
+      email = await montarEmail(g, await numerosDoMes(g.grupo_id, comp, hoje))
     } catch (e) {
       await admin.from('email_log').update({ erro: `motor: ${(e as Error).message}` }).eq('id', r.id)
       out.erros++; out.detalhes.push({ grupo: g.grupo_id, erro: (e as Error).message }); continue
     }
     await admin.from('email_log').update({ status: 'enviando', destino: g.email, assunto: email.assunto }).eq('id', r.id)
-    const env = await enviarEmail({ para: g.email, assunto: email.assunto, html: email.html })
+    const env = await enviarEmail({ para: g.email, assunto: email.assunto, html: email.html, etiqueta: 'resumo_mensal' })
     if (env.ok) {
       await admin.from('email_log').update({ status: 'enviado', resend_id: env.id, erro: null }).eq('id', r.id)
       out.enviados++; out.detalhes.push({ grupo: g.grupo_id, comp })
@@ -260,7 +276,7 @@ async function previa(soGrupo: string | null, comp: string, hoje: string) {
   const achado = lista.find((g) => g.grupo_id === soGrupo)
   const g: Grupo = achado || { grupo_id: soGrupo, titular_id: null, email: null, nome: null }
   const numeros = await numerosDoMes(soGrupo, comp, hoje)
-  const { assunto, html } = montarEmail(g, numeros)
+  const { assunto, html } = await montarEmail(g, numeros)
   // O push que iria junto (não envia nada): texto, aparelhos e se a pessoa desligou.
   const push = { ...pushDoResumo(comp), aparelhos: (await aparelhosDoGrupo(admin, soGrupo)).length, ligado: await querPushDoResumo(soGrupo) }
   return { comp, hoje, recebe: !!achado?.email, destino: achado?.email || null, assunto, numeros, push, html }
@@ -290,7 +306,7 @@ Deno.serve(async (req) => {
       const email = u?.user?.email
       if (!email) return json({ erro: 'usuario sem e-mail' }, 400)
       const g: Grupo = { grupo_id: soGrupo, titular_id: usuario, email, nome: membro.nome || null }
-      const montado = montarEmail(g, await numerosDoMes(soGrupo, comp, hojeBRT()))
+      const montado = await montarEmail(g, await numerosDoMes(soGrupo, comp, hojeBRT()))
       const env = await enviarEmail({ para: email, assunto: `[Teste] ${montado.assunto}`, html: montado.html })
       const push = await pushParaGrupo(admin, soGrupo, { ...pushDoResumo(comp), title: `[Teste] ${pushDoResumo(comp).title}` }, usuario)
       return json({ comp, email: env.ok ? 'enviado' : `falhou: ${env.erro}`, push })
@@ -305,6 +321,8 @@ Deno.serve(async (req) => {
   // Pausa (A1.9): enquanto ligada, registra o envio como RETIDO e não manda nada.
   const { data: cfg } = await admin.from('admin_config').select('resumo_mensal_pausado').eq('id', 1).maybeSingle()
   const pausado = !!cfg?.resumo_mensal_pausado
+  const modDesl = await modeloResumo()
+  if (modDesl && modDesl.assunto && modDesl.corpo && !modDesl.ligado) return json({ ok: true, comp, desligado: true })
 
   let grupos: Grupo[]
   try { grupos = await gruposDoMes(comp) } catch (e) { return json({ erro: (e as Error).message }, 500) }
@@ -327,12 +345,12 @@ Deno.serve(async (req) => {
 
     let email: { assunto: string; html: string }
     try {
-      email = montarEmail(g, await numerosDoMes(g.grupo_id, comp, hoje))
+      email = await montarEmail(g, await numerosDoMes(g.grupo_id, comp, hoje))
     } catch (e) {
       await admin.from('email_log').delete().eq('id', ins.data!.id)
       out.erros++; out.detalhes.push({ grupo: g.grupo_id, erro: `motor: ${(e as Error).message}` }); continue
     }
-    const env = await enviarEmail({ para: g.email, assunto: email.assunto, html: email.html })
+    const env = await enviarEmail({ para: g.email, assunto: email.assunto, html: email.html, etiqueta: 'resumo_mensal' })
     if (env.ok) {
       await admin.from('email_log').update({ status: 'enviado', resend_id: env.id }).eq('id', ins.data!.id)
       out.enviados++; out.detalhes.push({ grupo: g.grupo_id, para: g.email, id: env.id })
