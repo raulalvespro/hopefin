@@ -217,17 +217,21 @@ function Previa({ midia }) {
   const ir = (i) => {
     const alvo = Math.max(0, Math.min(imagens.length - 1, i))
     setAtual(alvo)
-    document.getElementById(`previa-${chave}-${alvo}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' })
+    // rola só a faixa (scrollIntoView mexia na página inteira)
+    const faixa = document.getElementById(`faixa-${chave}`)
+    const slide = document.getElementById(`previa-${chave}-${alvo}`)
+    if (faixa && slide) faixa.scrollTo({ left: slide.offsetLeft - faixa.offsetLeft, behavior: 'smooth' })
   }
   return (
-    <div>
-      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 6 }}
+    // minWidth 0: sem isso a faixa (item de grid/flex) cresce até caber todos os slides e estoura o painel
+    <div style={{ minWidth: 0, maxWidth: '100%' }}>
+      <div id={`faixa-${chave}`} style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 6, maxWidth: '100%' }}
         onScroll={e => { const w = e.currentTarget.firstChild?.getBoundingClientRect().width || 1; setAtual(Math.round(e.currentTarget.scrollLeft / (w + 10))) }}>
         {imagens.map((m, i) => (
           <a key={m.path} id={`previa-${chave}-${i}`} href={urls[m.path]} target="_blank" rel="noreferrer" title={`Slide ${i + 1} (abrir grande)`}
             style={{ flex: '0 0 auto', scrollSnapAlign: 'start' }}>
             <img src={urls[m.path]} alt={`Slide ${i + 1}`} loading="lazy"
-              style={{ width: 300, aspectRatio: '4 / 5', objectFit: 'cover', borderRadius: 12, display: 'block', boxShadow: '0 8px 22px rgba(15,23,42,0.14)' }} />
+              style={{ width: 'min(260px, 70vw)', aspectRatio: '4 / 5', objectFit: 'cover', borderRadius: 12, display: 'block', boxShadow: '0 8px 22px rgba(15,23,42,0.14)' }} />
           </a>
         ))}
       </div>
@@ -274,7 +278,7 @@ function PecaDetalhe({ p, salvarPeca }) {
   const copiar = async () => { try { await navigator.clipboard.writeText(legenda); toast('Legenda copiada.', 'ok') } catch { toast('Não deu pra copiar.', 'erro') } }
 
   return (
-    <div style={{ borderTop: '1px solid var(--border)', padding: '12px 14px', display: 'grid', gap: 12 }}>
+    <div style={{ borderTop: '1px solid var(--border)', padding: '12px 14px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
       {p.ideia && <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}><strong style={{ color: 'var(--text)' }}>Ideia: </strong>{p.ideia}</div>}
       <Previa midia={p.midia} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
