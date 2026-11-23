@@ -76,6 +76,12 @@ for (const n of ['WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_TOKEN', 'WHATSAPP_VERIFY_
   if (env[n]) secrets.push({ name: n, value: env[n] })
 }
 
+// Agência de marketing — postar no Instagram/Página (função mkt-publicar, 0124). Token da PÁGINA (não expira);
+// passo a passo em docs/META_PUBLICACAO.md. META_GRAPH_VERSION é opcional (padrão na função: v23.0).
+for (const n of ['META_PAGE_TOKEN', 'META_GRAPH_VERSION']) {
+  if (env[n]) secrets.push({ name: n, value: env[n] })
+}
+
 const res = await fetch(`https://api.supabase.com/v1/projects/${REF}/secrets`, {
   method: 'POST',
   headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },

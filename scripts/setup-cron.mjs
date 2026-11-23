@@ -43,7 +43,36 @@ const urlSaude = `https://${REF}.supabase.co/functions/v1/saude-alerta`
 const urlAvisoChamado = `https://${REF}.supabase.co/functions/v1/suporte-aviso-dono`
 const urlComunicados = `https://${REF}.supabase.co/functions/v1/comunicados-agendados`
 const urlAutomacoes = `https://${REF}.supabase.co/functions/v1/automacoes-email`
-const sql = `
+const urlMktPublicar = `https://${REF}.supabase.co/functions/v1/mkt-publicar`
+
+// Agência de marketing (FASE 3, 0124) — a cada 5 min, SÓ chama a função quando a chave publicar_ativo está ligada
+// E há peça agendada cujo data+horario (Brasília) já chegou. Rodar só este: node scripts/setup-cron.mjs --so-mkt
+const sqlMkt = `
+do $unsched$ begin
+  perform cron.unschedule('hopefin-mkt-publicar');
+exception when others then null; end $unsched$;
+
+select cron.schedule('hopefin-mkt-publicar', '*/5 * * * *', $cron$
+  select net.http_post(
+    url := '${urlMktPublicar}',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'apikey', '${ANON}',
+      'x-cron-secret', '${CRON}'
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 150000
+  )
+  where exists (select 1 from public.mkt_config where id = 1 and publicar_ativo)
+    and exists (
+      select 1 from public.mkt_pecas
+       where status = 'agendado' and horario is not null and pub_tentativas < 3
+         and (data + horario) at time zone 'America/Sao_Paulo' <= now()
+    );
+$cron$);
+`
+const SO_MKT = process.argv.includes('--so-mkt')
+const sqlTodos = `
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
@@ -208,7 +237,10 @@ select cron.schedule('hopefin-automacoes-email', '30 13 * * *', $cron$
     body := '{}'::jsonb
   );
 $cron$);
-`
+${sqlMkt}`
+const sql = SO_MKT ? `create extension if not exists pg_cron;
+create extension if not exists pg_net;
+${sqlMkt}` : sqlTodos
 
 const res = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/query`, {
   method: 'POST',
@@ -218,6 +250,8 @@ const res = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/qu
 const text = await res.text()
 if (!res.ok) { console.error(`✖ Falha ao agendar (HTTP ${res.status}):\n${text}`); process.exit(1) }
 console.log('✔ Crons agendados:')
+console.log('  • hopefin-mkt-publicar      (a cada 5 min, só com a chave ligada e peça vencida) — posta no Instagram/Página')
+if (SO_MKT) { console.log(text.slice(0, 500)); process.exit(0) }
 console.log('  • hopefin-digest-diario   (08:00 BRT / 11:00 UTC) — digest de push')
 console.log('  • hopefin-vencimentos     (08:30 BRT / 11:30 UTC) — lembrete de vencimento')
 console.log('  • hopefin-fim-de-trial    (09:00 BRT / 12:00 UTC) — avisos de fim de trial')

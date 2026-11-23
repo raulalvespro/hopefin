@@ -849,3 +849,20 @@ create table if not exists public.mkt_agentes (
 alter table public.mkt_pecas add column if not exists midia jsonb not null default '[]'::jsonb;
 
 -- 0123: mkt_pecas += roteiro_narracao, narracao_path, narracao_em, musica_opcoes jsonb, musica_escolhida jsonb; status += roteiro, aguardando_narracao, aguardando_musica
+
+-- 0124: mkt_pecas += pub_tentativas int default 0, pub_erro, pub_ig_id, pub_ig_container, pub_fb_id, pub_iniciada_em (publicação automática na Meta)
+alter table public.mkt_pecas add column if not exists pub_tentativas   int not null default 0;
+alter table public.mkt_pecas add column if not exists pub_erro         text;
+alter table public.mkt_pecas add column if not exists pub_ig_id        text;
+alter table public.mkt_pecas add column if not exists pub_ig_container text;
+alter table public.mkt_pecas add column if not exists pub_fb_id        text;
+alter table public.mkt_pecas add column if not exists pub_iniciada_em  timestamptz;
+create table if not exists public.mkt_config (   -- linha única (id = 1); RLS só admin (sou_admin)
+  id                  int primary key default 1 check (id = 1),
+  publicar_ativo      boolean not null default false,
+  publicar_instagram  boolean not null default true,
+  publicar_facebook   boolean not null default false,
+  ig_user_id          text,
+  fb_page_id          text,
+  atualizado_em       timestamptz not null default now()
+);
