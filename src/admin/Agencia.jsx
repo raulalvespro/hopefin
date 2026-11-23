@@ -43,6 +43,19 @@ const somaDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); 
 const segunda = (d) => somaDias(d, -((d.getDay() + 6) % 7))
 const diaMes = (s) => { const d = deIso(s); return `${DIAS[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}` }
 const hora = (h) => (h ? h.slice(0, 5) : '')
+/** o horário planejado da peça (data + horário, no fuso do computador) já passou? */
+const horarioPassou = (p) => {
+  if (!p?.data) return false
+  const [hh, mm] = (p.horario || '23:59').split(':').map(Number)
+  const d = deIso(p.data); d.setHours(hh, mm, 0, 0)
+  return d.getTime() < Date.now()
+}
+/** "AAAA-MM-DDTHH:MM" pra input datetime-local: agora + `min` minutos, arredondado pra cima de 5 em 5 */
+const sugestaoHorario = (min = 60) => {
+  const d = new Date(Date.now() + min * 60000)
+  d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5, 0, 0)
+  return `${iso(d)}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
 const msgErro = (e) => (e?.message?.includes('row-level') || e?.code === '42501' ? 'Sem permissão (precisa do código do celular).' : e?.message || 'Não deu certo.')
 
 function Pilula({ ativo, onClick, children }) {
@@ -426,9 +439,27 @@ function PecaDetalhe({ p, salvarPeca }) {
     carregarComentarios()
     return true
   }
+  const [quando, setQuando] = useState(null) // pergunta "postar agora ou remarcar?" aberta
+  const [novaHora, setNovaHora] = useState('')
+  const vencida = horarioPassou(p)
+
   async function aprovar() {
+    // aprovou depois do horário planejado? pergunta antes: postar agora ou outro horário
+    if (vencida) { setQuando('aprovar'); setNovaHora(sugestaoHorario()); return }
     if (await salvarPeca(p.id, { status: 'agendado' }, 'Aprovado. Fica pronto pra sair no horário.')) await comentar('aprovado', nota.trim())
     setNota('')
+  }
+  async function definirHorario(agora) {
+    const alvo = agora ? sugestaoHorario(0) : novaHora
+    if (!alvo) { toast('Escolha a data e a hora.', 'erro'); return }
+    const [data, hh] = alvo.split('T')
+    const aprovando = quando === 'aprovar'
+    const ok = await salvarPeca(p.id, { status: 'agendado', data, horario: `${hh}:00` },
+      agora ? 'Aprovado pra sair agora: a equipe posta assim que pegar.' : `Aprovado pra ${diaMes(data)} às ${hh}.`)
+    if (!ok) return
+    if (aprovando) await comentar('aprovado', [agora ? 'Postar agora.' : `Novo horário: ${diaMes(data)} ${hh}.`, nota.trim()].filter(Boolean).join(' '))
+    else await comentar('comentario', agora ? 'Horário passou: postar agora.' : `Remarcado pra ${diaMes(data)} ${hh}.`)
+    setNota(''); setQuando(null)
   }
   async function pedirAjuste() {
     if (!nota.trim()) { toast('Escreva o que ajustar.', 'erro'); return }
@@ -481,6 +512,26 @@ function PecaDetalhe({ p, salvarPeca }) {
           <button className="btn-ghost" onClick={pedirAjuste} style={{ padding: '7px 14px', fontSize: 13 }}>Pedir ajuste</button>
           {nota.trim() && <button className="btn-ghost" onClick={async () => { if (await comentar('comentario', nota.trim())) setNota('') }} style={{ padding: '7px 14px', fontSize: 13 }}>Só comentar</button>}
         </div>
+        {!quando && p.status === 'agendado' && vencida && (
+          <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--amber-text)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            Aprovada pra {diaMes(p.data)} às {hora(p.horario)}, mas o horário passou e ainda não saiu.
+            <button className="btn-ghost" onClick={() => { setQuando('remarcar'); setNovaHora(sugestaoHorario()) }} style={{ padding: '4px 10px', fontSize: 12.5 }}>Resolver</button>
+          </div>
+        )}
+        {quando && (
+          <div style={{ marginTop: 10, border: '1.5px solid var(--amber)', borderRadius: 10, padding: 12, display: 'grid', gap: 10, background: 'var(--bg2)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>
+              O horário planejado ({diaMes(p.data)} às {hora(p.horario)}) já passou. Quando essa peça sai?
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <button className="btn-primary" onClick={() => definirHorario(true)} style={{ padding: '7px 14px', fontSize: 13 }}>Postar agora</button>
+              <span style={{ fontSize: 12, color: 'var(--text2)' }}>ou</span>
+              <input type="datetime-local" value={novaHora} min={sugestaoHorario(0)} onChange={e => setNovaHora(e.target.value)} style={{ fontSize: 13, padding: '5px 8px' }} />
+              <button className="btn-ghost" onClick={() => definirHorario(false)} style={{ padding: '7px 14px', fontSize: 13 }}>Usar esse horário</button>
+              <button className="btn-ghost" onClick={() => setQuando(null)} style={{ padding: '7px 10px', fontSize: 12.5 }}>Cancelar</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
