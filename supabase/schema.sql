@@ -844,3 +844,6 @@ create table if not exists public.mkt_agentes (
   ordem         int not null default 0,
   atualizado_em timestamptz not null default now()
 );
+
+-- 0122: mkt_pecas.midia jsonb (lista de arquivos da prévia no bucket privado mkt-midia)
+alter table public.mkt_pecas add column if not exists midia jsonb not null default '[]'::jsonb;

@@ -172,6 +172,74 @@ function PecaLinha({ p, aberta, onAbrir, salvarPeca }) {
   )
 }
 
+/** Prévia da peça (bucket privado mkt-midia, 0122): reel em player 9:16 com a capa; carrossel/tirinha em faixa
+ *  com rolagem lateral, como no Instagram. URLs assinadas por 1 h (só admin com o código do celular). */
+function Previa({ midia }) {
+  const [urls, setUrls] = useState(null)
+  const [atual, setAtual] = useState(0)
+  const chave = (midia || []).map(m => m.path).join('|')
+
+  useEffect(() => {
+    const lista = midia || []
+    if (!lista.length) { setUrls({}); return }
+    let vivo = true
+    supabase.storage.from('mkt-midia').createSignedUrls(lista.map(m => m.path), 3600).then(({ data }) => {
+      if (!vivo) return
+      const mapa = {}
+      for (const d of data || []) if (d.signedUrl) mapa[d.path] = d.signedUrl
+      setUrls(mapa)
+    })
+    return () => { vivo = false }
+  }, [chave]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!midia?.length) return <div style={{ fontSize: 12.5, color: 'var(--text2)' }}>Sem prévia ainda (a equipe sobe quando marca a peça como pronta).</div>
+  if (!urls) return <Loader size={18} className="spin" color="var(--accent)" />
+
+  const video = midia.find(m => m.tipo === 'video')
+  const capa = midia.find(m => m.tipo === 'capa')
+  if (video) {
+    return (
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <video src={urls[video.path]} poster={capa ? urls[capa.path] : undefined} controls playsInline preload="metadata"
+          style={{ width: 270, aspectRatio: '9 / 16', borderRadius: 14, background: '#000', boxShadow: '0 10px 28px rgba(15,23,42,0.18)' }} />
+        {capa && (
+          <a href={urls[capa.path]} target="_blank" rel="noreferrer" title="Abrir a capa"
+            style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11.5, color: 'var(--text2)', textDecoration: 'none' }}>
+            <img src={urls[capa.path]} alt="Capa do reel" style={{ width: 120, aspectRatio: '9 / 16', objectFit: 'cover', borderRadius: 10 }} />
+            capa
+          </a>
+        )}
+      </div>
+    )
+  }
+
+  const imagens = midia.filter(m => m.tipo === 'imagem')
+  const ir = (i) => {
+    const alvo = Math.max(0, Math.min(imagens.length - 1, i))
+    setAtual(alvo)
+    document.getElementById(`previa-${chave}-${alvo}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' })
+  }
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 6 }}
+        onScroll={e => { const w = e.currentTarget.firstChild?.getBoundingClientRect().width || 1; setAtual(Math.round(e.currentTarget.scrollLeft / (w + 10))) }}>
+        {imagens.map((m, i) => (
+          <a key={m.path} id={`previa-${chave}-${i}`} href={urls[m.path]} target="_blank" rel="noreferrer" title={`Slide ${i + 1} (abrir grande)`}
+            style={{ flex: '0 0 auto', scrollSnapAlign: 'start' }}>
+            <img src={urls[m.path]} alt={`Slide ${i + 1}`} loading="lazy"
+              style={{ width: 300, aspectRatio: '4 / 5', objectFit: 'cover', borderRadius: 12, display: 'block', boxShadow: '0 8px 22px rgba(15,23,42,0.14)' }} />
+          </a>
+        ))}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, fontSize: 12, color: 'var(--text2)' }}>
+        <button className="adm-icbtn" onClick={() => ir(atual - 1)} disabled={atual <= 0} aria-label="Slide anterior"><ChevronLeft size={15} /></button>
+        <span>{Math.min(atual + 1, imagens.length)} / {imagens.length}</span>
+        <button className="adm-icbtn" onClick={() => ir(atual + 1)} disabled={atual >= imagens.length - 1} aria-label="Próximo slide"><ChevronRight size={15} /></button>
+      </div>
+    </div>
+  )
+}
+
 function PecaDetalhe({ p, salvarPeca }) {
   const { toast } = useToast()
   const [legenda, setLegenda] = useState(p.legenda || '')
@@ -208,6 +276,7 @@ function PecaDetalhe({ p, salvarPeca }) {
   return (
     <div style={{ borderTop: '1px solid var(--border)', padding: '12px 14px', display: 'grid', gap: 12 }}>
       {p.ideia && <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}><strong style={{ color: 'var(--text)' }}>Ideia: </strong>{p.ideia}</div>}
+      <Previa midia={p.midia} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         {p.arquivo_url
           ? <a className="btn-ghost" href={p.arquivo_url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, padding: '6px 12px' }}><ExternalLink size={13} /> Ver no Drive</a>
