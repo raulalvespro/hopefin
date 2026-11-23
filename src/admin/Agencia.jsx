@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Sparkles, CalendarDays, CheckCircle2, MessageSquarePlus, Users, ChevronLeft, ChevronRight,
+  Sparkles, CalendarDays, CheckCircle2, MessageSquarePlus, Users, ChevronLeft, ChevronRight, Radio,
   ExternalLink, Copy, Film, GalleryHorizontal, LayoutGrid, Image, Send, Loader, RefreshCw,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -106,6 +106,7 @@ export default function Agencia() {
         </Pilula>
         <Pilula ativo={aba === 'pedidos'} onClick={() => setAba('pedidos')}><MessageSquarePlus size={14} /> Pedidos</Pilula>
         <Pilula ativo={aba === 'equipe'} onClick={() => setAba('equipe')}><Users size={14} /> Equipe</Pilula>
+        <Pilula ativo={aba === 'postagem'} onClick={() => setAba('postagem')}><Radio size={14} /> Postagem automática</Pilula>
         <button className="btn-ghost" onClick={carregar} title="Atualizar" style={{ marginLeft: 'auto', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5 }}>
           <RefreshCw size={13} /> Atualizar
         </button>
@@ -116,6 +117,7 @@ export default function Agencia() {
       {pecas && aba === 'aprovar' && <ParaAprovar pecas={paraAprovar} aberta={aberta} setAberta={setAberta} salvarPeca={salvarPeca} />}
       {aba === 'pedidos' && <Pedidos />}
       {aba === 'equipe' && <Equipe />}
+      {pecas && aba === 'postagem' && <Postagem pecas={pecas} aberta={aberta} setAberta={setAberta} salvarPeca={salvarPeca} />}
     </section>
   )
 }
@@ -577,6 +579,109 @@ function ParaAprovar({ pecas, aberta, setAberta, salvarPeca }) {
         </div>
       ))}
     </>
+  )
+}
+
+/* ───────────── Postagem automática (Fase 3, 0124 + função mkt-publicar) ───────────── */
+
+function Interruptor({ ligado, onChange, disabled, children }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.6 : 1 }}>
+      <input type="checkbox" checked={!!ligado} disabled={disabled} onChange={e => onChange(e.target.checked)} style={{ width: 18, height: 18 }} />
+      {children}
+    </label>
+  )
+}
+
+function Postagem({ pecas, aberta, setAberta, salvarPeca }) {
+  const { toast } = useToast()
+  const [cfg, setCfg] = useState(null)
+  const [confirmar, setConfirmar] = useState(false)
+
+  const carregar = useCallback(async () => {
+    const { data, error } = await supabase.from('mkt_config').select('*').eq('id', 1).maybeSingle()
+    if (error) toast(msgErro(error), 'erro')
+    setCfg(data || {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar() }, [carregar])
+
+  async function salvar(campos, aviso) {
+    const { error } = await supabase.from('mkt_config').update(campos).eq('id', 1)
+    if (error) { toast(msgErro(error), 'erro'); return }
+    toast(aviso, 'ok'); setConfirmar(false); carregar()
+  }
+
+  const agendadas = pecas.filter(p => p.status === 'agendado').sort((a, b) => `${a.data}${a.horario}`.localeCompare(`${b.data}${b.horario}`))
+  const vencidas = agendadas.filter(horarioPassou)
+  const comErro = pecas.filter(p => p.pub_erro)
+  const conectado = !!(cfg?.ig_user_id)
+
+  if (!cfg) return <Loader size={18} className="spin" color="var(--accent)" />
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div className="adm-card" style={{ display: 'grid', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <strong style={{ fontSize: 14 }}>Postagem automática</strong>
+          {cfg.publicar_ativo ? <span className="tag tag-green">ligada</span> : <span className="tag tag-amber">desligada</span>}
+          {conectado ? <span className="tag tag-green">Meta conectada</span> : <span className="tag tag-red">Meta não conectada</span>}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.5 }}>
+          Ligada, a cada 5 minutos o sistema publica as peças <strong>aprovadas</strong> cujo horário chegou: reel, carrossel, tirinha e
+          imagem no @hopefinapp (e na Página, se ligar abaixo). Música só a que já vem dentro do vídeo; carrossel e tirinha sem música.
+          {conectado && <> Instagram id {cfg.ig_user_id} · Página id {cfg.fb_page_id || '—'}.</>}
+        </div>
+        {!cfg.publicar_ativo && !confirmar && (
+          <button className="btn-primary" disabled={!conectado} onClick={() => setConfirmar(true)} style={{ justifySelf: 'start', padding: '8px 16px' }}>Ligar postagem automática</button>
+        )}
+        {!cfg.publicar_ativo && confirmar && (
+          <div style={{ border: '1.5px solid var(--amber)', borderRadius: 10, padding: 12, display: 'grid', gap: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>
+              {vencidas.length
+                ? `Ao ligar, ${vencidas.length === 1 ? 'esta peça aprovada sai' : `estas ${vencidas.length} peças aprovadas saem`} em até 5 minutos, porque o horário já passou:`
+                : 'Nenhuma peça aprovada está com o horário vencido. As próximas saem no horário marcado.'}
+            </div>
+            {vencidas.length > 0 && <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5 }}>{vencidas.map(p => <li key={p.id}>{diaMes(p.data)} {hora(p.horario)} · {FORMATO[p.formato]?.nome} · {p.titulo}</li>)}</ul>}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn-primary" onClick={() => salvar({ publicar_ativo: true }, 'Postagem automática ligada.')} style={{ padding: '7px 14px' }}>Sim, ligar</button>
+              <button className="btn-ghost" onClick={() => setConfirmar(false)} style={{ padding: '7px 14px' }}>Cancelar</button>
+            </div>
+          </div>
+        )}
+        {cfg.publicar_ativo && (
+          <button className="btn-ghost" onClick={() => salvar({ publicar_ativo: false }, 'Postagem automática desligada. Nada sai até ligar de novo.')} style={{ justifySelf: 'start', padding: '8px 16px', color: 'var(--red-text)' }}>Desligar (pausa tudo)</button>
+        )}
+        <div style={{ display: 'grid', gap: 6, borderTop: '1px dashed var(--border)', paddingTop: 10 }}>
+          <Interruptor ligado={cfg.publicar_instagram} onChange={v => salvar({ publicar_instagram: v }, v ? 'Instagram ligado.' : 'Instagram desligado.')}>Publicar no Instagram (@hopefinapp)</Interruptor>
+          <Interruptor ligado={cfg.publicar_facebook} onChange={v => salvar({ publicar_facebook: v }, v ? 'Página do Facebook ligada.' : 'Página do Facebook desligada.')}>Publicar também na Página do Facebook</Interruptor>
+        </div>
+      </div>
+
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Próximas a sair (aprovadas)</div>
+        {agendadas.length === 0
+          ? <div style={{ fontSize: 12.5, color: 'var(--text2)' }}>Nenhuma peça aprovada. Aprove na aba Esperando você.</div>
+          : agendadas.slice(0, 10).map(p => (
+            <div key={p.id}>
+              <div style={{ fontSize: 12, color: horarioPassou(p) ? 'var(--amber-text)' : 'var(--text2)', margin: '6px 0 4px', textTransform: 'capitalize' }}>
+                {diaMes(p.data)}{horarioPassou(p) ? ' · horário já passou' : ''}
+              </div>
+              <PecaLinha p={p} aberta={aberta === p.id} onAbrir={() => setAberta(aberta === p.id ? null : p.id)} salvarPeca={salvarPeca} />
+            </div>
+          ))}
+      </div>
+
+      {comErro.length > 0 && (
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, color: 'var(--red-text)' }}>Com erro na publicação</div>
+          {comErro.map(p => (
+            <div key={p.id} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '8px 12px', marginBottom: 6, fontSize: 12.5 }}>
+              <strong>{diaMes(p.data)} {hora(p.horario)} · {p.titulo}</strong> — tentativa {p.pub_tentativas || 0}/3
+              <div style={{ color: 'var(--red-text)', marginTop: 4 }}>{p.pub_erro}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
