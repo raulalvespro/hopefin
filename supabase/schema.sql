@@ -787,3 +787,60 @@ alter table public.email_log add column if not exists clicado_em timestamptz;
 -- ============================================================
 -- FIM
 -- ============================================================
+
+-- ===== 0121 agência de marketing (mkt_*) — ver supabase/migrations/0121_agencia_marketing.sql =====
+create table if not exists public.mkt_pecas (
+  id               uuid primary key default gen_random_uuid(),
+  data             date not null,
+  horario          time,
+  formato          text not null check (formato in ('reel','tirinha','carrossel','estatico','story')),
+  titulo           text not null,
+  ideia            text,
+  comemorativa     text,
+  status           text not null default 'ideia'
+                   check (status in ('ideia','producao','revisao','aprovacao','pronto','agendado','postado','atrasado','cancelado')),
+  responsavel      text,          -- slug do membro (mkt_agentes.id)
+  cor              text,
+  slug             text,          -- roteiros/<slug>.json no hopefin-social
+  arquivo_url      text,          -- pasta/arquivo no Drive (prévia)
+  legenda          text,
+  link_post        text,          -- link no Instagram depois de postado
+  postado_em       timestamptz,
+  alcance          int,
+  curtidas         int,
+  comentarios      int,
+  salvamentos      int,
+  compartilhamentos int,
+  criado_em        timestamptz not null default now(),
+  atualizado_em    timestamptz not null default now()
+);
+create index if not exists mkt_pecas_data_idx on public.mkt_pecas (data, horario);
+create unique index if not exists mkt_pecas_slot_uidx on public.mkt_pecas (data, horario, formato);
+
+create table if not exists public.mkt_pedidos (
+  id            uuid primary key default gen_random_uuid(),
+  texto         text not null,
+  status        text not null default 'novo' check (status in ('novo','andamento','feito','cancelado')),
+  resposta      text,
+  criado_em     timestamptz not null default now(),
+  atualizado_em timestamptz not null default now()
+);
+
+create table if not exists public.mkt_comentarios (
+  id        uuid primary key default gen_random_uuid(),
+  peca_id   uuid not null references public.mkt_pecas(id) on delete cascade,
+  autor     text not null default 'raul',
+  tipo      text not null default 'comentario' check (tipo in ('comentario','ajuste','aprovado')),
+  texto     text not null default '',
+  criado_em timestamptz not null default now()
+);
+create index if not exists mkt_comentarios_peca_idx on public.mkt_comentarios (peca_id, criado_em);
+create table if not exists public.mkt_agentes (
+  id            text primary key,   -- slug: gerente, mkt-redator, ...
+  nome          text not null,
+  funcao        text not null,
+  instrucoes    text,               -- notas do Raul pra moldar o membro (o sync leva pro .md do agente)
+  ativo         boolean not null default true,
+  ordem         int not null default 0,
+  atualizado_em timestamptz not null default now()
+);
