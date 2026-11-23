@@ -11,13 +11,18 @@ import { useToast } from '../contexts/ToastContext'
 // Quem produz são os agentes do Claude Code (repo hopefin-social, skill /agencia); eles leem e escrevem
 // nestas mesmas tabelas. Acesso só de admin com o código do celular (RLS sou_admin()).
 
+// Ordem do fluxo (reel): ideia → roteiro → aguardando_narracao → aguardando_musica → producao → revisao →
+// pronto → agendado → postado. `voce` = está esperando o Raul (aparece em "Esperando você").
 const STATUS = {
   ideia: { nome: 'Ideia', tag: '' },
-  producao: { nome: 'Em produção', tag: 'tag-blue' },
+  roteiro: { nome: 'Equipe escrevendo o roteiro', tag: 'tag-blue' },
+  aguardando_narracao: { nome: 'Grave a narração', tag: 'tag-amber', voce: true },
+  aguardando_musica: { nome: 'Escolha a música', tag: 'tag-amber', voce: true },
+  producao: { nome: 'Equipe montando', tag: 'tag-blue' },
   revisao: { nome: 'Em revisão', tag: 'tag-blue' },
-  aprovacao: { nome: 'Pra você aprovar', tag: 'tag-amber' },
-  pronto: { nome: 'Pronto (aprovar)', tag: 'tag-amber' },
-  agendado: { nome: 'Aprovado', tag: 'tag-green' },
+  aprovacao: { nome: 'Aprove a peça', tag: 'tag-amber', voce: true },
+  pronto: { nome: 'Aprove a peça', tag: 'tag-amber', voce: true },
+  agendado: { nome: 'Aprovado · sai no horário', tag: 'tag-green' },
   postado: { nome: 'Postado', tag: 'tag-green' },
   atrasado: { nome: 'Atrasado', tag: 'tag-red' },
   cancelado: { nome: 'Cancelado', tag: 'tag-red' },
@@ -72,7 +77,7 @@ export default function Agencia() {
     return true
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const paraAprovar = useMemo(() => (pecas || []).filter(p => p.status === 'aprovacao' || p.status === 'pronto'), [pecas])
+  const paraAprovar = useMemo(() => (pecas || []).filter(p => STATUS[p.status]?.voce), [pecas])
 
   return (
     <section className="adm-sec">
@@ -84,7 +89,7 @@ export default function Agencia() {
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
         <Pilula ativo={aba === 'calendario'} onClick={() => setAba('calendario')}><CalendarDays size={14} /> Calendário</Pilula>
         <Pilula ativo={aba === 'aprovar'} onClick={() => setAba('aprovar')}>
-          <CheckCircle2 size={14} /> Pra aprovar {paraAprovar.length > 0 && <span className="tag tag-amber" style={{ padding: '0 7px' }}>{paraAprovar.length}</span>}
+          <CheckCircle2 size={14} /> Esperando você {paraAprovar.length > 0 && <span className="tag tag-amber" style={{ padding: '0 7px' }}>{paraAprovar.length}</span>}
         </Pilula>
         <Pilula ativo={aba === 'pedidos'} onClick={() => setAba('pedidos')}><MessageSquarePlus size={14} /> Pedidos</Pilula>
         <Pilula ativo={aba === 'equipe'} onClick={() => setAba('equipe')}><Users size={14} /> Equipe</Pilula>
@@ -168,6 +173,164 @@ function PecaLinha({ p, aberta, onAbrir, salvarPeca }) {
         <span className={`tag ${st.tag}`} style={{ flexShrink: 0 }}>{st.nome}</span>
       </button>
       {aberta && <PecaDetalhe p={p} salvarPeca={salvarPeca} />}
+    </div>
+  )
+}
+
+/* ───────────── Narração e música do reel (0123) ───────────── */
+
+const caixa = { background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 12, display: 'grid', gap: 10 }
+const tituloCaixa = { fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }
+
+function useUrlAssinada(path) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    if (!path) { setUrl(null); return }
+    let vivo = true
+    supabase.storage.from('mkt-midia').createSignedUrl(path, 3600).then(({ data }) => { if (vivo) setUrl(data?.signedUrl || null) })
+    return () => { vivo = false }
+  }, [path])
+  return url
+}
+
+/** Próximo status do reel depois que o Raul fez a parte dele. */
+function proximoStatus(p, { temNarracao, temMusica }) {
+  if (!['ideia', 'roteiro', 'aguardando_narracao', 'aguardando_musica'].includes(p.status)) return p.status
+  if (temNarracao && temMusica) return 'producao'
+  if (!temNarracao) return 'aguardando_narracao'
+  return 'aguardando_musica'
+}
+
+function Narracao({ p, salvarPeca }) {
+  const { toast } = useToast()
+  const url = useUrlAssinada(p.narracao_path)
+  const [gravando, setGravando] = useState(null) // { rec, inicio }
+  const [segundos, setSegundos] = useState(0)
+  const [gravado, setGravado] = useState(null) // { blob, url }
+  const [enviando, setEnviando] = useState(false)
+
+  useEffect(() => {
+    if (!gravando) return
+    const t = setInterval(() => setSegundos(Math.round((Date.now() - gravando.inicio) / 1000)), 500)
+    return () => clearInterval(t)
+  }, [gravando])
+  useEffect(() => () => { if (gravado?.url) URL.revokeObjectURL(gravado.url) }, [gravado])
+
+  async function comecar() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
+      const tipo = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'].find(t => window.MediaRecorder?.isTypeSupported?.(t)) || ''
+      const rec = new MediaRecorder(stream, tipo ? { mimeType: tipo } : undefined)
+      const partes = []
+      rec.ondataavailable = e => e.data.size && partes.push(e.data)
+      rec.onstop = () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(partes, { type: rec.mimeType || 'audio/webm' })
+        setGravado({ blob, url: URL.createObjectURL(blob) })
+      }
+      rec.start()
+      setGravado(null); setSegundos(0); setGravando({ rec, inicio: Date.now() })
+    } catch {
+      toast('Não consegui usar o microfone. Libere o acesso no navegador ou suba um arquivo.', 'erro')
+    }
+  }
+  function parar() { gravando?.rec.stop(); setGravando(null) }
+
+  async function enviar(blob) {
+    const tipo = (blob.type || 'audio/webm').split(';')[0]
+    const ext = { 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/aac': 'aac', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/ogg': 'ogg' }[tipo] || 'webm'
+    const caminho = `narracao/${p.slug || p.id}-${Date.now()}.${ext}`
+    setEnviando(true)
+    const { error } = await supabase.storage.from('mkt-midia').upload(caminho, blob, { contentType: tipo, upsert: false })
+    if (error) { setEnviando(false); toast(msgErro(error), 'erro'); return }
+    const status = proximoStatus(p, { temNarracao: true, temMusica: !!p.musica_escolhida })
+    await salvarPeca(p.id, { narracao_path: caminho, narracao_em: new Date().toISOString(), status },
+      status === 'producao' ? 'Narração recebida. A equipe já pode montar o reel.' : 'Narração recebida. Agora escolha a música.')
+    setEnviando(false); setGravado(null)
+  }
+  const copiar = async () => { try { await navigator.clipboard.writeText(p.roteiro_narracao || ''); toast('Roteiro copiado.', 'ok') } catch { /* ignore */ } }
+
+  return (
+    <div style={caixa}>
+      <div style={tituloCaixa}>🎙️ Narração {p.narracao_path ? <span className="tag tag-green">recebida</span> : <span className="tag tag-amber">falta gravar</span>}</div>
+      {p.roteiro_narracao
+        ? (
+          <>
+            <div style={{ fontSize: 13.5, lineHeight: 1.6, whiteSpace: 'pre-wrap', background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}>{p.roteiro_narracao}</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              Leia como se falasse com um amigo e faça uma pausa de 1 segundo entre as linhas. Errou? Grave de novo.
+              <button className="btn-ghost" onClick={copiar} style={{ padding: '2px 8px', fontSize: 11.5, display: 'inline-flex', gap: 4, alignItems: 'center' }}><Copy size={11} /> Copiar</button>
+            </div>
+          </>
+        )
+        : <div style={{ fontSize: 12.5, color: 'var(--text2)' }}>A equipe ainda vai escrever o roteiro da narração.</div>}
+      {url && !gravado && <audio src={url} controls preload="metadata" style={{ width: '100%' }} />}
+      {gravado && (
+        <div style={{ display: 'grid', gap: 6 }}>
+          <audio src={gravado.url} controls style={{ width: '100%' }} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn-primary" onClick={() => enviar(gravado.blob)} disabled={enviando} style={{ padding: '7px 14px', fontSize: 13, display: 'flex', gap: 6, alignItems: 'center' }}>
+              {enviando ? <Loader size={13} className="spin" /> : <Send size={13} />} Enviar essa gravação
+            </button>
+            <button className="btn-ghost" onClick={() => setGravado(null)} disabled={enviando} style={{ padding: '7px 14px', fontSize: 13 }}>Descartar</button>
+          </div>
+        </div>
+      )}
+      {p.roteiro_narracao && !gravado && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {gravando
+            ? <button className="btn-primary" onClick={parar} style={{ padding: '7px 14px', fontSize: 13, background: 'var(--red)', borderColor: 'var(--red)' }}>■ Parar ({segundos}s)</button>
+            : <button className="btn-primary" onClick={comecar} disabled={enviando} style={{ padding: '7px 14px', fontSize: 13 }}>● {p.narracao_path ? 'Gravar de novo' : 'Gravar agora'}</button>}
+          <label className="btn-ghost" style={{ padding: '7px 14px', fontSize: 13, cursor: 'pointer' }}>
+            Subir um arquivo
+            <input type="file" accept="audio/*" style={{ display: 'none' }} disabled={enviando || !!gravando}
+              onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) enviar(f) }} />
+          </label>
+          {enviando && <Loader size={15} className="spin" color="var(--accent)" />}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OpcaoMusica({ m, escolhida, onEscolher, ocupado }) {
+  const url = useUrlAssinada(m.path)
+  return (
+    <div style={{ border: `1.5px solid ${escolhida ? 'var(--accent)' : 'var(--border)'}`, background: escolhida ? 'var(--accent-dim)' : 'var(--bg2)', borderRadius: 10, padding: '10px 12px', display: 'grid', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <strong style={{ fontSize: 13.5 }}>{m.titulo}</strong>
+        {m.artista && <span style={{ fontSize: 12, color: 'var(--text2)' }}>{m.artista}</span>}
+        {m.clima && <span className="tag" style={{ fontSize: 11 }}>{m.clima}</span>}
+        {m.duracao && <span style={{ fontSize: 11.5, color: 'var(--text2)' }}>{m.duracao}</span>}
+        {escolhida
+          ? <span className="tag tag-green" style={{ marginLeft: 'auto' }}>escolhida</span>
+          : <button className="btn-ghost" onClick={onEscolher} disabled={ocupado} style={{ marginLeft: 'auto', padding: '4px 12px', fontSize: 12.5 }}>Escolher</button>}
+      </div>
+      {m.motivo && <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 }}>{m.motivo}</div>}
+      {url ? <audio src={url} controls preload="none" style={{ width: '100%', height: 34 }} /> : m.path && <Loader size={14} className="spin" color="var(--accent)" />}
+    </div>
+  )
+}
+
+function Musica({ p, salvarPeca }) {
+  const [ocupado, setOcupado] = useState(false)
+  const opcoes = Array.isArray(p.musica_opcoes) ? p.musica_opcoes : []
+  async function escolher(m) {
+    setOcupado(true)
+    const status = proximoStatus(p, { temNarracao: !!p.narracao_path, temMusica: true })
+    await salvarPeca(p.id, { musica_escolhida: m, status },
+      status === 'producao' ? `“${m.titulo}” escolhida. A equipe já pode montar o reel.` : `“${m.titulo}” escolhida. Falta a narração.`)
+    setOcupado(false)
+  }
+  return (
+    <div style={caixa}>
+      <div style={tituloCaixa}>🎵 Música (Meta Sound Collection) {p.musica_escolhida ? <span className="tag tag-green">escolhida</span> : opcoes.length ? <span className="tag tag-amber">escolha 1 de {opcoes.length}</span> : null}</div>
+      {opcoes.length === 0
+        ? <div style={{ fontSize: 12.5, color: 'var(--text2)' }}>A equipe ainda vai separar 5 opções pra esse reel.</div>
+        : opcoes.map((m, i) => (
+          <OpcaoMusica key={m.path || i} m={m} ocupado={ocupado} onEscolher={() => escolher(m)}
+            escolhida={!!p.musica_escolhida && (p.musica_escolhida.path ? p.musica_escolhida.path === m.path : p.musica_escolhida.titulo === m.titulo)} />
+        ))}
     </div>
   )
 }
@@ -280,6 +443,8 @@ function PecaDetalhe({ p, salvarPeca }) {
   return (
     <div style={{ borderTop: '1px solid var(--border)', padding: '12px 14px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
       {p.ideia && <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}><strong style={{ color: 'var(--text)' }}>Ideia: </strong>{p.ideia}</div>}
+      {p.formato === 'reel' && <Narracao p={p} salvarPeca={salvarPeca} />}
+      {p.formato === 'reel' && <Musica p={p} salvarPeca={salvarPeca} />}
       <Previa midia={p.midia} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         {p.arquivo_url
@@ -351,7 +516,8 @@ function ParaAprovar({ pecas, aberta, setAberta, salvarPeca }) {
   return (
     <>
       <p style={{ fontSize: 12.5, color: 'var(--text2)', margin: '0 0 10px' }}>
-        Peças que a equipe terminou. Abra, veja no Drive, ajuste a legenda se quiser e aprove (ou peça ajuste com um recado).
+        O que está parado esperando você: gravar a narração do reel, escolher a música ou aprovar a peça pronta
+        (ou pedir ajuste com um recado). Abra cada uma.
       </p>
       {pecas.map(p => (
         <div key={p.id}>
