@@ -5,46 +5,46 @@ import { supabase } from './lib/supabase'
 import { ehLinkDeRecuperacao } from './lib/acesso'
 import { useFlags } from './hooks/useFlags'
 import Login from './pages/Login'
-import Cadastro from './pages/Cadastro'
-import EntrarConvite from './pages/EntrarConvite'
-import EntrarCupom from './pages/EntrarCupom'
-import Tour from './pages/Tour'
-import RedefinirSenha from './pages/RedefinirSenha'
+const Cadastro = lazy(() => import('./pages/Cadastro'))
+const EntrarConvite = lazy(() => import('./pages/EntrarConvite'))
+const EntrarCupom = lazy(() => import('./pages/EntrarCupom'))
+const Tour = lazy(() => import('./pages/Tour'))
+const RedefinirSenha = lazy(() => import('./pages/RedefinirSenha'))
 import EscolhaGrupo from './pages/EscolhaGrupo'
-import Dashboard from './pages/Dashboard'
-import Gastos from './pages/Gastos'
-import Entradas from './pages/Entradas'
-import Cartoes from './pages/Cartoes'
-import ContasFixas from './pages/ContasFixas'
-import ContasDoMes from './pages/ContasDoMes'
-import Assinaturas from './pages/Assinaturas'
-import Parcelamentos from './pages/Parcelamentos'
-// Financiamentos (0120): carrega só quando abre (fica fora do pacote principal, que tem teto de 2 MB no modo offline)
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Gastos = lazy(() => import('./pages/Gastos'))
+const Entradas = lazy(() => import('./pages/Entradas'))
+const Cartoes = lazy(() => import('./pages/Cartoes'))
+const ContasFixas = lazy(() => import('./pages/ContasFixas'))
+const ContasDoMes = lazy(() => import('./pages/ContasDoMes'))
+const Assinaturas = lazy(() => import('./pages/Assinaturas'))
+const Parcelamentos = lazy(() => import('./pages/Parcelamentos'))
 const Financiamentos = lazy(() => import('./pages/Financiamentos'))
-import Projecao from './pages/Projecao'
-import Cofrinhos from './pages/Cofrinhos'
-import Orcamento from './pages/Orcamento'
-import Categorias from './pages/Categorias'
-import Configuracoes from './pages/Configuracoes'
-import MeusDados from './pages/MeusDados'
-import MinhaConta from './pages/MinhaConta'
-import LancarVarios from './pages/LancarVarios'
-import SairComunicados from './pages/SairComunicados'
-import Planos from './pages/Planos'
-import Checkout from './pages/Checkout'
-import Fechamento from './pages/Fechamento'
-import Importar from './pages/Importar'
-import Historico from './pages/Historico'
-import AReceber from './pages/AReceber'
-import Pessoas from './pages/Pessoas'
-import Notificacoes from './pages/Notificacoes'
-import Legal from './pages/Legal'
+const Projecao = lazy(() => import('./pages/Projecao'))
+const Cofrinhos = lazy(() => import('./pages/Cofrinhos'))
+const Orcamento = lazy(() => import('./pages/Orcamento'))
+const Categorias = lazy(() => import('./pages/Categorias'))
+const Configuracoes = lazy(() => import('./pages/Configuracoes'))
+const MeusDados = lazy(() => import('./pages/MeusDados'))
+const MinhaConta = lazy(() => import('./pages/MinhaConta'))
+const LancarVarios = lazy(() => import('./pages/LancarVarios'))
+const SairComunicados = lazy(() => import('./pages/SairComunicados'))
+const Planos = lazy(() => import('./pages/Planos'))
+const Checkout = lazy(() => import('./pages/Checkout'))
+const Fechamento = lazy(() => import('./pages/Fechamento'))
+const Importar = lazy(() => import('./pages/Importar'))
+const Historico = lazy(() => import('./pages/Historico'))
+const AReceber = lazy(() => import('./pages/AReceber'))
+const Pessoas = lazy(() => import('./pages/Pessoas'))
+const Notificacoes = lazy(() => import('./pages/Notificacoes'))
+const Legal = lazy(() => import('./pages/Legal'))
 import Layout from './components/Layout'
+import Carregando from './components/Carregando'
 import CookieConsent from './components/CookieConsent'
-import DevComponentes from './pages/DevComponentes'
+const DevComponentes = import.meta.env.DEV ? lazy(() => import('./pages/DevComponentes')) : null
 import Splash from './components/Splash'
-import Onboarding from './pages/Onboarding'
-import BoasVindas from './pages/BoasVindas'
+const Onboarding = lazy(() => import('./pages/Onboarding'))
+const BoasVindas = lazy(() => import('./pages/BoasVindas'))
 
 // Abertura (splash): mostra 1x por dia, sem tocar na auth.
 const hojeStr = () => new Date().toISOString().slice(0, 10)
@@ -69,12 +69,7 @@ function SoComChave({ chave, senao = '/', children }) {
 
 function RotaProtegida({ children }) {
   const { user, loading, precisaGrupo } = useAuth()
-  if (loading) return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', color:'var(--text2)', gap:16 }}>
-      <div style={{ width:36, height:36, border:'3px solid var(--border2)', borderTop:'3px solid var(--accent)', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  )
+  if (loading) return <Carregando />
   if (!user) return <Navigate to={jaViuOnboarding() ? '/login' : '/onboarding'} replace />
   if (precisaGrupo) return <EscolhaGrupo />
   return children
@@ -140,6 +135,8 @@ export default function App() {
     <PortaoAdminHost />
     <PortaoRecuperacao />
     {splash && <Splash onDone={fecharSplash} />}
+    {/* Cada tela baixa só quando abre (pacote principal tinha ~2 MB, 23/11/2026). */}
+    <Suspense fallback={<Carregando />}>
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<Cadastro />} />
@@ -163,7 +160,7 @@ export default function App() {
         <Route path="contas-do-mes" element={<ContasDoMes />} />
         <Route path="assinaturas" element={<Assinaturas />} />
         <Route path="parcelamentos" element={<Parcelamentos />} />
-        <Route path="financiamentos" element={<SoComChave chave="financiamentos" senao="/parcelamentos"><Suspense fallback={null}><Financiamentos /></Suspense></SoComChave>} />
+        <Route path="financiamentos" element={<SoComChave chave="financiamentos" senao="/parcelamentos"><Financiamentos /></SoComChave>} />
         <Route path="a-receber" element={<AReceber />} />
         <Route path="pessoas" element={<Pessoas />} />
         <Route path="projecao" element={<Projecao />} />
@@ -182,6 +179,7 @@ export default function App() {
         <Route path="notificacoes" element={<Notificacoes />} />
       </Route>
     </Routes>
+    </Suspense>
     <CookieConsent />
     </>
   )

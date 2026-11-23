@@ -15,6 +15,12 @@ export default defineConfig({
   resolve: {
     alias: { '@motor': fileURLToPath(new URL('./supabase/functions/_shared', import.meta.url)) },
   },
+  // Ícones do Lucide num arquivo só (sem isso, cada ícone vira um arquivinho quando as telas baixam sob demanda).
+  build: {
+    rollupOptions: {
+      output: { manualChunks: (id) => (id.includes('node_modules/lucide-react') ? 'icones' : undefined) },
+    },
+  },
   plugins: [
     react(),
     VitePWA({
@@ -40,8 +46,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-        // O pacote principal chegou a ~2,1 MB (22/11/2026) e passou do teto padrão de 2 MB: sem isto
-        // ele sai do modo offline e o build falha. 3 MB dá folga; dividir o pacote é a solução de verdade.
+        // O pacote principal chegou a ~2,1 MB (22/11/2026); em 23/11 as telas passaram a baixar sob demanda.
+        // O teto de 3 MB fica como folga pra nenhum arquivo sair do modo offline.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         navigateFallback: '/index.html',
         // Nunca interceptar chamadas ao Supabase (API/auth/realtime)

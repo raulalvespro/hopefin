@@ -23,6 +23,21 @@ iniciarAutoAtualizacao()
 // Guarda o convite de instalação do Chrome já na abertura (antes do login).
 iniciarCapturaInstalacao()
 
+// As telas baixam sob demanda (23/11/2026). Se a pessoa estava com a versão antiga aberta e saiu
+// uma nova, o arquivo da tela antiga some do servidor: recarrega 1x pra pegar a versão nova
+// (a marca na sessão evita ficar recarregando em loop se o problema for outro, ex.: sem internet).
+window.addEventListener('vite:preloadError', (e) => {
+  try {
+    if (sessionStorage.getItem('hopefin_recarregou_tela')) return
+    sessionStorage.setItem('hopefin_recarregou_tela', '1')
+  } catch { return }
+  e.preventDefault()
+  window.location.reload()
+})
+window.addEventListener('load', () => {
+  setTimeout(() => { try { sessionStorage.removeItem('hopefin_recarregou_tela') } catch { /* ignore */ } }, 10000)
+})
+
 // Sem zoom de pinça (A8.11, pedido do Raul): o iPhone ignora o user-scalable=no do
 // viewport, então barramos o gesto de pinça (gesturestart é só do Safari) e o toque com 2
 // dedos arrastando. Rolagem e o arrastar das listas (1 dedo) continuam normais.

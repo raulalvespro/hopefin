@@ -4,7 +4,22 @@
     {
       "name": "hopefin-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "hopefin-build",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
       "port": 5173
     }
   ]

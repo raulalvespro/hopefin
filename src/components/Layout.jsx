@@ -5,7 +5,7 @@ import {
   LayoutDashboard, TrendingUp, TrendingDown, CreditCard, FileText, Layers, Calendar,
   MoreHorizontal, X, Target, PiggyBank, CalendarCheck, Repeat, ClipboardCheck, Bell, Clock, History, Coins, Landmark,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import InstalarApp from './InstalarApp'
 import AtivarNotificacoes from './AtivarNotificacoes'
 import AvisoOffline from './AvisoOffline'
@@ -14,6 +14,7 @@ import Logo from './Logo'
 import BannerAssinatura from './BannerAssinatura'
 import GuiaPasso from './GuiaPasso'
 import Ajuda from './Ajuda'
+import Carregando from './Carregando'
 import { useFlags } from '../hooks/useFlags'
 import { useAlertas } from '../hooks/useAlertas'
 import { copy } from '../copy/pt-BR'
@@ -201,7 +202,7 @@ export default function Layout() {
         <AvisoOffline />
         <BannerAssinatura />
         <GuiaPasso />
-        <Outlet />
+        <Suspense fallback={<Carregando alto="50vh" />}><Outlet /></Suspense>
       </main>
 
       {/* Nav bottom */}
