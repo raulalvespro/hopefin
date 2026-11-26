@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Sparkles, CalendarDays, CheckCircle2, MessageSquarePlus, Users, ChevronLeft, ChevronRight, Radio,
-  ExternalLink, Copy, Film, GalleryHorizontal, LayoutGrid, Image, Send, Loader, RefreshCw,
+  ExternalLink, Copy, Film, GalleryHorizontal, LayoutGrid, Image, Send, Loader, RefreshCw, CircleDashed, Plus, Wand2,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../contexts/ToastContext'
@@ -90,6 +90,14 @@ export default function Agencia() {
     return true
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const criarPeca = useCallback(async (campos, aviso) => {
+    const { data, error } = await supabase.from('mkt_pecas').insert(campos).select().single()
+    if (error) { toast(msgErro(error), 'erro'); return null }
+    setPecas(lista => [...lista, data].sort((a, b) => (a.data + (a.horario || '')).localeCompare(b.data + (b.horario || ''))))
+    if (aviso) toast(aviso, 'ok')
+    return data
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const paraAprovar = useMemo(() => (pecas || []).filter(p => STATUS[p.status]?.voce), [pecas])
 
   return (
@@ -97,10 +105,13 @@ export default function Agencia() {
       <h2><Sparkles size={16} color="var(--accent)" /> Agência de marketing</h2>
       <p style={{ fontSize: 13, color: 'var(--text2)', margin: '-4px 0 12px', lineHeight: 1.5 }}>
         O conteúdo do @hopefinapp: o que vai sair, o que está pronto pra você aprovar, os pedidos pra equipe e quem é quem.
-        A equipe trabalha no Claude Code (diga “gerente, …” numa conversa na pasta hopefin-social) e atualiza esta tela.
+        A equipe trabalha no Claude Code do computador: passa pela fila sozinha às 8h e às 14h (com o computador ligado e o
+        app do Claude aberto) e você pode chamar a qualquer hora dizendo “gerente, …” numa conversa na pasta hopefin-social.
+        Ajuste só de texto (legenda ou roteiro da fala) dá pra fazer na hora, aqui mesmo, com “Ajustar agora”.
       </p>
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
         <Pilula ativo={aba === 'calendario'} onClick={() => setAba('calendario')}><CalendarDays size={14} /> Calendário</Pilula>
+        <Pilula ativo={aba === 'stories'} onClick={() => setAba('stories')}><CircleDashed size={14} /> Stories</Pilula>
         <Pilula ativo={aba === 'aprovar'} onClick={() => setAba('aprovar')}>
           <CheckCircle2 size={14} /> Esperando você {paraAprovar.length > 0 && <span className="tag tag-amber" style={{ padding: '0 7px' }}>{paraAprovar.length}</span>}
         </Pilula>
@@ -113,7 +124,8 @@ export default function Agencia() {
       </div>
 
       {pecas === null && <div style={{ padding: 24, textAlign: 'center' }}><Loader size={20} className="spin" color="var(--accent)" /></div>}
-      {pecas && aba === 'calendario' && <Calendario pecas={pecas} aberta={aberta} setAberta={setAberta} salvarPeca={salvarPeca} />}
+      {pecas && aba === 'calendario' && <Calendario pecas={pecas} aberta={aberta} setAberta={setAberta} salvarPeca={salvarPeca} verStories={() => setAba('stories')} />}
+      {pecas && aba === 'stories' && <Stories pecas={pecas} aberta={aberta} setAberta={setAberta} salvarPeca={salvarPeca} criarPeca={criarPeca} />}
       {pecas && aba === 'aprovar' && <ParaAprovar pecas={paraAprovar} aberta={aberta} setAberta={setAberta} salvarPeca={salvarPeca} />}
       {aba === 'pedidos' && <Pedidos />}
       {aba === 'equipe' && <Equipe />}
@@ -142,26 +154,40 @@ function Resumo({ pecas, inicio }) {
   )
 }
 
-function Calendario({ pecas, aberta, setAberta, salvarPeca }) {
+function NavSemana({ inicio, setInicio }) {
+  const titulo = `${diaMes(iso(inicio))} a ${diaMes(iso(somaDias(inicio, 6)))}`
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <button className="adm-icbtn" onClick={() => setInicio(somaDias(inicio, -7))} aria-label="Semana anterior"><ChevronLeft size={16} /></button>
+      <strong style={{ fontSize: 14 }}>{titulo}</strong>
+      <button className="adm-icbtn" onClick={() => setInicio(somaDias(inicio, 7))} aria-label="Próxima semana"><ChevronRight size={16} /></button>
+      <button className="btn-ghost" onClick={() => setInicio(segunda(new Date()))} style={{ padding: '5px 10px', fontSize: 12 }}>Esta semana</button>
+    </div>
+  )
+}
+
+function Calendario({ pecas: todas, aberta, setAberta, salvarPeca, verStories }) {
   const [inicio, setInicio] = useState(() => segunda(new Date()))
   const dias = Array.from({ length: 7 }, (_, i) => iso(somaDias(inicio, i)))
   const hoje = iso(new Date())
-  const titulo = `${diaMes(dias[0])} a ${diaMes(dias[6])}`
+  // stories têm calendário próprio (aba Stories); aqui fica o feed (reel, tirinha, carrossel, estático)
+  const pecas = todas.filter(p => p.formato !== 'story')
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <button className="adm-icbtn" onClick={() => setInicio(somaDias(inicio, -7))} aria-label="Semana anterior"><ChevronLeft size={16} /></button>
-        <strong style={{ fontSize: 14 }}>{titulo}</strong>
-        <button className="adm-icbtn" onClick={() => setInicio(somaDias(inicio, 7))} aria-label="Próxima semana"><ChevronRight size={16} /></button>
-        <button className="btn-ghost" onClick={() => setInicio(segunda(new Date()))} style={{ padding: '5px 10px', fontSize: 12 }}>Esta semana</button>
-      </div>
+      <NavSemana inicio={inicio} setInicio={setInicio} />
       <Resumo pecas={pecas} inicio={inicio} />
       {dias.map(d => {
         const doDia = pecas.filter(p => p.data === d)
+        const stories = todas.filter(p => p.data === d && p.formato === 'story' && p.status !== 'cancelado').length
         return (
           <div key={d} style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: d === hoje ? 'var(--accent-text)' : 'var(--text2)', margin: '0 0 6px', textTransform: 'capitalize' }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: d === hoje ? 'var(--accent-text)' : 'var(--text2)', margin: '0 0 6px', textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: 8 }}>
               {diaMes(d)}{d === hoje ? ' · hoje' : ''}
+              {stories > 0 && (
+                <button className="btn-ghost" onClick={verStories} style={{ padding: '0 8px', fontSize: 11, textTransform: 'none', fontWeight: 600 }}>
+                  + {stories} {stories === 1 ? 'story' : 'stories'}
+                </button>
+              )}
             </div>
             {doDia.length === 0
               ? <div style={{ fontSize: 12.5, color: 'var(--text3, var(--text2))', padding: '6px 2px' }}>Nada planejado.</div>
@@ -189,6 +215,94 @@ function PecaLinha({ p, aberta, onAbrir, salvarPeca }) {
       </button>
       {aberta && <PecaDetalhe p={p} salvarPeca={salvarPeca} />}
     </div>
+  )
+}
+
+/* ───────────── Stories (pedido de 26/11/2026) ───────────── */
+// Calendário só dos stories (formato 'story' da mkt_pecas, que já existia). Vários por dia, em ordem de horário.
+// Você pode lançar uma ideia de story no dia; a equipe produz na rodada e devolve pra aprovar, igual ao feed.
+// A postagem automática (mkt-publicar) já sabe postar story de imagem ou vídeo no Instagram.
+
+const TIPOS_STORY = ['Bastidor', 'Enquete', 'Caixa de perguntas', 'Chamada pro post do dia', 'Dica rápida', 'Contagem regressiva', 'Repost']
+
+function NovoStory({ data, criarPeca, onFechar }) {
+  const [horario, setHorario] = useState('09:00')
+  const [tipo, setTipo] = useState(TIPOS_STORY[0])
+  const [ideia, setIdeia] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  async function salvar() {
+    setSalvando(true)
+    const ok = await criarPeca({
+      data, horario: `${horario}:00`, formato: 'story', status: 'ideia',
+      titulo: ideia.trim() ? `${tipo}: ${ideia.trim().slice(0, 60)}` : tipo,
+      ideia: [`Tipo: ${tipo}.`, ideia.trim()].filter(Boolean).join(' '),
+    }, 'Story no calendário. A equipe produz na próxima rodada.')
+    setSalvando(false)
+    if (ok) onFechar()
+  }
+  return (
+    <div style={{ border: '1.5px dashed var(--border2)', borderRadius: 'var(--radius-sm)', padding: 10, display: 'grid', gap: 8, marginTop: 6 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <input type="time" value={horario} onChange={e => setHorario(e.target.value)} style={{ fontSize: 13, padding: '5px 8px' }} aria-label="Horário" />
+        <select value={tipo} onChange={e => setTipo(e.target.value)} style={{ fontSize: 13, padding: '5px 8px' }} aria-label="Tipo de story">
+          {TIPOS_STORY.map(t => <option key={t}>{t}</option>)}
+        </select>
+      </div>
+      <textarea rows={2} value={ideia} onChange={e => setIdeia(e.target.value)} placeholder="Ideia (opcional). Ex.: enquete “quem cuida das contas aí, você ou o par?”"
+        style={{ width: '100%', resize: 'vertical', fontSize: 13 }} />
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn-primary" onClick={salvar} disabled={salvando || !horario} style={{ padding: '6px 12px', fontSize: 12.5 }}>{salvando ? 'Salvando…' : 'Pôr no calendário'}</button>
+        <button className="btn-ghost" onClick={onFechar} disabled={salvando} style={{ padding: '6px 12px', fontSize: 12.5 }}>Cancelar</button>
+      </div>
+    </div>
+  )
+}
+
+function Stories({ pecas, aberta, setAberta, salvarPeca, criarPeca }) {
+  const [inicio, setInicio] = useState(() => segunda(new Date()))
+  const [novoEm, setNovoEm] = useState(null) // data do dia com o formulário aberto
+  const dias = Array.from({ length: 7 }, (_, i) => iso(somaDias(inicio, i)))
+  const hoje = iso(new Date())
+  const stories = pecas.filter(p => p.formato === 'story')
+  const semana = stories.filter(p => p.data >= dias[0] && p.data <= dias[6] && p.status !== 'cancelado')
+  const n = (f) => semana.filter(f).length
+  const cards = [
+    ['Stories na semana', semana.length],
+    ['Esperando você', n(p => STATUS[p.status]?.voce)],
+    ['Aprovados', n(p => p.status === 'agendado')],
+    ['Postados', n(p => p.status === 'postado')],
+  ]
+  return (
+    <>
+      <NavSemana inicio={inicio} setInicio={setInicio} />
+      <div className="adm-cards" style={{ marginBottom: 14 }}>
+        {cards.map(([k, v]) => <div key={k} className="adm-card"><div className="k">{k}</div><div className="v">{v}</div></div>)}
+      </div>
+      {semana.length === 0 && (
+        <p style={{ fontSize: 12.5, color: 'var(--text2)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Nenhum story planejado nesta semana. Ponha uma ideia num dia (“+ Story”) ou peça pra equipe
+          montar a semana de stories na aba Pedidos.
+        </p>
+      )}
+      {dias.map(d => {
+        const doDia = stories.filter(p => p.data === d)
+        return (
+          <div key={d} style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: d === hoje ? 'var(--accent-text)' : 'var(--text2)', margin: '0 0 6px', textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {diaMes(d)}{d === hoje ? ' · hoje' : ''}
+              {d >= hoje && novoEm !== d && (
+                <button className="btn-ghost" onClick={() => setNovoEm(d)} style={{ padding: '0 8px', fontSize: 11, textTransform: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  <Plus size={11} /> Story
+                </button>
+              )}
+            </div>
+            {doDia.length === 0 && novoEm !== d && <div style={{ fontSize: 12.5, color: 'var(--text3, var(--text2))', padding: '6px 2px' }}>Nenhum story.</div>}
+            {doDia.map(p => <PecaLinha key={p.id} p={p} aberta={aberta === p.id} onAbrir={() => setAberta(aberta === p.id ? null : p.id)} salvarPeca={salvarPeca} />)}
+            {novoEm === d && <NovoStory data={d} criarPeca={criarPeca} onFechar={() => setNovoEm(null)} />}
+          </div>
+        )
+      })}
+    </>
   )
 }
 
@@ -265,10 +379,52 @@ function Narracao({ p, salvarPeca }) {
   }
   const copiar = async () => { try { await navigator.clipboard.writeText(p.roteiro_narracao || ''); toast('Roteiro copiado.', 'ok') } catch { /* ignore */ } }
 
+  // Editar o roteiro da fala (pedido de 26/11/2026). A equipe fica sabendo por um comentário na peça.
+  const [editando, setEditando] = useState(false)
+  const [texto, setTexto] = useState(p.roteiro_narracao || '')
+  const [salvando, setSalvando] = useState(false)
+  useEffect(() => { if (!editando) setTexto(p.roteiro_narracao || '') }, [p.roteiro_narracao, editando])
+  async function salvarRoteiro() {
+    const novo = texto.trim()
+    if (novo === (p.roteiro_narracao || '').trim()) { setEditando(false); return }
+    setSalvando(true)
+    const campos = { roteiro_narracao: novo || null }
+    if (novo && ['ideia', 'roteiro'].includes(p.status)) campos.status = proximoStatus(p, { temNarracao: !!p.narracao_path, temMusica: !!p.musica_escolhida })
+    const ok = await salvarPeca(p.id, campos, p.narracao_path ? 'Roteiro salvo. Grave de novo pra narração seguir o texto novo.' : 'Roteiro salvo.')
+    if (ok) {
+      await supabase.from('mkt_comentarios').insert({ peca_id: p.id, autor: 'raul', tipo: 'comentario', texto: 'Editei o roteiro da narração no painel (o texto da tela e a legenda devem seguir o roteiro novo).' })
+      setEditando(false)
+    }
+    setSalvando(false)
+  }
+  const linhas = texto.split('\n').filter(l => l.trim()).length
+  const palavras = texto.replace(/^\s*\d+[.)-]?\s*/gm, '').split(/\s+/).filter(Boolean).length
+
   return (
     <div style={caixa}>
-      <div style={tituloCaixa}>🎙️ Narração {p.narracao_path ? <span className="tag tag-green">recebida</span> : <span className="tag tag-amber">falta gravar</span>}</div>
-      {p.roteiro_narracao
+      <div style={tituloCaixa}>
+        🎙️ Narração {p.narracao_path ? <span className="tag tag-green">recebida</span> : <span className="tag tag-amber">falta gravar</span>}
+        {!editando && !gravando && !gravado && (
+          <button className="btn-ghost" onClick={() => setEditando(true)} style={{ marginLeft: 'auto', padding: '2px 10px', fontSize: 11.5 }}>
+            {p.roteiro_narracao ? 'Editar roteiro' : 'Escrever roteiro'}
+          </button>
+        )}
+      </div>
+      {editando ? (
+        <div style={{ display: 'grid', gap: 6 }}>
+          <textarea rows={Math.max(6, linhas + 1)} value={texto} onChange={e => setTexto(e.target.value)} autoFocus
+            placeholder={'1. Primeira frase (1 linha = 1 cena)\n2. …'}
+            style={{ width: '100%', resize: 'vertical', fontSize: 13.5, lineHeight: 1.6 }} />
+          <div style={{ fontSize: 11.5, color: 'var(--text2)' }}>
+            {linhas} {linhas === 1 ? 'linha' : 'linhas'} · ~{Math.round(palavras / 2.5)} s de fala (ideal 20–40 s).
+            {p.narracao_path && ' Você já gravou: depois de salvar, grave de novo.'}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn-primary" onClick={salvarRoteiro} disabled={salvando} style={{ padding: '6px 12px', fontSize: 12.5 }}>{salvando ? 'Salvando…' : 'Salvar roteiro'}</button>
+            <button className="btn-ghost" onClick={() => setEditando(false)} disabled={salvando} style={{ padding: '6px 12px', fontSize: 12.5 }}>Cancelar</button>
+          </div>
+        </div>
+      ) : p.roteiro_narracao
         ? (
           <>
             <div style={{ fontSize: 13.5, lineHeight: 1.6, whiteSpace: 'pre-wrap', background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px' }}>{p.roteiro_narracao}</div>
@@ -291,7 +447,7 @@ function Narracao({ p, salvarPeca }) {
           </div>
         </div>
       )}
-      {p.roteiro_narracao && !gravado && (
+      {p.roteiro_narracao && !gravado && !editando && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           {gravando
             ? <button className="btn-primary" onClick={parar} style={{ padding: '7px 14px', fontSize: 13, background: 'var(--red)', borderColor: 'var(--red)' }}>■ Parar ({segundos}s)</button>
@@ -465,9 +621,31 @@ function PecaDetalhe({ p, salvarPeca }) {
   }
   async function pedirAjuste() {
     if (!nota.trim()) { toast('Escreva o que ajustar.', 'erro'); return }
-    if (await comentar('ajuste', nota.trim())) await salvarPeca(p.id, { status: 'producao' }, 'Ajuste pedido. A equipe vê na próxima rodada.')
+    if (await comentar('ajuste', nota.trim())) await salvarPeca(p.id, { status: 'producao' }, 'Ajuste pedido. A equipe pega na próxima rodada (8h ou 14h).')
     setNota('')
   }
+  // Ajuste de texto na hora (Edge Function mkt-texto): a IA reescreve e você decide se usa.
+  const [ajustando, setAjustando] = useState(null) // campo em andamento
+  const [sugestao, setSugestao] = useState(null) // { campo, texto, nota, recado }
+  async function ajustarAgora(campo) {
+    if (!nota.trim()) { toast('Escreva no recado o que ajustar.', 'erro'); return }
+    setAjustando(campo); setSugestao(null)
+    const { data, error } = await supabase.functions.invoke('mkt-texto', { body: { peca_id: p.id, campo, recado: nota.trim() } })
+    setAjustando(null)
+    if (error || !data?.ok) { toast(data?.erro || 'Não consegui ajustar agora. Tente de novo ou peça pra equipe.', 'erro'); return }
+    setSugestao({ campo, texto: data.texto, nota: data.nota, recado: nota.trim() })
+  }
+  async function usarSugestao() {
+    const { campo, texto, recado } = sugestao
+    const campos = { [campo]: texto }
+    if (campo === 'roteiro_narracao' && ['ideia', 'roteiro'].includes(p.status)) campos.status = proximoStatus(p, { temNarracao: !!p.narracao_path, temMusica: !!p.musica_escolhida })
+    const aviso = campo === 'legenda' ? 'Legenda nova salva.' : (p.narracao_path ? 'Roteiro novo salvo. Grave de novo pra narração seguir o texto.' : 'Roteiro novo salvo.')
+    if (!(await salvarPeca(p.id, campos, aviso))) return
+    if (campo === 'legenda') setLegenda(texto)
+    await comentar('comentario', `Ajuste feito na hora no painel (${campo === 'legenda' ? 'legenda' : 'roteiro da narração'}): ${recado}`)
+    setSugestao(null); setNota('')
+  }
+
   async function marcarPostado() {
     await salvarPeca(p.id, { status: 'postado', link_post: link.trim() || null, postado_em: new Date().toISOString() }, 'Marcado como postado.')
   }
@@ -514,6 +692,29 @@ function PecaDetalhe({ p, salvarPeca }) {
           <button className="btn-ghost" onClick={pedirAjuste} style={{ padding: '7px 14px', fontSize: 13 }}>Pedir ajuste</button>
           {nota.trim() && <button className="btn-ghost" onClick={async () => { if (await comentar('comentario', nota.trim())) setNota('') }} style={{ padding: '7px 14px', fontSize: 13 }}>Só comentar</button>}
         </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: 'var(--text2)' }}>É só texto? Ajuste agora com a IA:</span>
+          <button className="btn-ghost" onClick={() => ajustarAgora('legenda')} disabled={!!ajustando} style={{ padding: '5px 12px', fontSize: 12.5, display: 'inline-flex', gap: 5, alignItems: 'center' }}>
+            {ajustando === 'legenda' ? <Loader size={12} className="spin" /> : <Wand2 size={12} />} Legenda
+          </button>
+          {p.formato === 'reel' && (
+            <button className="btn-ghost" onClick={() => ajustarAgora('roteiro_narracao')} disabled={!!ajustando} style={{ padding: '5px 12px', fontSize: 12.5, display: 'inline-flex', gap: 5, alignItems: 'center' }}>
+              {ajustando === 'roteiro_narracao' ? <Loader size={12} className="spin" /> : <Wand2 size={12} />} Roteiro da fala
+            </button>
+          )}
+        </div>
+        {sugestao && (
+          <div style={{ marginTop: 10, border: '1.5px solid var(--accent)', borderRadius: 10, padding: 12, display: 'grid', gap: 8, background: 'var(--bg2)' }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Sugestão para {sugestao.campo === 'legenda' ? 'a legenda' : 'o roteiro da fala'}</div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{sugestao.texto}</div>
+            {sugestao.nota && <div style={{ fontSize: 12, color: 'var(--text2)' }}>{sugestao.nota}</div>}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn-primary" onClick={usarSugestao} style={{ padding: '6px 12px', fontSize: 12.5 }}>Usar este texto</button>
+              <button className="btn-ghost" onClick={() => ajustarAgora(sugestao.campo)} disabled={!!ajustando} style={{ padding: '6px 12px', fontSize: 12.5 }}>Tentar de novo</button>
+              <button className="btn-ghost" onClick={() => setSugestao(null)} style={{ padding: '6px 12px', fontSize: 12.5 }}>Descartar</button>
+            </div>
+          </div>
+        )}
         {!quando && p.status === 'agendado' && vencida && (
           <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--amber-text)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             Aprovada pra {diaMes(p.data)} às {hora(p.horario)}, mas o horário passou e ainda não saiu.
