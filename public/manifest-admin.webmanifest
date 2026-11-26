@@ -1,0 +1,18 @@
+{
+  "id": "/?admin=1",
+  "name": "HopeFin Admin — Painel do dono",
+  "short_name": "HF Admin",
+  "description": "Painel do dono do HopeFin: assinantes, MRR, consumo de IA, suporte e agência.",
+  "lang": "pt-BR",
+  "theme_color": "#0f172a",
+  "background_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait",
+  "start_url": "/?admin=1",
+  "scope": "/",
+  "icons": [
+    { "src": "/admin-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/admin-512x512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/admin-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

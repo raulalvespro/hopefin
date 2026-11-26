@@ -62,6 +62,24 @@ if (ehAdmin) {
   icone.type = 'image/svg+xml'
   icone.href = '/favicon-admin.svg'
   document.head.appendChild(icone)
+
+  // PWA próprio do painel (26/11/2026): admin.hopefin.com.br é outra origem, então instala como
+  // um app separado ("HF Admin") no celular. Troca o manifesto e os ícones do iPhone antes do
+  // navegador checar se dá pra instalar. O ?admin=1 do start_url só importa no localhost.
+  const setarLink = (rel, href) => {
+    let l = document.querySelector(`link[rel="${rel}"]`)
+    if (!l) { l = document.createElement('link'); l.rel = rel; document.head.appendChild(l) }
+    l.href = href
+  }
+  const setarMeta = (name, content) => {
+    let m = document.querySelector(`meta[name="${name}"]`)
+    if (!m) { m = document.createElement('meta'); m.name = name; document.head.appendChild(m) }
+    m.content = content
+  }
+  setarLink('manifest', '/manifest-admin.webmanifest')
+  setarLink('apple-touch-icon', '/admin-apple-touch-180x180.png')
+  setarMeta('apple-mobile-web-app-title', 'HF Admin')
+  setarMeta('theme-color', '#0f172a')
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
