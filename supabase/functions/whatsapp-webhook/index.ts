@@ -31,6 +31,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import * as J from './joca.js'
+import { responderConsulta, janelaConsulta } from './consulta.js'
 import { faturasDoCartaoAgora, faturaDoCartao, compDe, addMeses, hojeBRT } from '../_shared/motor.js'
 import { carregarDadosMotor } from '../_shared/motor-dados.js'
 
@@ -488,7 +489,19 @@ async function processar(m: any, ctx: Ctx) {
     case 'saudacao': return responder(J.TEXTOS.saudacao(u.nome), 'resposta', 'saudação')
     case 'agradecimento': return responder(J.TEXTOS.agradecimento(u.nome), 'resposta', 'agradecimento')
     case 'ajuda': return responder(J.TEXTOS.ajuda, 'resposta', 'ajuda')
-    case 'pergunta': return responder(J.TEXTOS.pergunta, 'resposta', 'pergunta')
+    case 'pergunta': {
+      // A8.23 parte 2 (26/11/2026): pergunta sobre os números → resposta com o motor do app
+      // (mesmas contas do Início/Categorias/Cartões). A IA não escreve número nenhum.
+      const c = dados.consulta
+      if (!c) return responder(J.TEXTOS.pergunta, 'resposta', 'pergunta')
+      try {
+        const motor = await carregarDadosMotor(admin, u.grupo_id, janelaConsulta(c, hoje))
+        return responder(responderConsulta(c, motor, hoje), 'resposta', `consulta: ${c.tipo}${c.categoria ? ' ' + c.categoria : ''}${c.termo ? ' "' + c.termo + '"' : ''} ${c.mes || ''}`.trim())
+      } catch (e) {
+        console.error('[whatsapp] consulta', (e as Error).message)
+        return responder(J.TEXTOS.consultaFalhou, 'erro', 'consulta: falha')
+      }
+    }
     case 'investimento': return responder(J.TEXTOS.investimento, 'resposta', 'investimento')
     default: return responder(J.TEXTOS.naoEntendi, 'resposta', 'não entendi')
   }

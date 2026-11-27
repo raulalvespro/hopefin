@@ -2,7 +2,7 @@
 //
 //   npm run joca:bateria                 # roda todos os casos de tests/joca-casos.json, 1 vez
 //   npm run joca:bateria -- --vezes 2    # roda 2 vezes (mostra o que muda de uma vez pra outra)
-//   npm run joca:bateria -- --grupo "outra pessoa"   # só um grupo
+//   npm run joca:bateria -- --grupo "outra pessoa"   # só um grupo (pode repetir)
 //   npm run joca:bateria -- --caso x05   # só um caso (pode repetir: --caso x05 --caso z03)
 //
 // Usa EXATAMENTE o que o webhook usa: instrucoesIA + limparIA + emDuvida do joca.js, o mesmo MODELO
@@ -21,6 +21,7 @@ import { tmpdir } from 'node:os'
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const J = await import(pathToFileURL(join(RAIZ, 'supabase/functions/whatsapp-webhook/joca.js')).href)
+const C = await import(pathToFileURL(join(RAIZ, 'supabase/functions/whatsapp-webhook/consulta.js')).href)
 const INDEX = readFileSync(join(RAIZ, 'supabase/functions/whatsapp-webhook/index.ts'), 'utf8')
 const MODELO = INDEX.match(/const MODELO = '([^']+)'/)?.[1]
 if (!MODELO) throw new Error('não achei a constante MODELO no index.ts')
@@ -33,7 +34,7 @@ const args = process.argv.slice(2)
 const arg = (nome) => { const i = args.indexOf(nome); return i >= 0 ? args[i + 1] : undefined }
 const todos = (nome) => args.flatMap((a, i) => (a === nome ? [args[i + 1]] : []))
 const VEZES = Math.max(1, Number(arg('--vezes')) || 1)
-const SO_GRUPO = arg('--grupo')
+const SO_GRUPOS = todos('--grupo')
 const SO_CASOS = todos('--caso')
 const PARALELO = Math.max(1, Number(arg('--paralelo')) || 6)
 
@@ -56,7 +57,7 @@ const CHAVE = lerChave()
 
 // ---------------------------------------------------------------- casos e contexto
 const { contexto: CTX, casos: TODOS } = JSON.parse(readFileSync(join(RAIZ, 'tests/joca-casos.json'), 'utf8'))
-const casos = TODOS.filter((c) => (!SO_GRUPO || c.grupo === SO_GRUPO) && (!SO_CASOS.length || SO_CASOS.includes(c.id)))
+const casos = TODOS.filter((c) => (!SO_GRUPOS.length || SO_GRUPOS.includes(c.grupo)) && (!SO_CASOS.length || SO_CASOS.includes(c.id)))
 if (!casos.length) throw new Error('nenhum caso com esse filtro')
 const HOJE = CTX.hoje
 const ONTEM = new Date(Date.parse(`${HOJE}T12:00:00Z`) - 864e5).toISOString().slice(0, 10)
@@ -120,6 +121,8 @@ async function simular(caso) {
       return { ...base, desfecho: J.emDuvida(d) ? 'pergunta' : 'salva', final: d }
     case 'apagar_ultimo': return { ...base, desfecho: 'pergunta', final: d }
     case 'pagar_fatura': return { ...base, desfecho: d.cartao_id ? 'pergunta' : 'qual_cartao', final: d }
+    case 'pergunta': // igual ao webhook: com consulta, o texto sai do motor; sem, a resposta padrão
+      return { ...base, desfecho: 'resposta', final: d, resposta: d.consulta ? C.responderConsulta(d.consulta, CTX.dados, HOJE) : J.TEXTOS.pergunta }
     default: return { ...base, desfecho: d.acao === 'outro' ? 'nao_entendi' : 'resposta', final: d }
   }
 }
@@ -171,7 +174,26 @@ function conferir(caso, r) {
   if (esp.duvida === false && !salvou && ACOES_LANC.includes(acao)) add('erro', `era pra salvar direto, mas ${r.desfecho === 'pergunta' ? 'perguntou "tá certo?"' : r.desfecho}`)
   if ('desfecho' in esp && !lista(esp.desfecho).includes(r.desfecho)) add('erro', `desfecho: esperado ${lista(esp.desfecho).join(' ou ')}, veio ${r.desfecho}`)
 
-  if (r.final) {
+  // Perguntas com os números do app (A8.23 parte 2): a IA só diz o que a pessoa quer saber; o
+  // texto sai do motor com os dados de mentira (contexto.dados). Número errado na resposta = grave.
+  if ('consulta' in esp && r.acao === 'pergunta') {
+    const ec = esp.consulta, got = r.dados?.consulta || null
+    if (ec === null && got) add('erro', `era pra responder "ainda não sei", mas virou consulta ${got.tipo}`)
+    if (ec && !got) add('erro', `era consulta ${ec.tipo}, mas veio sem consulta (resposta padrão)`)
+    if (ec && got) {
+      if (ec.tipo && got.tipo !== ec.tipo) add('erro', `consulta: esperado ${ec.tipo}, veio ${got.tipo}`)
+      if (ec.mes && got.mes !== ec.mes) add('erro', `mês: esperado ${ec.mes}, veio ${got.mes}`)
+      if ('cartao' in ec) {
+        const veio = nomeCartao(got.cartao_id)
+        if (veio !== ec.cartao) add(veio ? 'grave' : 'erro', `cartão: esperado ${fmt(ec.cartao)}, veio ${fmt(veio)}`)
+      }
+    }
+  }
+  if (Array.isArray(esp.resposta_contem)) {
+    for (const trecho of esp.resposta_contem) if (!String(r.resposta || '').includes(trecho)) add('grave', `a resposta não tem "${trecho}"`)
+  }
+
+  if (r.final && r.acao !== 'pergunta') {
     if (Array.isArray(esp.itens)) {
       const itens = r.acao === 'lancar_varios' ? (r.dados?.itens || []) : [r.final]
       if (itens.length !== esp.itens.length) add('erro', `itens: esperado ${esp.itens.length}, vieram ${itens.length}`)
@@ -214,6 +236,7 @@ const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : '-')
 const resumoDados = (r) => {
   const f = r.final || {}
   if (r.semIA) return `(sem IA) ${r.acao}`
+  if (r.acao === 'pergunta') return `pergunta ${r.dados?.consulta ? JSON.stringify(r.dados.consulta) : '(sem consulta)'} → "${String(r.resposta || '').split('\n')[0]}"`
   if (r.acao === 'lancar_varios' && !r.acaoEfetiva) return `vários: ${(r.dados?.itens || []).map((i) => `${i.valor}${i.cartao_nome ? ' ' + i.cartao_nome : ''}${i.pessoa ? ' de ' + i.pessoa : ''}`).join(' | ')} (conf ${r.dados?.confianca})`
   return `${r.acaoEfetiva || r.acao} ${f.tipo || ''} ${f.valor ?? '-'} "${f.descricao || ''}" ${f.cartao_nome || ''} ${f.parcelas > 1 ? f.parcelas + 'x' : ''} ${f.data || ''} ${f.forma || ''} ${f.pessoa ? 'de ' + f.pessoa + (f.pessoa_nova ? ' (nova)' : '') : ''} conf ${f.confianca ?? r.dados?.confianca}`.replace(/\s+/g, ' ')
 }

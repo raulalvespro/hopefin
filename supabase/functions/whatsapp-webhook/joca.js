@@ -142,8 +142,11 @@ export const TEXTOS = {
     '✏️ arrumo o último: *o valor era 50* ou *apaga o último*',
     '📋 lanço vários de uma vez (até 5): *mercado 300, farmácia 80 e uber 25* — eu mostro a lista e você confirma',
     '📸 leio *foto ou PDF* de comprovante, nota fiscal ou cupom — eu mostro o que li e você confirma',
+    '📊 respondo com os números do app: *quanto gastei com mercado?*, *quanto falta pagar?*, *quanto está a fatura do Nubank?*, *quanto sobra?*',
   ].join('\n'),
-  pergunta: 'Ainda não respondo perguntas por aqui, mas tá chegando 🚧 Por enquanto, o Início do app mostra quanto entrou, quanto saiu e o que falta pagar no mês.',
+  // Pergunta que não é sobre os números (ou que o Joca ainda não sabe responder) — 26/11/2026.
+  pergunta: 'Essa eu ainda não sei responder por aqui 🚧 Com os números do app eu respondo: *quanto gastei com mercado?*, *quanto falta pagar?*, *quanto está a fatura do Nubank?*, *quanto sobra este mês?* e *quanto entrou?*',
+  consultaFalhou: 'Não consegui olhar os números agora 😕 Tenta de novo daqui a pouco ou confere no Início do app.',
   investimento: 'Dica de investimento eu não dou 🙏 Isso é com um assessor de investimentos registrado na CVM. O que eu faço é te ajudar a organizar as contas da família pra sobrar mais todo mês 💙',
 
   // fatura ("paguei a fatura do X")
@@ -267,7 +270,7 @@ export function instrucoesIA({ hoje, semana, categorias }) {
     '- "saudacao": oi, bom dia, tudo bem.',
     '- "agradecimento": obrigado, valeu.',
     '- "ajuda": pergunta o que o Joca faz ou como usar.',
-    '- "pergunta": pergunta sobre o próprio dinheiro (quanto gastou, quanto falta pagar) ou sobre organizar as finanças.',
+    '- "pergunta": pergunta sobre o próprio dinheiro (quanto gastou, quanto falta pagar, quanto sobra) ou sobre organizar as finanças. Pergunta NÃO é lançamento: "quanto gastei de uber?" não lança nada.',
     '- "investimento": pede dica ou recomendação de onde investir.',
     '- "outro": nada disso.',
     '',
@@ -288,6 +291,14 @@ export function instrucoesIA({ hoje, semana, categorias }) {
     '- confianca: de 0 a 1, o quanto você tem certeza da ação e dos campos principais (valor e tipo). Se faltar o valor ou a frase for ambígua, use confiança baixa (abaixo de 0.6).',
     '  Use 0.9 ou mais quando a frase diz claramente O QUE foi e QUANTO, mesmo com gíria de dinheiro ("15 conto", "50 pila", "2k", "3 mil" = reais).',
     '  Use abaixo de 0.6 quando: tiver dois valores possíveis ("50 ou 60"); não der pra saber o que foi (só um número, só o nome de um cartão como "nubank 200", ou só o nome de uma pessoa como "Jack 50"); ou for transferência/Pix pra alguém da lista "membros" (o dinheiro fica na família, talvez nem seja gasto).',
+    '- consulta: SÓ em "pergunta" sobre os NÚMEROS da família; nos outros casos (e em pergunta de orientação, tipo "como faço uma reserva?"), null. Objeto com:',
+    '  tipo: "gasto" (quanto gastou — com uma categoria, com algo específico ou no total), "falta_pagar" (o que ainda falta pagar no mês), "fatura" (quanto está a fatura de UM cartão), "sobra" (quanto sobra / quanto pode gastar no mês), "entradas" (quanto entrou ou vai entrar).',
+    '  categoria: UMA das categorias da lista quando a pessoa fala de uma categoria ("mercado", "saúde", "lazer", "comida"/"comer fora" = alimentacao), senão null.',
+    '  termo: quando a pessoa fala de algo específico que não é categoria da lista (loja, app, produto: "uber", "ifood", "netflix", "gasolina", "farmácia"), a palavra curta como aparece no nome do lançamento; senão null. Use categoria OU termo, não os dois.',
+    '  cartao_id: id do cartão da lista quando pergunta da fatura ("quanto está a fatura do nubank", "quanto falta pagar do itaú" = tipo "fatura"); senão null. Nunca chute o cartão.',
+    `  mes: "YYYY-MM" do mês perguntado ("esse mês" ou sem dizer = ${String(hoje || '').slice(0, 7)}; "mês passado", "outubro"...). Mês sem ano = o mais recente que já começou.`,
+    '  Você NUNCA escreve número nenhum na resposta: o Joca calcula com os dados do app.',
+    '  Por enquanto o Joca só responde o MÊS inteiro e a família toda. Pergunta de um dia ou semana ("hoje", "essa semana"), de uma pessoa ("quanto a Larissa gastou", "quanto a Jack me deve") ou de várias coisas juntas: consulta null.',
     '- itens: SÓ em "lancar_varios": lista com um objeto por lançamento, cada um com tipo, valor, descricao, categoria, cartao_id, data, parcelas, forma e pessoa (mesmas regras acima). Nos outros casos, null.',
     '',
     'Se vier "pendente" (um lançamento que o Joca perguntou "tá certo?" e ainda NÃO foi salvo) e a mensagem corrigir algo dele (valor, cartão, data, categoria, parcelas, descrição ou de quem é), use acao "lancar" e devolva o lançamento COMPLETO já corrigido.',
@@ -368,6 +379,7 @@ export function limparIA(dados, { texto, hoje, categorias, cartoes, pessoas = []
     confianca: Number.isFinite(conf) ? Math.min(1, Math.max(0, conf)) : 0.5,
     pessoa: quem.pessoa,
     pessoa_nova: quem.pessoa_nova,
+    consulta: acao === 'pergunta' ? limparConsulta(d.consulta, { hoje, categorias, cartoes: listaCartoes }) : null,
     // Vários lançamentos numa mensagem (21/11/2026): cada item passa pela MESMA limpeza.
     itens: acao === 'lancar_varios'
       ? (Array.isArray(d.itens) ? d.itens : []).slice(0, 20)
@@ -375,6 +387,30 @@ export function limparIA(dados, { texto, hoje, categorias, cartoes, pessoas = []
         .filter((i) => i.valor)
         .map(({ itens: _i, acao: _a, ...resto }) => resto)
       : null,
+  }
+}
+
+// Pergunta sobre os números (A8.23 parte 2, 26/11/2026): a IA só diz O QUE a pessoa quer saber;
+// o número vem do motor do app (consulta.js). Aqui: tipo conhecido, categoria só das do grupo,
+// cartão só da lista, mês válido (até 2 anos pra trás, nunca depois do mês que vem).
+export const TIPOS_CONSULTA = ['gasto', 'falta_pagar', 'fatura', 'sobra', 'entradas']
+export function limparConsulta(c, { hoje, categorias = [], cartoes = [] } = {}) {
+  if (!c || typeof c !== 'object' || !TIPOS_CONSULTA.includes(c.tipo)) return null
+  const atual = String(hoje || '').slice(0, 7)
+  const [ah, mh] = atual.split('-').map(Number)
+  const m = String(c.mes || '').match(/^(\d{4})-(\d{2})$/)
+  const dist = m ? (ah - Number(m[1])) * 12 + (mh - Number(m[2])) : null // meses pra trás
+  const mes = m && Number(m[2]) >= 1 && Number(m[2]) <= 12 && dist >= -1 && dist <= 24 ? c.mes : atual
+  const cartao = (cartoes || []).find((x) => x.id === c.cartao_id) || null
+  const categoria = (categorias || []).includes(c.categoria) ? c.categoria : null
+  const termo = categoria ? null : (String(c.termo || '').replace(/\s+/g, ' ').trim().slice(0, 40) || null)
+  // "quanto falta pagar do Nubank" = a fatura daquele cartão
+  const tipo = c.tipo === 'falta_pagar' && cartao ? 'fatura' : c.tipo
+  return {
+    tipo, mes,
+    categoria: tipo === 'gasto' ? categoria : null,
+    termo: tipo === 'gasto' ? termo : null,
+    cartao_id: tipo === 'fatura' && cartao ? cartao.id : null,
   }
 }
 

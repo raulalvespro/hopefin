@@ -17,7 +17,57 @@
       { "id": "7f3a1c2e-0003-4a10-9b00-00000000a003", "nome": "Inter" }
     ],
     "pessoas": ["Jack", "Raifran", "Mãe"],
-    "membros": ["Raul Erickson", "Larissa"]
+    "membros": ["Raul Erickson", "Larissa"],
+    "dados": {
+      "_leia": "Um mês de mentira da família, no formato do carregarDadosMotor (motor-dados.js). As respostas das perguntas saem daqui pelo motor do app.",
+      "cartoes": [
+        { "id": "7f3a1c2e-0001-4a10-9b00-00000000a001", "nome": "Nubank", "dia_fechamento": 3, "dia_vencimento": 10, "ativo": true },
+        { "id": "7f3a1c2e-0002-4a10-9b00-00000000a002", "nome": "Itaú azul", "dia_fechamento": 20, "dia_vencimento": 27, "ativo": true },
+        { "id": "7f3a1c2e-0003-4a10-9b00-00000000a003", "nome": "Inter", "dia_fechamento": 25, "dia_vencimento": 5, "ativo": true }
+      ],
+      "gastos": [
+        { "id": "g01", "descricao": "Mercado Extra", "valor": 250, "data": "2026-11-04", "categoria": "mercado", "cartao_id": null, "tipo_pagamento": "pix", "pessoa_id": null, "pessoa_nome": null, "fatura_ajuste": 0 },
+        { "id": "g02", "descricao": "Mercado Assaí", "valor": 200, "data": "2026-11-18", "categoria": "mercado", "cartao_id": null, "tipo_pagamento": "pix", "pessoa_id": null, "pessoa_nome": null, "fatura_ajuste": 0 },
+        { "id": "g03", "descricao": "Uber", "valor": 23.5, "data": "2026-11-10", "categoria": "transporte", "cartao_id": null, "tipo_pagamento": "pix", "pessoa_id": null, "pessoa_nome": null, "fatura_ajuste": 0 },
+        { "id": "g04", "descricao": "Uber", "valor": 30, "data": "2026-11-20", "categoria": "transporte", "cartao_id": null, "tipo_pagamento": "pix", "pessoa_id": null, "pessoa_nome": null, "fatura_ajuste": 0 },
+        { "id": "g05", "descricao": "Gasolina", "valor": 150, "data": "2026-11-12", "categoria": "transporte", "cartao_id": null, "tipo_pagamento": "pix", "pessoa_id": null, "pessoa_nome": null, "fatura_ajuste": 0 },
+        { "id": "g06", "descricao": "iFood", "valor": 60, "data": "2026-11-15", "categoria": "alimentacao", "cartao_id": "7f3a1c2e-0001-4a10-9b00-00000000a001", "tipo_pagamento": "cartao", "pessoa_id": null, "pessoa_nome": null, "fatura_ajuste": 0 },
+        { "id": "g07", "descricao": "Mercado da Jack", "valor": 120, "data": "2026-11-22", "categoria": "mercado", "cartao_id": null, "tipo_pagamento": "pix", "pessoa_id": "p-jack", "pessoa_nome": "Jack", "fatura_ajuste": 0 },
+        { "id": "g08", "descricao": "Farmácia", "valor": 48.9, "data": "2026-11-02", "categoria": "saude", "cartao_id": "7f3a1c2e-0001-4a10-9b00-00000000a001", "tipo_pagamento": "cartao", "pessoa_id": null, "pessoa_nome": null, "fatura_ajuste": 0 },
+        { "id": "g09", "descricao": "Mercado", "valor": 300, "data": "2026-10-10", "categoria": "mercado", "cartao_id": null, "tipo_pagamento": "pix", "pessoa_id": null, "pessoa_nome": null, "fatura_ajuste": 0 },
+        { "id": "g10", "descricao": "Uber", "valor": 40, "data": "2026-10-05", "categoria": "transporte", "cartao_id": null, "tipo_pagamento": "pix", "pessoa_id": null, "pessoa_nome": null, "fatura_ajuste": 0 },
+        { "id": "g11", "descricao": "Cinema", "valor": 60, "data": "2026-11-21", "categoria": "lazer", "cartao_id": "7f3a1c2e-0002-4a10-9b00-00000000a002", "tipo_pagamento": "cartao", "pessoa_id": null, "pessoa_nome": null, "fatura_ajuste": 0 },
+        { "id": "g12", "descricao": "Tênis", "valor": 280, "data": "2026-10-28", "categoria": "vestuario", "cartao_id": "7f3a1c2e-0003-4a10-9b00-00000000a003", "tipo_pagamento": "cartao", "pessoa_id": null, "pessoa_nome": null, "fatura_ajuste": 0 }
+      ],
+      "parcelas": [],
+      "assinaturas": [
+        { "id": "a01", "nome": "Netflix", "valor": 55.9, "dia_cobranca": 15, "cartao_id": "7f3a1c2e-0001-4a10-9b00-00000000a001", "ativo": true, "categoria": "assinatura", "cobrada_desde": "2026-01-01" }
+      ],
+      "fixas": [
+        { "id": "f01", "nome": "Aluguel", "valor": 1500, "dia_vencimento": 5, "categoria": "moradia", "ativo": true },
+        { "id": "f02", "nome": "Luz", "valor": 200, "dia_vencimento": 28, "categoria": "moradia", "ativo": true }
+      ],
+      "fixasLanc": [
+        { "conta_fixa_id": "f01", "competencia": "2026-11", "valor_real": null, "pago": true },
+        { "conta_fixa_id": "f01", "competencia": "2026-10", "valor_real": null, "pago": true },
+        { "conta_fixa_id": "f02", "competencia": "2026-10", "valor_real": 190, "pago": true }
+      ],
+      "entradas": [
+        { "id": "e01", "descricao": "Salário", "valor": 5000, "data": "2026-11-05", "recebido": true, "origem": "manual" },
+        { "id": "e02", "descricao": "Freela", "valor": 800, "data": "2026-11-30", "recebido": false, "origem": "manual" },
+        { "id": "e03", "descricao": "Salário", "valor": 5000, "data": "2026-10-05", "recebido": true, "origem": "manual" }
+      ],
+      "contasPagas": [
+        { "tipo": "fatura", "referencia_id": "7f3a1c2e-0001-4a10-9b00-00000000a001", "competencia": "2026-09", "pago": true },
+        { "tipo": "fatura", "referencia_id": "7f3a1c2e-0001-4a10-9b00-00000000a001", "competencia": "2026-10", "pago": true },
+        { "tipo": "fatura", "referencia_id": "7f3a1c2e-0001-4a10-9b00-00000000a001", "competencia": "2026-11", "pago": true }
+      ],
+      "transferencias": [],
+      "orcamentos": [],
+      "aReceber": [],
+      "partes": [],
+      "inicioComp": "2026-09"
+    }
   },
   "casos": [
     { "id": "s01", "grupo": "gasto simples", "texto": "mercado 120", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 120, "cartao": null, "parcelas": 1, "data": "hoje", "forma": "pix", "pessoa": null, "duvida": false, "categoria": ["mercado", "alimentacao"] } },
@@ -77,15 +127,15 @@
     { "id": "p11", "grupo": "parcelado", "texto": "sapato 400 em 4x no cartão", "esperado": { "acao": "lancar", "valor": 400, "parcelas": 4, "cartao": null, "pessoa": null, "duvida": true } },
     { "id": "p09", "grupo": "parcelado", "texto": "almoço 35 parcelado em 3x", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 35, "parcelas": 3, "cartao": null, "pessoa": null } },
 
-    { "id": "m01", "grupo": "vários", "texto": "mercado 300, farmácia 80 e uber 25", "esperado": { "acao": "lancar_varios", "desfecho": "pergunta", "itens": [{ "valor": 300, "cartao": null, "pessoa": null }, { "valor": 80, "cartao": null, "pessoa": null }, { "valor": 25, "cartao": null, "pessoa": null }] } },
-    { "id": "m02", "grupo": "vários", "texto": "gastei 50 de pão e 120 de gasolina", "esperado": { "acao": "lancar_varios", "itens": [{ "valor": 50 }, { "valor": 120 }] } },
-    { "id": "m03", "grupo": "vários", "texto": "almoço 40 no nubank e estacionamento 15 no dinheiro", "esperado": { "acao": "lancar_varios", "itens": [{ "valor": 40, "cartao": "Nubank" }, { "valor": 15, "cartao": null, "forma": "dinheiro" }] } },
-    { "id": "m04", "grupo": "vários", "texto": "recebi 2000 de salário e paguei 1200 de aluguel", "esperado": { "acao": "lancar_varios", "itens": [{ "tipo": "entrada", "valor": 2000 }, { "tipo": "gasto", "valor": 1200, "cartao": null }] } },
-    { "id": "m05", "grupo": "vários", "texto": "ontem: mercado 200 e farmácia 30", "esperado": { "acao": "lancar_varios", "itens": [{ "valor": 200, "data": "ontem" }, { "valor": 30, "data": "ontem" }] } },
-    { "id": "m06", "grupo": "vários", "texto": "uber 20, uber 18, uber 22", "esperado": { "acao": "lancar_varios", "itens": [{ "valor": 20 }, { "valor": 18 }, { "valor": 22 }] } },
-    { "id": "m07", "grupo": "vários", "texto": "mercado 120 da Jack e padaria 15", "esperado": { "acao": "lancar_varios", "itens": [{ "valor": 120, "pessoa": "Jack" }, { "valor": 15, "pessoa": null }] } },
+    { "id": "m01", "grupo": "vários", "texto": "mercado 300, farmácia 80 e uber 25", "esperado": { "acao": "lancar_varios", "desfecho": "pergunta", "itens": [{ "valor": 300, "cartao": null, "pessoa": null },{ "valor": 80, "cartao": null, "pessoa": null },{ "valor": 25, "cartao": null, "pessoa": null }] } },
+    { "id": "m02", "grupo": "vários", "texto": "gastei 50 de pão e 120 de gasolina", "esperado": { "acao": "lancar_varios", "itens": [{ "valor": 50 },{ "valor": 120 }] } },
+    { "id": "m03", "grupo": "vários", "texto": "almoço 40 no nubank e estacionamento 15 no dinheiro", "esperado": { "acao": "lancar_varios", "itens": [{ "valor": 40, "cartao": "Nubank" },{ "valor": 15, "cartao": null, "forma": "dinheiro" }] } },
+    { "id": "m04", "grupo": "vários", "texto": "recebi 2000 de salário e paguei 1200 de aluguel", "esperado": { "acao": "lancar_varios", "itens": [{ "tipo": "entrada", "valor": 2000 },{ "tipo": "gasto", "valor": 1200, "cartao": null }] } },
+    { "id": "m05", "grupo": "vários", "texto": "ontem: mercado 200 e farmácia 30", "esperado": { "acao": "lancar_varios", "itens": [{ "valor": 200, "data": "ontem" },{ "valor": 30, "data": "ontem" }] } },
+    { "id": "m06", "grupo": "vários", "texto": "uber 20, uber 18, uber 22", "esperado": { "acao": "lancar_varios", "itens": [{ "valor": 20 },{ "valor": 18 },{ "valor": 22 }] } },
+    { "id": "m07", "grupo": "vários", "texto": "mercado 120 da Jack e padaria 15", "esperado": { "acao": "lancar_varios", "itens": [{ "valor": 120, "pessoa": "Jack" },{ "valor": 15, "pessoa": null }] } },
     { "id": "m08", "grupo": "vários", "texto": "pão 5, leite 6, café 20, açúcar 4, arroz 25, feijão 9", "esperado": { "acao": "lancar_varios", "desfecho": "muitos", "duvida": true } },
-    { "id": "m09", "grupo": "vários", "texto": "tênis 300 em 3x no nubank e meia 20 no pix", "esperado": { "acao": "lancar_varios", "itens": [{ "valor": 300, "parcelas": 3, "cartao": "Nubank" }, { "valor": 20, "cartao": null, "parcelas": 1 }] } },
+    { "id": "m09", "grupo": "vários", "texto": "tênis 300 em 3x no nubank e meia 20 no pix", "esperado": { "acao": "lancar_varios", "itens": [{ "valor": 300, "parcelas": 3, "cartao": "Nubank" },{ "valor": 20, "cartao": null, "parcelas": 1 }] } },
 
     { "id": "f01", "grupo": "fatura", "texto": "paguei a fatura do nubank", "esperado": { "acao": "pagar_fatura", "cartao": "Nubank", "valor": null } },
     { "id": "f02", "grupo": "fatura", "texto": "fatura do itaú paga, 1.850", "esperado": { "acao": "pagar_fatura", "cartao": "Itaú azul", "valor": 1850 } },
@@ -113,13 +163,30 @@
     { "id": "o10", "grupo": "conversa", "texto": "ok", "esperado": { "desfecho": "resposta" } },
     { "id": "o11", "grupo": "conversa", "texto": "quem é você?", "esperado": { "acao": ["ajuda", "saudacao", "outro"] } },
 
-    { "id": "q01", "grupo": "pergunta", "texto": "quanto gastei com mercado esse mês?", "esperado": { "acao": "pergunta" } },
-    { "id": "q02", "grupo": "pergunta", "texto": "quanto falta pagar da fatura do nubank?", "esperado": { "acao": "pergunta" } },
-    { "id": "q03", "grupo": "pergunta", "texto": "quanto sobra esse mês?", "esperado": { "acao": "pergunta" } },
-    { "id": "q04", "grupo": "pergunta", "texto": "como faço uma reserva de emergência?", "esperado": { "acao": "pergunta" } },
-    { "id": "q05", "grupo": "pergunta", "texto": "tô devendo muito no cartão, o que eu faço?", "esperado": { "acao": "pergunta" } },
-    { "id": "q06", "grupo": "pergunta", "texto": "gastei muito esse mês?", "esperado": { "acao": "pergunta" } },
-    { "id": "q07", "grupo": "pergunta", "texto": "quanto eu gastei de uber em outubro?", "esperado": { "acao": "pergunta" } },
+    { "id": "q01", "grupo": "pergunta", "texto": "quanto gastei com mercado esse mês?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "gasto", "mes": "2026-11" }, "resposta_contem": ["R$ 450,00"] } },
+    { "id": "q02", "grupo": "pergunta", "texto": "quanto falta pagar da fatura do nubank?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "fatura", "cartao": "Nubank" }, "resposta_contem": ["R$ 115,90"] } },
+    { "id": "q03", "grupo": "pergunta", "texto": "quanto sobra esse mês?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "sobra", "mes": "2026-11" }, "resposta_contem": ["R$ 3.341,70"] } },
+    { "id": "q04", "grupo": "pergunta", "texto": "como faço uma reserva de emergência?", "esperado": { "acao": "pergunta", "consulta": null } },
+    { "id": "q05", "grupo": "pergunta", "texto": "tô devendo muito no cartão, o que eu faço?", "esperado": { "acao": "pergunta", "consulta": null } },
+    { "id": "q06", "grupo": "pergunta", "texto": "quanto eu gastei esse mês?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "gasto", "mes": "2026-11" }, "resposta_contem": ["R$ 2.578,30"] } },
+    { "id": "q07", "grupo": "pergunta", "texto": "quanto eu gastei de uber em outubro?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "gasto", "mes": "2026-10" }, "resposta_contem": ["R$ 40,00"] } },
+    { "id": "q08", "grupo": "pergunta", "texto": "quanto falta pagar esse mês?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "falta_pagar", "mes": "2026-11" }, "resposta_contem": ["R$ 200,00", "Luz"] } },
+    { "id": "q09", "grupo": "pergunta", "texto": "quanto ainda tenho pra pagar?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "falta_pagar", "mes": "2026-11" }, "resposta_contem": ["R$ 200,00"] } },
+    { "id": "q10", "grupo": "pergunta", "texto": "quanto posso gastar até o fim do mês?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "sobra", "mes": "2026-11" }, "resposta_contem": ["R$ 3.341,70"] } },
+    { "id": "q11", "grupo": "pergunta", "texto": "quanto entrou esse mês?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "entradas", "mes": "2026-11" }, "resposta_contem": ["R$ 5.000,00"] } },
+    { "id": "q12", "grupo": "pergunta", "texto": "quanto tá a fatura do inter?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "fatura", "cartao": "Inter" }, "resposta_contem": ["R$ 280,00", "vence 05/12"] } },
+    { "id": "q13", "grupo": "pergunta", "texto": "quanto tá a fatura?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "fatura", "cartao": null }, "resposta_contem": ["De qual cartão"] } },
+    { "id": "q14", "grupo": "pergunta", "texto": "quanto gastei com comida fora?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "gasto", "mes": "2026-11" }, "resposta_contem": ["R$ 60,00"] } },
+    { "id": "q15", "grupo": "pergunta", "texto": "quanto gastei no ifood?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "gasto", "mes": "2026-11" }, "resposta_contem": ["R$ 60,00"] } },
+    { "id": "q16", "grupo": "pergunta", "texto": "quanto sobrou mês passado?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "sobra", "mes": "2026-10" }, "resposta_contem": ["R$ 2.914,10"] } },
+    { "id": "q17", "grupo": "pergunta", "texto": "quanto gastei de farmácia?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "gasto", "mes": "2026-11" }, "resposta_contem": ["R$ 48,90"] } },
+    { "id": "q18", "grupo": "pergunta", "texto": "quanto gastei com mercado em outubro?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "gasto", "mes": "2026-10" }, "resposta_contem": ["R$ 300,00"] } },
+    { "id": "q19", "grupo": "pergunta", "texto": "gastei muito esse mês?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "gasto", "mes": "2026-11" }, "resposta_contem": ["R$ 2.578,30"] } },
+    { "id": "q20", "grupo": "pergunta", "texto": "quanto a Jack ainda me deve?", "esperado": { "acao": "pergunta", "consulta": null } },
+    { "id": "q21", "grupo": "pergunta", "texto": "quanto gastei hoje?", "esperado": { "acao": "pergunta", "consulta": null } },
+    { "id": "q22", "grupo": "pergunta", "texto": "quanto a Larissa gastou esse mês?", "esperado": { "acao": "pergunta", "consulta": null } },
+    { "id": "q23", "grupo": "pergunta", "texto": "joca quanto ta a fatura do itau", "esperado": { "acao": "pergunta", "consulta": { "tipo": "fatura", "cartao": "Itaú azul" }, "resposta_contem": ["R$ 60,00"] } },
+    { "id": "q24", "grupo": "pergunta", "texto": "quanto gastei com gasolina?", "esperado": { "acao": "pergunta", "consulta": { "tipo": "gasto", "mes": "2026-11" }, "resposta_contem": ["R$ 150,00"] } },
 
     { "id": "i01", "grupo": "investimento", "texto": "onde eu invisto 1000 reais?", "esperado": { "acao": "investimento" } },
     { "id": "i02", "grupo": "investimento", "texto": "vale a pena comprar bitcoin?", "esperado": { "acao": "investimento" } },
@@ -139,7 +206,7 @@
     { "id": "x08", "grupo": "outra pessoa", "texto": "farmácia 50 pro Raul", "esperado": { "acao": "lancar", "valor": 50, "pessoa": null } },
     { "id": "x09", "grupo": "outra pessoa", "texto": "presente de aniversário pra minha mãe 150", "esperado": { "acao": "lancar", "valor": 150, "pessoa": null } },
     { "id": "x10", "grupo": "outra pessoa", "texto": "jantar com a Jack 100", "esperado": { "acao": "lancar", "valor": 100, "pessoa": null } },
-    { "id": "x11", "grupo": "outra pessoa", "texto": "emprestei 200 pra Jack", "esperado": { "valor": 200, "pessoa": ["Jack", null] } },
+    { "id": "x11", "grupo": "outra pessoa", "texto": "emprestei 200 pra Jack", "esperado": { "valor": 200, "pessoa": ["Jack",null] } },
     { "id": "x12", "grupo": "outra pessoa", "texto": "mercado 120 da jak", "esperado": { "acao": "lancar", "valor": 120, "pessoa": ["Jack", "Jak"] } },
     { "id": "x13", "grupo": "outra pessoa", "texto": "uber 40 da mae", "esperado": { "acao": "lancar", "valor": 40, "pessoa": "Mãe", "duvida": false } },
     { "id": "x14", "grupo": "outra pessoa", "texto": "a Jack me devolveu 120", "esperado": { "acao": "lancar", "tipo": "entrada", "valor": 120, "pessoa": null } },
