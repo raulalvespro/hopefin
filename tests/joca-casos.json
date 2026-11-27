@@ -18,6 +18,7 @@
     ],
     "pessoas": ["Jack", "Raifran", "Mãe"],
     "membros": ["Raul Erickson", "Larissa"],
+    "contas": ["Aluguel", "Luz", "Parcela usina solar", "Empréstimo usina", "Terreno gado bravo", "Escola das crianças", "Spotify família"],
     "dados": {
       "_leia": "Um mês de mentira da família, no formato do carregarDadosMotor (motor-dados.js). As respostas das perguntas saem daqui pelo motor do app.",
       "cartoes": [
@@ -79,21 +80,21 @@
     { "id": "s07", "grupo": "gasto simples", "texto": "almoço 35 no pix", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 35, "cartao": null, "forma": "pix", "pessoa": null, "duvida": false, "categoria": "alimentacao" } },
     { "id": "s08", "grupo": "gasto simples", "texto": "netflix 55,90 no nubank", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 55.9, "cartao": "Nubank", "parcelas": 1, "pessoa": null, "duvida": false, "categoria": ["assinatura", "lazer"] } },
     { "id": "s09", "grupo": "gasto simples", "texto": "ração do cachorro 150 no inter", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 150, "cartao": "Inter", "pessoa": null, "duvida": false, "categoria": "pet" } },
-    { "id": "s10", "grupo": "gasto simples", "texto": "conta de luz 230.45", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 230.45, "cartao": null, "pessoa": null, "duvida": false, "categoria": "moradia" } },
+    { "id": "s10", "grupo": "gasto simples", "texto": "conta de luz 230.45", "esperado": { "acao": ["lancar", "pagar_conta"], "tipo": "gasto", "valor": 230.45, "cartao": null, "pessoa": null, "duvida": false, "categoria": "moradia" } },
     { "id": "s11", "grupo": "gasto simples", "texto": "janta 100 no itaú", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 100, "cartao": "Itaú azul", "pessoa": null, "duvida": false } },
     { "id": "s12", "grupo": "gasto simples", "texto": "comprei 200 no nubank", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 200, "cartao": "Nubank", "pessoa": null } },
 
-    { "id": "v01", "grupo": "valores", "texto": "R$ 1.250,00 aluguel", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 1250, "cartao": null, "pessoa": null, "duvida": false, "categoria": "moradia" } },
+    { "id": "v01", "grupo": "valores", "texto": "R$ 1.250,00 aluguel", "esperado": { "acao": ["lancar", "pagar_conta"], "tipo": "gasto", "valor": 1250, "cartao": null, "pessoa": null, "duvida": false, "categoria": "moradia" } },
     { "id": "v02", "grupo": "valores", "texto": "mercado 1.200", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 1200, "cartao": null, "pessoa": null } },
     { "id": "v03", "grupo": "valores", "texto": "geladeira 3 mil no itaú", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 3000, "cartao": "Itaú azul", "parcelas": 1, "pessoa": null } },
     { "id": "v04", "grupo": "valores", "texto": "tv 2,5 mil", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 2500, "cartao": null, "pessoa": null } },
-    { "id": "v05", "grupo": "valores", "texto": "mil e quinhentos de aluguel", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 1500, "cartao": null, "pessoa": null } },
+    { "id": "v05", "grupo": "valores", "texto": "mil e quinhentos de aluguel", "esperado": { "acao": ["lancar", "pagar_conta"], "tipo": "gasto", "valor": 1500, "cartao": null, "pessoa": null } },
     { "id": "v06", "grupo": "valores", "texto": "conserto do carro 1k", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 1000, "cartao": null, "pessoa": null } },
     { "id": "v07", "grupo": "valores", "texto": "lanche 15 conto", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 15, "cartao": null, "pessoa": null, "duvida": false } },
     { "id": "v08", "grupo": "valores", "texto": "dentista R$350", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 350, "cartao": null, "pessoa": null, "duvida": false, "categoria": "saude" } },
     { "id": "v09", "grupo": "valores", "texto": "pão 7,5", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 7.5, "cartao": null, "pessoa": null, "duvida": false } },
     { "id": "v10", "grupo": "valores", "texto": "cento e vinte e cinco de mercado", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 125, "cartao": null, "pessoa": null } },
-    { "id": "v11", "grupo": "valores", "texto": "escola das crianças 1.890,50 no boleto", "esperado": { "acao": "lancar", "tipo": "gasto", "valor": 1890.5, "cartao": null, "forma": "pix", "pessoa": null, "categoria": "educacao" } },
+    { "id": "v11", "grupo": "valores", "texto": "escola das crianças 1.890,50 no boleto", "esperado": { "acao": ["lancar", "pagar_conta"], "tipo": "gasto", "valor": 1890.5, "cartao": null, "forma": "pix", "pessoa": null, "categoria": "educacao" } },
 
     { "id": "d01", "grupo": "datas", "texto": "uber 23,50 ontem", "esperado": { "acao": "lancar", "valor": 23.5, "data": "ontem", "cartao": null, "pessoa": null, "duvida": false } },
     { "id": "d02", "grupo": "datas", "texto": "farmácia 40 anteontem", "esperado": { "acao": "lancar", "valor": 40, "data": "2026-11-24", "cartao": null, "pessoa": null } },
@@ -257,6 +258,18 @@
     { "id": "r03", "grupo": "respondendo o tá certo?", "texto": "era 130", "pendente": { "tipo": "gasto", "valor": 120, "descricao": "Mercado", "categoria": "mercado", "cartao_id": null, "data": "2026-11-26", "parcelas": 1, "forma": "pix", "pessoa": null }, "esperado": { "acao": ["lancar", "corrigir_ultimo"], "valor": 130, "cartao": null } },
     { "id": "r04", "grupo": "respondendo o tá certo?", "texto": "em 3x", "pendente": { "tipo": "gasto", "valor": 300, "descricao": "Tênis", "categoria": "vestuario", "cartao_id": "7f3a1c2e-0001-4a10-9b00-00000000a001", "data": "2026-11-26", "parcelas": 1, "forma": null, "pessoa": null }, "esperado": { "acao": "lancar", "valor": 300, "parcelas": 3, "cartao": "Nubank" } },
     { "id": "r05", "grupo": "respondendo o tá certo?", "texto": "não era meu, era da minha mãe", "pendente": { "tipo": "gasto", "valor": 75, "descricao": "Farmácia", "categoria": "saude", "cartao_id": null, "data": "2026-11-26", "parcelas": 1, "forma": "pix", "pessoa": null }, "esperado": { "acao": "lancar", "valor": 75, "pessoa": "Mãe", "cartao": null } },
-    { "id": "r06", "grupo": "respondendo o tá certo?", "texto": "foi ontem", "pendente": { "tipo": "gasto", "valor": 40, "descricao": "Uber", "categoria": "transporte", "cartao_id": null, "data": "2026-11-26", "parcelas": 1, "forma": "pix", "pessoa": null }, "esperado": { "acao": "lancar", "valor": 40, "data": "ontem", "cartao": null, "pessoa": null } }
+    { "id": "r06", "grupo": "respondendo o tá certo?", "texto": "foi ontem", "pendente": { "tipo": "gasto", "valor": 40, "descricao": "Uber", "categoria": "transporte", "cartao_id": null, "data": "2026-11-26", "parcelas": 1, "forma": "pix", "pessoa": null }, "esperado": { "acao": "lancar", "valor": 40, "data": "ontem", "cartao": null, "pessoa": null } },
+    { "id": "c01", "grupo": "conta paga", "texto": "paguei a parcela da usina solar", "esperado": { "acao": "pagar_conta", "conta": "Parcela usina solar", "valor": null}},
+    { "id": "c02", "grupo": "conta paga", "texto": "paguei a parcela do financiamento da solar", "esperado": { "acao": "pagar_conta", "conta": "Parcela usina solar" }},
+    { "id": "c03", "grupo": "conta paga", "texto": "paguei a luz, deu 180", "esperado": { "acao": "pagar_conta", "conta": "Luz", "valor": 180}},
+    { "id": "c04", "grupo": "conta paga", "texto": "aluguel pago", "esperado": { "acao": "pagar_conta", "conta": "Aluguel" }},
+    { "id": "c05", "grupo": "conta paga", "texto": "paguei o empréstimo da usina", "esperado": { "acao": "pagar_conta", "conta": "Empréstimo usina" }},
+    { "id": "c06", "grupo": "conta paga", "texto": "paguei a escola das crianças", "esperado": { "acao": "pagar_conta", "conta": "Escola das crianças" }},
+    { "id": "c07", "grupo": "conta paga", "texto": "paguei a água", "esperado": { "acao": "pagar_conta", "conta": null, "desfecho": "qual_conta" }},
+    { "id": "c08", "grupo": "conta paga", "texto": "paguei a fatura do nubank", "esperado": { "acao": "pagar_fatura", "cartao": "Nubank" }},
+    { "id": "c09", "grupo": "conta paga", "texto": "paguei 120 de luz", "esperado": { "acao": ["pagar_conta", "lancar"]}},
+    { "id": "c10", "grupo": "conta paga", "texto": "mercado 120", "esperado": { "acao": "lancar", "valor": 120}},
+    { "id": "c11", "grupo": "conta paga", "texto": "paguei a prestação do terreno", "esperado": { "acao": "pagar_conta", "conta": "Terreno gado bravo" }},
+    { "id": "c12", "grupo": "conta paga", "texto": "spotify pago", "esperado": { "acao": "pagar_conta", "conta": "Spotify família" }}
   ]
 }

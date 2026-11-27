@@ -709,6 +709,8 @@ alter table public.a_receber add column if not exists assinatura_id uuid referen
 -- Funções só do servidor: wa_ultimo_lancamento, wa_apagar_ultimo, wa_corrigir_ultimo,
 -- wa_pagar_fatura (= "Marcar como paga" de Cartões) e wa_registrar_ia_chamada (custo real em
 -- ia_chamadas, operações whatsapp_interpretar / whatsapp_audio). wa_salvar_lancamento devolve id/tabela.
+-- 0132 (27/11): wa_pagar_conta(grupo, pessoa, tipo fixa|parcela|assinatura, id, competência, valor) = a bolinha
+-- de Contas do mês ("paguei a parcela da usina solar"); só do servidor, sem grant.
 create table if not exists public.whatsapp_estado (
   usuario_id       uuid primary key references public.usuarios(id) on delete cascade,
   grupo_id         uuid not null,            -- sem FK pra grupos (ver regra PGRST201 no CLAUDE.md)

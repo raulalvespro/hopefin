@@ -34,6 +34,7 @@ import * as J from './joca.js'
 import { responderConsulta, janelaConsulta } from './consulta.js'
 import { faturasDoCartaoAgora, faturaDoCartao, compDe, addMeses, hojeBRT } from '../_shared/motor.js'
 import { carregarDadosMotor } from '../_shared/motor-dados.js'
+import { contasDoMotor, alvoDaConta } from './contas.js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -222,19 +223,25 @@ const TEXTO_TRAVA: Record<string, string> = {
 // ou documento antes do texto, com a instrução a mais de leitura (J.instrucoesMidia).
 type Midia = { b64: string, mime: string }
 async function interpretar(u: any, texto: string, pendente?: Record<string, unknown>, midia?: Midia) {
-  const [{ data: cats }, { data: cartoes }, { data: pes }, { data: mem }] = await Promise.all([
+  const [{ data: cats }, { data: cartoes }, { data: pes }, { data: mem }, { data: fx }, { data: pc }, { data: ass }] = await Promise.all([
     admin.from('categorias').select('nome').eq('grupo_id', u.grupo_id).order('nome'),
     admin.from('cartoes').select('id, nome').eq('grupo_id', u.grupo_id).eq('ativo', true),
     // 26/11: "foi da Jack" → gasto de outra pessoa (A receber). Pessoas já cadastradas + quem é da família.
     admin.from('pessoas').select('nome').eq('grupo_id', u.grupo_id).order('nome').limit(200),
     admin.from('usuarios').select('nome').eq('grupo_id', u.grupo_id),
+    // 27/11: "paguei a parcela da usina solar" → contas de Contas do mês (fixas, parcelados sem cartão, assinaturas fora do cartão)
+    admin.from('contas_fixas').select('nome').eq('grupo_id', u.grupo_id).eq('ativo', true).limit(100),
+    admin.from('parcelamentos').select('descricao').eq('grupo_id', u.grupo_id).is('cartao_id', null).limit(100),
+    admin.from('assinaturas').select('nome').eq('grupo_id', u.grupo_id).is('cartao_id', null).eq('ativo', true).limit(100),
   ])
   const categorias = (cats || []).map((c: any) => c.nome)
   const pessoas = (pes || []).map((p: any) => String(p.nome || '').trim()).filter(Boolean)
   const membros = (mem || []).map((m: any) => String(m.nome || '').trim()).filter(Boolean)
+  const contas = [...new Set([...(fx || []).map((x: any) => x.nome), ...(pc || []).map((x: any) => x.descricao), ...(ass || []).map((x: any) => x.nome)]
+    .map((n) => String(n || '').trim()).filter(Boolean))]
   const hoje = hojeBRT()
   const system = J.instrucoesIA({ hoje, semana: semanaSP(), categorias }) + (midia ? J.instrucoesMidia() : '')
-  const userMsg = JSON.stringify({ texto, cartoes: (cartoes || []).map((c: any) => ({ id: c.id, nome: c.nome })), pessoas, membros, ...(pendente ? { pendente } : {}) })
+  const userMsg = JSON.stringify({ texto, cartoes: (cartoes || []).map((c: any) => ({ id: c.id, nome: c.nome })), contas, pessoas, membros, ...(pendente ? { pendente } : {}) })
   const conteudo = midia
     ? [
         midia.mime === 'application/pdf'
@@ -268,9 +275,9 @@ async function interpretar(u: any, texto: string, pendente?: Record<string, unkn
         semJson = true
         throw new Error(`sem JSON (stop: ${out?.stop_reason || '?'}, ${String(textoResp).length} letras)`)
       }
-      const dados = J.limparIA(bruto, { texto, hoje, categorias, cartoes: cartoes || [], pessoas, membros })
+      const dados = J.limparIA(bruto, { texto, hoje, categorias, cartoes: cartoes || [], pessoas, membros, contas })
       await registrarIA(u, operacao, MODELO, { tokensIn, tokensOut, ms: Date.now() - t0 })
-      return { dados, cartoes: cartoes || [] }
+      return { dados, cartoes: cartoes || [], contas }
     } catch (e) {
       await registrarIA(u, operacao, MODELO, {
         tokensIn, tokensOut, ms: Date.now() - t0, sucesso: false,
@@ -293,6 +300,14 @@ async function faturaDoMomento(grupoId: string, cartaoId: string, comp?: string)
   // Cartões: a fatura a pagar; sem ela, a aberta só se vence este mês, não está paga e tem valor.
   const alvo = aPagar || (compDe(aberta.vencimento) === compHoje && !aberta.paga && aberta.total > 0 ? aberta : null)
   return { cartao, alvo, aberta, doMes: faturaDoCartao(cartao, compHoje, dados, hoje) }
+}
+
+// A conta de Contas do mês que o "paguei a X" marcaria agora (mesmo motor do app; regras em contas.js).
+async function contaDoMomento(grupoId: string, nome: string) {
+  const hoje = hojeBRT()
+  const compHoje = compDe(hoje)
+  const dados = await carregarDadosMotor(admin, grupoId, { compIni: addMeses(compHoje, -4), compFim: addMeses(compHoje, 2) })
+  return alvoDaConta(contasDoMotor(dados, hoje), nome, hoje)
 }
 
 // ---- a conversa ----
@@ -419,9 +434,9 @@ async function processar(m: any, ctx: Ctx) {
     if (travou) return responder(TEXTO_TRAVA[travou], 'bloqueado', travou)
   }
   const lancPendente = pendAnterior?.acao === 'lancar' ? pendAnterior.dados : null
-  let dados: any, cartoes: any[] = []
+  let dados: any, cartoes: any[] = [], contas: string[] = []
   try {
-    ({ dados, cartoes } = await interpretar(u, texto, J.pendenteParaIA(lancPendente)))
+    ({ dados, cartoes, contas } = await interpretar(u, texto, J.pendenteParaIA(lancPendente)))
   } catch (e) {
     console.error('[whatsapp] interpretar', (e as Error).message)
     return responder(J.TEXTOS.naoEntendi, 'erro', 'falha IA')
@@ -485,6 +500,15 @@ async function processar(m: any, ctx: Ctx) {
       const temParcelas = (f.alvo.itens || []).some((i: any) => i.tipo === 'parcela' && !i.paga)
       return perguntar({ acao: 'pagar_fatura', cartao_id: f.cartao.id, comp: f.alvo.comp, total: f.alvo.total },
         J.TEXTOS.faturaPergunta({ cartao: nome, fatura: f.alvo, valorDito: dados.valor, temParcelas }), 'fatura?')
+    }
+    case 'pagar_conta': {
+      if (!dados.conta) return responder(J.TEXTOS.contaQual(contas), 'resposta', 'conta: qual')
+      const alvo = await contaDoMomento(u.grupo_id, dados.conta)
+      if (alvo.jaPaga) return responder(J.TEXTOS.contaJaPaga(alvo.jaPaga, hoje), 'resposta', 'conta já paga')
+      if (!alvo.alvo) return responder(J.TEXTOS.contaNada(dados.conta), 'resposta', 'conta: nada a pagar')
+      const c = alvo.alvo
+      return perguntar({ acao: 'pagar_conta', tipo: c.tipo, id: c.id, comp: c.comp, nome: c.nome, valor: J.valorPago(c, dados.valor) },
+        J.TEXTOS.contaPergunta({ conta: c, valorDito: dados.valor }, hoje), `conta? ${c.tipo}`)
     }
     case 'saudacao': return responder(J.TEXTOS.saudacao(u.nome), 'resposta', 'saudação')
     case 'agradecimento': return responder(J.TEXTOS.agradecimento(u.nome), 'resposta', 'agradecimento')
@@ -634,6 +658,22 @@ async function executarPendencia(u: any, pend: any, responder: Responder) {
     }
     if (r?.motivo === 'ja_paga') return responder(J.TEXTOS.faturaJaPaga(nome, f.alvo.vencimento, hojeBRT()), 'resposta', 'fatura já paga')
     return responder(J.TEXTOS.falhaSalvar, 'erro', `fatura: ${r?.motivo || 'falha'}`)
+  }
+  if (pend.acao === 'pagar_conta') {
+    // Confere de novo com os dados de agora (pode ter sido marcada pelo app entre a pergunta e o "sim").
+    const agora = await contaDoMomento(u.grupo_id, pend.nome)
+    const c = (agora.alvo && agora.alvo.id === pend.id && agora.alvo.comp === pend.comp) ? agora.alvo : null
+    if (!c) {
+      if (agora.jaPaga) return responder(J.TEXTOS.contaJaPaga(agora.jaPaga, hojeBRT()), 'resposta', 'conta já paga')
+      return responder(J.TEXTOS.contaNada(pend.nome), 'resposta', 'conta: mudou')
+    }
+    const { data: r } = await admin.rpc('wa_pagar_conta', {
+      p_grupo: u.grupo_id, p_usuario: u.usuario_id, p_tipo: pend.tipo, p_id: pend.id, p_comp: pend.comp,
+      p_valor: pend.tipo === 'parcela' ? null : Number(pend.valor) || null,
+    })
+    if (r?.ok) return responder(J.TEXTOS.contaPaga(u.nome, { ...c, valorPago: Number(r.valor) || c.valor }, hojeBRT()), 'resposta', `conta paga ${pend.tipo}`)
+    if (r?.motivo === 'ja_paga') return responder(J.TEXTOS.contaJaPaga(c, hojeBRT()), 'resposta', 'conta já paga')
+    return responder(J.TEXTOS.falhaSalvar, 'erro', `conta: ${r?.motivo || 'falha'}`)
   }
   return responder(J.TEXTOS.naoEntendi, 'erro', 'pendência desconhecida')
 }

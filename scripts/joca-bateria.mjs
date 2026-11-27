@@ -67,7 +67,7 @@ const nomeCartao = (id) => CTX.cartoes.find((c) => c.id === id)?.nome ?? null
 // ---------------------------------------------------------------- IA (igual ao interpretar() do index.ts)
 const espera = (ms) => new Promise((r) => setTimeout(r, ms))
 async function chamarIA(texto, pendente) {
-  const userMsg = JSON.stringify({ texto, cartoes: CTX.cartoes.map((c) => ({ id: c.id, nome: c.nome })), pessoas: CTX.pessoas, membros: CTX.membros, ...(pendente ? { pendente } : {}) })
+  const userMsg = JSON.stringify({ texto, cartoes: CTX.cartoes.map((c) => ({ id: c.id, nome: c.nome })), contas: CTX.contas || [], pessoas: CTX.pessoas, membros: CTX.membros, ...(pendente ? { pendente } : {}) })
   let tokIn = 0, tokOut = 0
   for (let tentativa = 1, semJson = 0; ; tentativa++) {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -104,7 +104,7 @@ async function simular(caso) {
 
   const ia = await chamarIA(texto, pendente)
   if (!ia.bruto) return { acao: 'falha_ia', desfecho: 'nao_entendi', ...ia }
-  const d = J.limparIA(ia.bruto, { texto, hoje: HOJE, categorias: CTX.categorias, cartoes: CTX.cartoes, pessoas: CTX.pessoas, membros: CTX.membros })
+  const d = J.limparIA(ia.bruto, { texto, hoje: HOJE, categorias: CTX.categorias, cartoes: CTX.cartoes, pessoas: CTX.pessoas, membros: CTX.membros, contas: CTX.contas || [] })
   const base = { ...ia, dados: d, acao: d.acao }
   const lancar = (x) => (!x.valor ? 'sem_valor' : J.emDuvida(x) ? 'pergunta' : 'salva')
   switch (d.acao) {
@@ -121,6 +121,7 @@ async function simular(caso) {
       return { ...base, desfecho: J.emDuvida(d) ? 'pergunta' : 'salva', final: d }
     case 'apagar_ultimo': return { ...base, desfecho: 'pergunta', final: d }
     case 'pagar_fatura': return { ...base, desfecho: d.cartao_id ? 'pergunta' : 'qual_cartao', final: d }
+    case 'pagar_conta': return { ...base, desfecho: d.conta ? 'pergunta' : 'qual_conta', final: d }
     case 'pergunta': // igual ao webhook: com consulta, o texto sai do motor; sem, a resposta padrão
       return { ...base, desfecho: 'resposta', final: d, resposta: d.consulta ? C.responderConsulta(d.consulta, CTX.dados, HOJE) : J.TEXTOS.pergunta }
     default: return { ...base, desfecho: d.acao === 'outro' ? 'nao_entendi' : 'resposta', final: d }
@@ -188,6 +189,11 @@ function conferir(caso, r) {
         if (veio !== ec.cartao) add(veio ? 'grave' : 'erro', `cartão: esperado ${fmt(ec.cartao)}, veio ${fmt(veio)}`)
       }
     }
+  }
+  // "Paguei a X" (27/11): conta errada marcaria outra conta como paga = grave; conta nenhuma = o Joca pergunta qual.
+  if ('conta' in esp && r.acao === 'pagar_conta') {
+    const veio = r.dados?.conta ?? null
+    if (!lista(esp.conta).includes(veio)) add(veio ? 'grave' : 'erro', `conta: esperado ${lista(esp.conta).map(fmt).join(' ou ')}, veio ${fmt(veio)}`)
   }
   if (Array.isArray(esp.resposta_contem)) {
     for (const trecho of esp.resposta_contem) if (!String(r.resposta || '').includes(trecho)) add('grave', `a resposta não tem "${trecho}"`)

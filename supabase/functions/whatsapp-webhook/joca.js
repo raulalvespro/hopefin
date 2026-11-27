@@ -36,6 +36,9 @@ export const ddmm = (iso) => {
 export const primeiroNome = (nome) => String(nome || '').trim().split(/\s+/)[0] || ''
 // "vence 10/12" ou "venceu 08/11" (quando a data já passou).
 export const venceOuVenceu = (vencimento, hoje) => (hoje && vencimento && String(vencimento) < String(hoje) ? 'venceu' : 'vence')
+const compDeData = (iso) => String(iso || '').slice(0, 7)
+// Quanto fica pago: conta fixa e assinatura aceitam o valor dito (vira o valor real do mês); parcela é a do app.
+export const valorPago = (conta, valorDito) => (conta?.tipo !== 'parcela' && Number(valorDito) > 0 ? Math.round(Number(valorDito) * 100) / 100 : Number(conta?.valor))
 const comNome = (prefixo, nome) => (primeiroNome(nome) ? `${prefixo}, ${primeiroNome(nome)}!` : `${prefixo}!`)
 const maiuscula = (s) => { const t = String(s || '').trim(); return t ? t.charAt(0).toUpperCase() + t.slice(1) : t }
 
@@ -111,6 +114,7 @@ export const TEXTOS = {
     '• "entrou 150 de freela sexta"',
     '',
     '💳 *Fatura paga:* "paguei a fatura do Nubank"',
+    '🧾 *Conta paga:* "paguei a luz" ou "paguei a parcela do financiamento"',
     '✏️ *Errou?* "o valor era 50" ou "apaga o último"',
     '📋 *Vários de uma vez:* "mercado 300, farmácia 80 e uber 25" (até 5, eu mostro a lista antes de lançar)',
     '📸 *Comprovante:* manda a foto ou o PDF do comprovante, nota ou cupom que eu leio o valor',
@@ -139,6 +143,7 @@ export const TEXTOS = {
     '💸 lanço gastos: *mercado 120*, *uber 23,50 ontem*, *tênis 300 em 3x no Nubank*',
     '💰 lanço entradas: *recebi 2000 de salário*',
     '💳 marco fatura paga: *paguei a fatura do Nubank*',
+    '🧾 marco conta do mês paga: *paguei a luz*, *paguei a parcela do financiamento*',
     '✏️ arrumo o último: *o valor era 50* ou *apaga o último*',
     '📋 lanço vários de uma vez (até 5): *mercado 300, farmácia 80 e uber 25* — eu mostro a lista e você confirma',
     '📸 leio *foto ou PDF* de comprovante, nota fiscal ou cupom — eu mostro o que li e você confirma',
@@ -170,6 +175,33 @@ export const TEXTOS = {
   faturaJaPaga: (cartao, vencimento, hoje) => `A fatura do ${cartao} que ${venceOuVenceu(vencimento, hoje)} ${ddmm(vencimento)} já está paga 👍`,
   faturaNada: (cartao, aberta) => `Não tem fatura do ${cartao} pra pagar agora 👍 A aberta fecha ${ddmm(aberta.fechamento)} e vence ${ddmm(aberta.vencimento)}.`,
   faturaMudou: (cartao, total) => `O valor da fatura do ${cartao} mudou desde a pergunta: agora está em *${brl(total)}*.\n\nMarco como paga? Responde *sim*.`,
+  // conta do mês ("paguei a parcela da usina solar", 27/11/2026)
+  contaPergunta: ({ conta, valorDito }, hoje) => {
+    const atrasada = conta.comp < compDeData(hoje)
+    const linhas = [`Achei a conta *${conta.nome}* 🧾`, '']
+    if (conta.numero && conta.total) linhas.push(`🔢 Parcela ${conta.numero} de ${conta.total}`)
+    if (conta.data) linhas.push(`📅 ${maiuscula(venceOuVenceu(conta.data, hoje))} ${ddmm(conta.data)}${atrasada ? ' ⚠️ (ficou em atraso)' : ''}`)
+    const valor = valorPago(conta, valorDito)
+    linhas.push(`💰 *${brl(valor)}*`)
+    if (valorDito && Math.abs(Number(valorDito) - Number(conta.valor)) >= 0.01) {
+      linhas.push(conta.tipo === 'parcela'
+        ? `(Você falou ${brl(valorDito)}, mas a parcela no app é ${brl(conta.valor)}. Se mudou, ajusta no app em Parcelamentos.)`
+        : `(No app estava ${brl(conta.valor)}: fica ${brl(valor)} neste mês.)`)
+    }
+    linhas.push('', 'Marco como paga? Responde *sim* pra confirmar.')
+    return linhas.join('\n')
+  },
+  contaPaga: (nome, conta, hoje) => [
+    `${comNome('Prontinho', nome)} Conta paga ✅`,
+    '',
+    `🧾 ${conta.nome}${conta.numero && conta.total ? ` · parcela ${conta.numero}/${conta.total}` : ''}${conta.data ? ` · ${venceOuVenceu(conta.data, hoje)} ${ddmm(conta.data)}` : ''}`,
+    `💰 *${brl(conta.valorPago ?? conta.valor)}*`,
+  ].join('\n'),
+  contaJaPaga: (conta, hoje) => `A *${conta.nome}*${conta.data ? ` que ${venceOuVenceu(conta.data, hoje)} ${ddmm(conta.data)}` : ''} já está paga 👍`,
+  contaNada: (nome) => `Não tem *${nome}* pra pagar agora 👍`,
+  contaQual: (nomes) => (nomes.length
+    ? `Qual conta? Me manda com o nome dela, tipo *paguei ${nomes[0]}*.\nSuas contas: ${nomes.slice(0, 15).join(', ')}${nomes.length > 15 ? '…' : ''}.`
+    : 'Não achei conta fixa, parcela ou assinatura no app pra marcar 🤔 Se foi um gasto novo, me manda com o valor, tipo *mercado 120*.'),
   faturaQualCartao: (nomes) => (nomes.length
     ? `De qual cartão? Me manda assim: *paguei a fatura do ${nomes[0]}*.\nSeus cartões: ${nomes.join(', ')}.`
     : 'Você ainda não tem cartão cadastrado no app. Cadastra em Cartões › Novo e me chama de novo 😉'),
@@ -245,7 +277,7 @@ export function respostaRapida(texto) {
 }
 
 // ---------------------------------------------------------------- IA
-export const ACOES = ['lancar', 'lancar_varios', 'pagar_fatura', 'apagar_ultimo', 'corrigir_ultimo', 'saudacao', 'agradecimento',
+export const ACOES = ['lancar', 'lancar_varios', 'pagar_fatura', 'pagar_conta', 'apagar_ultimo', 'corrigir_ultimo', 'saudacao', 'agradecimento',
   'ajuda', 'pergunta', 'investimento', 'outro']
 
 // Instruções do Joca para a IA (Claude Haiku). A regra de NÃO recomendar investimento fica
@@ -256,7 +288,7 @@ export function instrucoesIA({ hoje, semana, categorias }) {
     'Leia a mensagem da pessoa e responda APENAS com um objeto JSON válido, sem nenhum texto fora do JSON.',
     '',
     'Regras do Joca (valem sempre):',
-    '- Você só ajuda a organizar o dinheiro da família: lançar gastos e entradas, marcar fatura de cartão como paga e corrigir o último lançamento.',
+    '- Você só ajuda a organizar o dinheiro da família: lançar gastos e entradas, marcar fatura de cartão e contas do mês como pagas e corrigir o último lançamento.',
     '- Educação financeira pode: organizar gastos, reserva de emergência, sair das dívidas, usar bem o cartão.',
     '- NUNCA recomende investimento específico (ação, fundo, título, criptomoeda, previdência, corretora ou banco pra investir). Isso é consultoria de investimentos e só um profissional registrado na CVM pode fazer.',
     '- Nunca invente valores, datas ou cartões que a pessoa não disse.',
@@ -265,6 +297,7 @@ export function instrucoesIA({ hoje, semana, categorias }) {
     '- "lancar": a pessoa conta UM gasto ou UM dinheiro que entrou. Ex.: "mercado 120", "uber 23,50 ontem", "tênis 300 em 3x no Nubank", "recebi 2000 de salário".',
     '- "lancar_varios": a mensagem conta DOIS OU MAIS lançamentos diferentes, cada um com o seu valor. Ex.: "mercado 300, farmácia 80 no dinheiro e uber 25", "gastei 50 de pão e 120 de gasolina". Cuidado: "3x de 100" ou "parcelado em 3" é UMA compra parcelada ("lancar" com parcelas), não vários. Se não der pra saber se são várias compras ou uma parcelada, use "lancar_varios" com confianca baixa.',
     '- "pagar_fatura": diz que PAGOU a fatura de um cartão. Ex.: "paguei a fatura do Nubank", "fatura do Itaú paga". Isso NÃO é um gasto novo.',
+    '- "pagar_conta": diz que PAGOU uma conta da lista "contas" (conta fixa, parcela de carnê/empréstimo/financiamento ou assinatura fora do cartão). Ex.: "paguei a parcela da usina solar", "paguei a luz, deu 180", "aluguel pago", "paguei o terreno". Isso NÃO é um gasto novo: a conta já está no app e só falta marcar. Se a coisa paga NÃO bate com nenhuma conta da lista: COM valor é "lancar" (gasto novo, ex.: "paguei 89,90 de internet no boleto" sem Internet na lista); SEM valor e parecendo conta do mês (luz, água, parcela, prestação, financiamento) é "pagar_conta" com conta null (o Joca mostra a lista). Fatura de cartão é sempre "pagar_fatura".',
     '- "apagar_ultimo": pede pra apagar ou desfazer o último lançamento. Ex.: "apaga o último", "lancei errado, apaga".',
     '- "corrigir_ultimo": corrige o VALOR do último lançamento. Ex.: "o valor era 50", "na verdade foi 45,90".',
     '- "saudacao": oi, bom dia, tudo bem.',
@@ -277,9 +310,10 @@ export function instrucoesIA({ hoje, semana, categorias }) {
     'Campos (null quando não se aplica):',
     '- acao: uma das opções acima',
     '- tipo: "gasto" ou "entrada" (só em "lancar")',
-    '- valor: número em reais com ponto decimal, sem símbolo. Em "lancar": o valor total. Em "corrigir_ultimo": o valor certo. Em "pagar_fatura": o valor que a pessoa disse que pagou, ou null.',
+    '- valor: número em reais com ponto decimal, sem símbolo. Em "lancar": o valor total. Em "corrigir_ultimo": o valor certo. Em "pagar_fatura" e "pagar_conta": o valor que a pessoa disse que pagou, ou null.',
     '- descricao: texto curto e natural (só em "lancar")',
     `- categoria: UMA destas (ou "outros"): ${(categorias || []).join(', ') || 'outros'}`,
+    '- conta: SÓ em "pagar_conta": o nome EXATO de uma conta da lista "contas" (compare sem ligar pra maiúscula, acento, erro de digitação ou palavras a mais: "parcela da usina" bate com "Parcela usina solar"; "luz" bate com "Luz"). Se bater com mais de uma ou com nenhuma, null. Nunca invente.',
     '- cartao_id: id de um cartão da lista (em "lancar", se foi no cartão; em "pagar_fatura", o cartão da fatura), ou null',
     '  Se a pessoa disser que foi no cartão/crédito mas NÃO disser qual: se a lista tiver um cartão só, é ele; se tiver mais de um, cartao_id null e confiança abaixo de 0.6 (o Joca pergunta). Nunca chute o cartão.',
     '  Compare o nome do cartão sem ligar pra maiúscula, acento ou erro de digitação ("NO INTER", "itau", "nubak" batem com Inter, Itaú, Nubank).',
@@ -355,7 +389,14 @@ export function pessoaDoGasto(nomeIA, { pessoas = [], membros = [] } = {}) {
   return existe ? { pessoa: String(existe).trim(), pessoa_nova: false } : { pessoa: n, pessoa_nova: true }
 }
 
-export function limparIA(dados, { texto, hoje, categorias, cartoes, pessoas = [], membros = [] }) {
+// O nome de conta que a IA mandou → o nome da lista "contas" (sem ligar pra acento/maiúscula). Fora da lista: null.
+export function contaDaLista(nomeIA, nomes) {
+  const n = normalizar(nomeIA)
+  if (!n) return null
+  return (nomes || []).find((x) => normalizar(x) === n) || null
+}
+
+export function limparIA(dados, { texto, hoje, categorias, cartoes, pessoas = [], membros = [], contas = [] }) {
   const d = dados || {}
   const listaCartoes = cartoes || []
   const cartao = listaCartoes.find((c) => c.id === d.cartao_id) || null
@@ -379,6 +420,7 @@ export function limparIA(dados, { texto, hoje, categorias, cartoes, pessoas = []
     confianca: Number.isFinite(conf) ? Math.min(1, Math.max(0, conf)) : 0.5,
     pessoa: quem.pessoa,
     pessoa_nova: quem.pessoa_nova,
+    conta: acao === 'pagar_conta' ? contaDaLista(d.conta, contas) : null,
     consulta: acao === 'pergunta' ? limparConsulta(d.consulta, { hoje, categorias, cartoes: listaCartoes }) : null,
     // Vários lançamentos numa mensagem (21/11/2026): cada item passa pela MESMA limpeza.
     itens: acao === 'lancar_varios'
