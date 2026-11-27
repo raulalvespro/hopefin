@@ -226,6 +226,11 @@ em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `L
 - **Reembolso automático (art. 49 CDC):** nos 7 dias da **primeira** cobrança (`primeira_cobranca_em`, renovação não
   reinicia) o botão "Cancelar e pedir reembolso" em Configurações estorna tudo no Asaas (`asaas-cancelar` com
   `reembolso: true`) e encerra o acesso na hora. Depois dos 7 dias: cancelar vale só para as próximas cobranças.
+- **Asaas em PRODUÇÃO desde 27/11/2026** (`node scripts/asaas-ambiente.mjs status | producao --aplicar | sandbox --aplicar`;
+  chave em `ASAAS_API_KEY_PROD`; depois da troca o `set-secrets.mjs` não mexe no Asaas). **Reembolso sem saldo** (o Asaas
+  desconta a taxa na entrada e o estorno devolve o valor cheio): cancela na hora, fica em `reembolsos_pendentes` (0129) com
+  prazo de 2 dias úteis, a função `reembolsos` tenta de hora em hora e avisa o dono; `PAYMENT_REFUNDED` fecha. Regras e
+  taxas: `docs/REEMBOLSOS.md`.
 - **Cancelamento (0027 + `asaas-cancelar`)** e **remoção de membro (0028 + `remover-membro`)** no ar e testados no
   sandbox, com e-mails. Webhook sandbox: token + `SUBSCRIPTION_DELETED` configurados. O webhook só estende o período na
   1ª notificação de cada cobrança/parcelamento (`asaas_periodo_ref`).

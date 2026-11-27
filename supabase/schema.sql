@@ -866,3 +866,28 @@ create table if not exists public.mkt_config (   -- linha única (id = 1); RLS s
   fb_page_id          text,
   atualizado_em       timestamptz not null default now()
 );
+
+-- ===== 0129 — reembolsos pendentes (27/11/2026) — ver supabase/migrations/0129_reembolsos_pendentes.sql e docs/REEMBOLSOS.md =====
+create table if not exists public.reembolsos_pendentes (
+  id uuid primary key default gen_random_uuid(),
+  grupo_id uuid not null,
+  subscription_id uuid,
+  titular_id uuid,
+  email text,
+  nome text,
+  valor_centavos integer not null check (valor_centavos > 0),
+  metodo text,                                   -- pix | cartao | boleto (o que a pessoa usou)
+  asaas_payment_id text,                         -- cobrança avulsa / da assinatura
+  asaas_installment_id text,                     -- anual 12x no cartão (estorna o parcelamento inteiro)
+  motivo text not null,                          -- o que o Asaas respondeu (ex.: "Saldo insuficiente.")
+  pedido_em timestamptz not null default now(),
+  prazo_em timestamptz not null,                 -- prometido ao cliente (2 dias úteis)
+  status text not null default 'pendente' check (status in ('pendente', 'feito', 'feito_manual', 'cancelado')),
+  tentativas integer not null default 0,
+  ultima_tentativa_em timestamptz,
+  ultimo_erro text,
+  ultimo_alerta_dono_em timestamptz,
+  feito_em timestamptz,
+  feito_por text,                                -- 'automatico' | 'painel' | 'asaas' (aviso do Asaas) | 'manual'
+  aviso_cliente_em timestamptz                   -- e-mail "seu reembolso foi feito"
+);
