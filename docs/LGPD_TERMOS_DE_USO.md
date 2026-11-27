@@ -1,8 +1,6 @@
 # Termos de uso
 
-Versão em revisão · 20 de novembro de 2026
-
-> **Texto em revisão.** Esta versão ainda vai passar por revisão jurídica, e os campos entre colchetes serão preenchidos antes da publicação oficial.
+Versão de 27 de novembro de 2026
 
 ## 1. Aceitação
 
@@ -77,8 +75,8 @@ Podemos atualizar estes Termos; mudanças relevantes serão avisadas pelo app ou
 
 ## 14. Lei aplicável e foro
 
-Estes Termos são regidos pelas leis do Brasil. Fica eleito o foro da comarca de **[CIDADE/UF]**, salvo o direito do consumidor de escolher o foro do seu domicílio.
+Estes Termos são regidos pelas leis do Brasil. Fica eleito o foro da comarca de Mossoró/RN, salvo o direito do consumidor de escolher o foro do seu domicílio.
 
 ## 15. Contato
 
-**[NOME OU RAZÃO SOCIAL]** · **[CPF/CNPJ]** · **[ENDEREÇO]** · [contato@hopefin.com.br](mailto:contato@hopefin.com.br)
+Raul Erikson Dantas Alves · CPF 103.992.424-73 · Rua Rafael Pinto Leite, 52, Mossoró/RN, CEP 59626-610 · [contato@hopefin.com.br](mailto:contato@hopefin.com.br)

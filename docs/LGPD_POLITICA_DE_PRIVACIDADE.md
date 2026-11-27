@@ -1,12 +1,10 @@
 # Política de privacidade
 
-Versão em revisão · 20 de novembro de 2026
-
-> **Texto em revisão.** Esta versão ainda vai passar por revisão jurídica, e os campos entre colchetes serão preenchidos antes da publicação oficial.
+Versão de 27 de novembro de 2026
 
 ## 1. Quem somos (controlador dos dados)
 
-O HopeFin (“aplicativo”, “nós”) é operado por **[NOME DO RESPONSÁVEL OU RAZÃO SOCIAL]**, inscrito no **[CPF/CNPJ]**, com contato em [contato@hopefin.com.br](mailto:contato@hopefin.com.br). Encarregado pelo tratamento de dados (DPO): **[NOME DO ENCARREGADO]**, [privacidade@hopefin.com.br](mailto:privacidade@hopefin.com.br).
+O HopeFin (“aplicativo”, “nós”) é operado por Raul Erikson Dantas Alves, inscrito no CPF 103.992.424-73, com endereço na Rua Rafael Pinto Leite, 52, Mossoró/RN, CEP 59626-610, com contato em [contato@hopefin.com.br](mailto:contato@hopefin.com.br). Encarregado pelo tratamento de dados (DPO): Raul Erikson Dantas Alves, [privacidade@hopefin.com.br](mailto:privacidade@hopefin.com.br).
 
 Esta política explica como coletamos, usamos, guardamos e protegemos seus dados pessoais, conforme a **Lei Geral de Proteção de Dados (Lei nº 13.709/2018, LGPD)**.
 
@@ -92,7 +90,7 @@ Nenhum sistema é 100% imune; se houver um incidente de segurança relevante, av
 
 ## 9. Cookies
 
-No app, usamos cookies e armazenamento do navegador essenciais para você entrar na conta e, só se você aceitar, cookies de análise. O site hopefin.com.br não usa cookies nem ferramentas de análise; as fontes de letra do site são carregadas do Google Fonts.
+No app, usamos cookies e armazenamento do navegador essenciais para você entrar na conta e, só se você aceitar, cookies de análise. As fontes de letra do app são carregadas do Google Fonts, que recebe o endereço de IP de quem abre a página. No site hopefin.com.br, o Pixel da Meta (cookies de publicidade) só é carregado se você aceitar no aviso de cookies; a Política do site detalha isso.
 
 ## 10. Crianças e adolescentes
 
