@@ -56,7 +56,11 @@ const secrets = [
 
 // Asaas (billing): só entra se a API key estiver preenchida. O webhook token
 // é gerado aqui (precisa ser o mesmo cadastrado no painel do Asaas).
-if (env.ASAAS_API_KEY) {
+// Desde 27/11 (produção): com ASAAS_AMBIENTE no .env.local quem manda os segredos do Asaas é
+// `node scripts/asaas-ambiente.mjs` — aqui não mexe, pra não voltar pro sandbox sem querer.
+if (env.ASAAS_AMBIENTE) {
+  console.log(`• Asaas: segredos não mexidos (ambiente ${env.ASAAS_AMBIENTE}; use scripts/asaas-ambiente.mjs)`)
+} else if (env.ASAAS_API_KEY) {
   const webhookToken = gerarEPersistir('ASAAS_WEBHOOK_TOKEN')
   secrets.push({ name: 'ASAAS_API_KEY', value: env.ASAAS_API_KEY })
   secrets.push({ name: 'ASAAS_WEBHOOK_TOKEN', value: webhookToken })
