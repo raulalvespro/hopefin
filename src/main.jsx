@@ -26,14 +26,35 @@ iniciarCapturaInstalacao()
 // As telas baixam sob demanda (23/11/2026). Se a pessoa estava com a versão antiga aberta e saiu
 // uma nova, o arquivo da tela antiga some do servidor: recarrega 1x pra pegar a versão nova
 // (a marca na sessão evita ficar recarregando em loop se o problema for outro, ex.: sem internet).
-window.addEventListener('vite:preloadError', (e) => {
+function recarregarUmaVez() {
   try {
-    if (sessionStorage.getItem('hopefin_recarregou_tela')) return
+    if (sessionStorage.getItem('hopefin_recarregou_tela')) return false
     sessionStorage.setItem('hopefin_recarregou_tela', '1')
-  } catch { return }
-  e.preventDefault()
+  } catch { return false }
   window.location.reload()
-})
+  return true
+}
+window.addEventListener('vite:preloadError', (e) => { if (recarregarUmaVez()) e.preventDefault() })
+
+// 27/11: quando o arquivo PRINCIPAL da tela some (não só os auxiliares), o erro não passa pelo
+// vite:preloadError — vai direto pra tela de "Algo deu errado". Mesmo remédio: recarrega 1x.
+const ehVersaoVelha = (err) => /dynamically imported module|Importing a module script failed|error loading dynamically|Loading chunk|Failed to fetch/i.test(String(err?.message || err || ''))
+
+// Último recurso da tela de erro: apaga a versão guardada no aparelho (service worker + cache) e recarrega.
+async function recarregarLimpo() {
+  try { for (const r of (await navigator.serviceWorker?.getRegistrations?.()) || []) await r.unregister() } catch { /* sem SW */ }
+  try { for (const k of (await caches?.keys?.()) || []) await caches.delete(k) } catch { /* sem cache */ }
+  try { sessionStorage.removeItem('hopefin_recarregou_tela') } catch { /* ignore */ }
+  window.location.reload()
+}
+function TelaDeErro() {
+  return (
+    <div style={{ padding: 24, textAlign: 'center', fontFamily: 'system-ui, sans-serif' }}>
+      <p style={{ margin: '24px 0 16px' }}>Algo deu errado ao abrir o app.</p>
+      <button type="button" onClick={recarregarLimpo} className="btn-primary" style={{ padding: '12px 24px' }}>Recarregar</button>
+    </div>
+  )
+}
 window.addEventListener('load', () => {
   setTimeout(() => { try { sessionStorage.removeItem('hopefin_recarregou_tela') } catch { /* ignore */ } }, 10000)
 })
@@ -84,7 +105,7 @@ if (ehAdmin) {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <Sentry.ErrorBoundary fallback={<p style={{ padding: 24, textAlign: 'center' }}>Algo deu errado. Recarregue a página.</p>}>
+    <Sentry.ErrorBoundary fallback={<TelaDeErro />} onError={(err) => { if (ehVersaoVelha(err)) recarregarUmaVez() }}>
       <ThemeProvider>
         <ToastProvider>
           <AuthProvider>
