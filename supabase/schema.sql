@@ -891,3 +891,4 @@ create table if not exists public.reembolsos_pendentes (
   feito_por text,                                -- 'automatico' | 'painel' | 'asaas' (aviso do Asaas) | 'manual'
   aviso_cliente_em timestamptz                   -- e-mail "seu reembolso foi feito"
 );
+-- 0130: + fase text not null default 'sem_saldo' (pedindo|sem_saldo|aguardando_autorizacao|em_andamento|recusado|feito), asaas_refund_status text; motivo passa a aceitar nulo

@@ -14,8 +14,9 @@ Atualizado em 27/11/2026 (Asaas em produção desde 12:30 desse dia).
 ## O que acontece quando o cliente pede
 
 1. **O app tenta estornar no Asaas na hora.**
-   - Deu certo: a assinatura é cancelada, o acesso é encerrado e o cliente recebe o e-mail de cancelamento com o
-     reembolso. O Asaas manda o aviso `PAYMENT_REFUNDED`.
+   - Pedido aceito: a assinatura é cancelada, o acesso é encerrado e o cliente recebe o e-mail de cancelamento com
+     o prazo. O reembolso fica no painel até o Asaas confirmar que o dinheiro saiu (normalmente depois da **sua
+     autorização**, veja abaixo).
    - **Recusou por falta de saldo:** veja abaixo.
    - Recusou por outro motivo: nada muda, a tela mostra erro e a pessoa tenta de novo ou escreve pra contato@.
 2. **Sem saldo no Asaas** (o caso do 1º Pix real, 27/11):
@@ -29,6 +30,24 @@ Atualizado em 27/11/2026 (Asaas em produção desde 12:30 desse dia).
 3. **Quando o estorno passa**, seja pelo app, pelo botão do painel ou feito por você direto no painel do Asaas:
    - o reembolso fica "Devolvido";
    - o cliente recebe **"Seu reembolso do HopeFin foi feito"**, uma vez só.
+
+## ⚠️ Todo estorno precisa da SUA autorização no Asaas
+
+Descoberto no 1º estorno real (27/11). O Asaas **aceita** o pedido de estorno feito pelo app, mas **segura** o
+estorno com o status "aguardando autorização de ação crítica" até o dono confirmar com o código (app ou SMS do Asaas).
+O dinheiro só sai depois disso.
+
+- O app **não** marca "Devolvido" antes da hora. Desde a migração 0130, todo pedido de reembolso vira uma linha no
+  painel com a fase:
+  - **Sem saldo**
+  - **Autorize no Asaas**
+  - **Processando**
+  - **Estorno cancelado**
+  - **Devolvido**, só quando o Asaas confirma.
+- Você recebe o e-mail "**Autorize o reembolso no Asaas**". Abra o Asaas, vá nas ações pendentes de autorização e
+  confirme.
+- Dá pra tirar essa exigência no Asaas, mas por segurança **é melhor manter**: é ela que impede alguém com a chave
+  de devolver dinheiro sem você saber.
 
 ## Por que falta saldo
 
