@@ -1682,12 +1682,29 @@ export function AreaDev() {
   const { toast } = useToast()
   const [flags, setFlags] = useState(null)
   const [salvando, setSalvando] = useState('')
+  // Pessoas escolhidas por chave (0128): além da audiência, a chave vale pra quem estiver na lista.
+  const [pessoas, setPessoas] = useState({})
+  const [emailNovo, setEmailNovo] = useState({})
   const carregar = useCallback(() => {
     setFlags(null)
     supabase.rpc('admin_flags').then(({ data, error }) => {
       if (error) { toast('Falhou ao carregar.', 'erro'); setFlags(false) } else setFlags(data || [])
     })
+    supabase.rpc('admin_flag_pessoas').then(({ data }) => setPessoas(data || {}))
   }, [toast])
+
+  async function pessoa(chave, email, liberar) {
+    const e = String(email || '').trim()
+    if (!e) return
+    setSalvando(chave)
+    const { data, error } = await supabase.rpc('admin_flag_pessoa', { p_chave: chave, p_email: e, p_liberar: liberar })
+    setSalvando('')
+    if (error) { toast('Não consegui alterar.', 'erro'); return }
+    if (!data?.ok) { toast('Não achei uma conta com esse e-mail.', 'erro'); return }
+    toast(liberar ? `Liberado pra ${data.nome}` : `Tirado de ${data.nome}`, 'ok')
+    if (liberar) setEmailNovo(v => ({ ...v, [chave]: '' }))
+    supabase.rpc('admin_flag_pessoas').then(({ data: d }) => setPessoas(d || {}))
+  }
   useEffect(() => { carregar() }, [carregar])
 
   async function definir(chave, audiencia) {
@@ -1731,6 +1748,30 @@ export function AreaDev() {
                   )
                 })}
               </div>
+              {f.audiencia !== 'todos' && (
+                <div style={{ marginTop: 10 }}>
+                  <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Também liberado pra:</p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                    {(pessoas[f.chave] || []).length === 0 && <span style={{ fontSize: 12, color: 'var(--text3)' }}>ninguém</span>}
+                    {(pessoas[f.chave] || []).map(p => (
+                      <span key={p.id} title={p.email} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 6px 4px 10px', borderRadius: 999, fontSize: 12.5, background: 'var(--bg3)', border: '1px solid var(--border2)' }}>
+                        {p.nome}
+                        <button onClick={() => pessoa(f.chave, p.email, false)} disabled={salvando === f.chave} aria-label={`Tirar ${p.nome}`}
+                          style={{ border: 'none', background: 'transparent', color: 'var(--text2)', fontSize: 14, lineHeight: 1, padding: '0 2px' }}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                  <form onSubmit={e => { e.preventDefault(); pessoa(f.chave, emailNovo[f.chave], true) }} style={{ display: 'flex', gap: 6 }}>
+                    <input type="email" placeholder="e-mail da conta da pessoa" value={emailNovo[f.chave] || ''}
+                      onChange={e => setEmailNovo(v => ({ ...v, [f.chave]: e.target.value }))}
+                      style={{ flex: 1, minWidth: 0, fontSize: 13, padding: '6px 10px' }} />
+                    <button type="submit" disabled={salvando === f.chave || !(emailNovo[f.chave] || '').trim()}
+                      style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: 12.5, fontWeight: 600, border: '1.5px solid var(--accent)', color: 'var(--accent-text)', background: 'transparent' }}>
+                      Liberar
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
           ))}
       </section>
