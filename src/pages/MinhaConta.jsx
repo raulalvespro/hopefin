@@ -150,7 +150,9 @@ export default function MinhaConta() {
     if (typeof r !== 'function') return r
     if (plano.estado === 'trial') return r(plano.diasRestantes)
     const d = plano.estado === 'ativa' ? plano.renovaEm : plano.terminaEm
-    return r(d ? fmtData(String(d).slice(0, 10), 'dd/MM/yyyy') : '')
+    // renovaEm/terminaEm vêm como Date (lib/assinatura.js); String(Date).slice(0,10) dava data inválida e
+    // derrubava a tela de quem PAGA (achado no 1º Pix real, 27/11).
+    return r(d ? fmtData(d instanceof Date ? d : String(d).slice(0, 10), 'dd/MM/yyyy') : '')
   })()
   const corSituacao = COR_ESTADO[plano.estado] || 'var(--accent-text)'
 
