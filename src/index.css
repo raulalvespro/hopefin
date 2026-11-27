@@ -477,3 +477,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { margin-left: auto; opaci
 .hf-coin { animation: hf-coin 2.8s ease-in infinite; }
 .boas-vindas { min-height: 100vh; min-height: 100dvh; background: var(--bg); display: flex; justify-content: center; padding: 48px 24px 32px; box-sizing: border-box; }
 .boas-vindas-conteudo { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 24px; }
+
+/* Turnstile (L39): o quadrinho "Confirme que é humano" fica dentro do formulário, acima do botão */
+.hf-turnstile { margin: 4px 0 12px; }
+.hf-turnstile:empty { margin: 0; }

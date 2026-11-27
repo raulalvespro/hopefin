@@ -26,7 +26,6 @@ export default function AdminLogin() {
 
   return (
     <div className="adm-auth">
-      <Turnstile />
       <form className="adm-auth-card" onSubmit={entrar}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
           <div style={{ width: 40, height: 40, borderRadius: 11, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -54,6 +53,7 @@ export default function AdminLogin() {
 
         {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, margin: '0 0 12px' }}>{erro}</p>}
 
+        <Turnstile />
         <button className="btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} disabled={carregando}>
           {carregando ? <><Loader size={18} className="spin" /> Entrando…</> : 'Entrar'}
         </button>

@@ -136,12 +136,12 @@ export default function Cadastro() {
       <div className="entrada">
         <PainelMarca titulo={t.painelTitulo} subtitulo={t.painelTexto} arte={<ArteCadastro preco={preco} />} />
         <section className="entrada-form">
-          <Turnstile />
           <div className="entrada-card hf-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <h2 style={{ margin: 0, fontFamily: "'Syne', system-ui, sans-serif", fontWeight: 700, fontSize: 26, lineHeight: '32px' }}>{t.confirmeTitulo}</h2>
             <p style={{ margin: 0, fontSize: 15, lineHeight: '22px', color: 'var(--text2)' }}>{t.confirmeTexto(confirmar)}</p>
             <p style={{ margin: 0, fontSize: 13, lineHeight: '19px', color: 'var(--text2)' }}>{t.confirmeDica}</p>
             {reenvio && <p style={{ margin: 0, fontSize: 13, color: reenvio.ok ? 'var(--accent-text)' : 'var(--red-text)' }}>{reenvio.texto}</p>}
+            <Turnstile />
             <Button variant="secondary" loading={reenviando} onClick={reenviar} style={{ width: '100%' }}>{t.reenviar}</Button>
             <Link to="/login" style={{ textAlign: 'center', fontSize: 14, color: 'var(--accent-text)', textDecoration: 'none', fontWeight: 600 }}>{t.jaConfirmei}</Link>
           </div>
@@ -154,7 +154,6 @@ export default function Cadastro() {
     <div className="entrada">
       <PainelMarca titulo={t.painelTitulo} subtitulo={t.painelTexto} arte={<ArteCadastro preco={preco} />} />
       <section className="entrada-form">
-        <Turnstile />
         <div className="entrada-card hf-in">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>
             <h2 style={{ margin: 0, fontFamily: "'Syne', system-ui, sans-serif", fontWeight: 700, fontSize: 26, lineHeight: '32px' }}>{t.titulo}</h2>
@@ -226,6 +225,7 @@ export default function Cadastro() {
 
             {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, marginBottom: 14 }}>{erro}</p>}
 
+            <Turnstile />
             <Button type="submit" loading={loading} style={{ width: '100%' }}>
               {loading ? t.enviando : t.enviar}
             </Button>

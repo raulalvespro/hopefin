@@ -74,7 +74,6 @@ export default function Login() {
     <div className="entrada">
       <PainelMarca />
       <section className="entrada-form">
-        <Turnstile />
         <div className="entrada-card hf-in">
 
           {modo === 'login' && (
@@ -112,6 +111,7 @@ export default function Login() {
                 </>
               )}
 
+              <Turnstile />
               <Button type="submit" loading={loading} style={{ width: '100%', marginTop: 4 }}>
                 {loading ? t.entrando : t.entrar}
               </Button>
@@ -131,6 +131,7 @@ export default function Login() {
                 <h2 style={{ margin: 0, fontFamily: "'Syne', system-ui, sans-serif", fontWeight: 700, fontSize: 20 }}>{t.enviadoTitulo}</h2>
                 <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5, margin: 0 }}>{t.enviadoTexto(form.email)}</p>
                 <p style={{ fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.5, margin: 0 }}>{ta.naoChegou}</p>
+                <Turnstile />
                 <Button variant="secondary" loading={loading} disabled={espera > 0} onClick={reenviarLink} style={{ width: '100%', marginTop: 6 }}>
                   {espera > 0 ? ta.reenviarEm(espera) : ta.reenviarLink}
                 </Button>
@@ -152,6 +153,7 @@ export default function Login() {
                   <input type="email" placeholder="voce@email.com" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} autoComplete="email" required />
                 </div>
                 {erro && <p style={{ color: 'var(--red-text)', fontSize: 13, margin: 0 }}>{erro}</p>}
+                <Turnstile />
                 <Button type="submit" loading={loading} style={{ width: '100%' }}>
                   {loading ? t.recEnviando : t.recEnviar}
                 </Button>

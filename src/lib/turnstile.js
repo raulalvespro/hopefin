@@ -13,6 +13,7 @@ const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
 export const turnstileLigado = !!SITE_KEY
 
 let token = null
+let pediuClique = false // a Cloudflare mostrou o quadrinho "Confirme que é humano" e ninguém marcou ainda
 let esperando = []
 let widgetId = null
 let carregando = null
@@ -33,6 +34,7 @@ function carregarScript() {
 
 function receber(t) {
   token = t
+  pediuClique = false
   const fila = esperando; esperando = []
   fila.forEach((r) => r(t))
 }
@@ -57,6 +59,8 @@ export function ehErroCaptcha(error) {
 // Chama o Supabase com o passe; se ele recusar SÓ pelo passe, pede um novo e tenta mais uma vez.
 // `chamar(opcoes)` recebe { captchaToken } (ou {}) e devolve { data, error } do supabase-js.
 export async function comCaptcha(chamar) {
+  // Quadrinho na tela e sem passe: nem manda (o Supabase recusaria) — a tela pede pra marcar.
+  if (turnstileLigado && !token && pediuClique) return { data: null, error: { code: 'captcha_failed', message: 'captcha: marque o quadrinho' } }
   let r = await chamar(await opcoesCaptcha())
   renovarToken()
   if (turnstileLigado && ehErroCaptcha(r?.error)) {
@@ -93,6 +97,8 @@ export function Turnstile() {
         language: 'pt-br',
         'refresh-expired': 'auto',
         callback: receber,
+        'before-interactive-callback': () => { pediuClique = true },
+        'after-interactive-callback': () => { pediuClique = false },
         'expired-callback': () => { token = null },
         'timeout-callback': () => { token = null; try { window.turnstile.reset(widgetId) } catch { /* saiu */ } },
         'error-callback': () => { token = null; return false /* deixa a Cloudflare tentar de novo sozinha */ },
@@ -101,9 +107,10 @@ export function Turnstile() {
     return () => {
       vivo = false
       try { if (window.turnstile && widgetId != null) window.turnstile.remove(widgetId) } catch { /* já saiu */ }
-      widgetId = null; token = null
+      widgetId = null; token = null; pediuClique = false
     }
   }, [])
   if (!turnstileLigado) return null
-  return createElement('div', { ref, style: { display: 'flex', justifyContent: 'center', marginTop: 8 } })
+  // Fica DENTRO do formulário, logo acima do botão: se a Cloudflare pedir o quadrinho, a pessoa vê.
+  return createElement('div', { ref, className: 'hf-turnstile', style: { display: 'flex', justifyContent: 'center', width: '100%' } })
 }
