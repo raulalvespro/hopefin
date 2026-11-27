@@ -172,6 +172,8 @@ em `prefers-reduced-motion`**. Componentes: `Button`, `Card`, `Tag`, `Money`, `L
   - **Anual lançamento:** R$ 149,90 no Pix ou 12x de R$ 14,90 no cartão (R$ 178,80), para
     quem assinar **até 31/12/2026 23:59 (America/Sao_Paulo)**; preço travado nas
     renovações enquanto a assinatura seguir ativa, sem interrupção.
+    **Trocar a data:** `node scripts/oferta-lancamento.mjs AAAA-MM-DD` (simula; `--aplicar` grava banco, app, e-mail,
+    site e agência de uma vez e lista o que falta publicar).
   - **Trial: 7 dias, sem cartão** (com até 50 mensagens no WhatsApp).
 - **NÃO existe mais:** oferta "fundador", limite de 100 vagas, trial de 14 dias nem os
   preços antigos (R$ 19,90/mês, R$ 14,90/mês). Nada disso pode aparecer no app/e-mails.
