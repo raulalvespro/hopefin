@@ -1,11 +1,12 @@
 // reembolsos — reembolsos de arrependimento que o Asaas recusou por falta de saldo (tabela reembolsos_pendentes, 0129).
 //
 // Dois jeitos de chamar:
-//  - CRON (x-cron-secret == CRON_SECRET), de hora em hora (hopefin-reembolsos): tenta estornar cada pendente;
-//    deu certo → 'feito' + e-mail pro cliente. Não deu → guarda o erro e avisa o dono a cada ~20 h
-//    (assunto "ATRASADO" se o prazo prometido já passou).
+//  - CRON (x-cron-secret == CRON_SECRET), de hora em hora (hopefin-reembolsos): pra cada reembolso aberto, confere
+//    no Asaas (avancar): se ainda não foi pedido / foi recusado, pede; se o Asaas confirmou (DONE/REFUNDED) → 'feito'
+//    + e-mail pro cliente. Senão guarda a fase (sem_saldo / aguardando_autorizacao / em_andamento) e avisa o dono a
+//    cada ~20 h (assunto "ATRASADO" se o prazo prometido já passou). Em andamento não gera aviso.
 //  - PAINEL (JWT de admin com o código do celular, aal2):
-//      { acao: 'tentar', id }                 tenta agora
+//      { acao: 'tentar', id }                 confere/pede agora (mesmo passo do cron)
 //      { acao: 'marcar_feito', id, obs? }     o dono devolveu por fora (ex.: Pix manual) → 'feito_manual' + e-mail
 //
 // Deploy SEM verificação de JWT no gateway (o cron não manda JWT); o JWT do painel é conferido aqui.
@@ -13,7 +14,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { nivelDaSessao } from '../_shared/sessao.ts'
-import { estornar, concluir, avisarDono } from '../_shared/reembolso.ts'
+import { avancar, concluir, avisarDono } from '../_shared/reembolso.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -41,23 +42,6 @@ async function asaas(path: string, init: RequestInit = {}) {
 
 const HORAS_ENTRE_AVISOS = 20
 
-// deno-lint-ignore no-explicit-any
-async function tentar(r: any, por: string) {
-  const agora = new Date().toISOString()
-  try {
-    await estornar(asaas, r)
-    await admin.from('reembolsos_pendentes').update({ tentativas: (r.tentativas || 0) + 1, ultima_tentativa_em: agora, ultimo_erro: null }).eq('id', r.id)
-    await concluir(admin, r, por)
-    return { id: r.id, ok: true }
-  } catch (e) {
-    const erro = (e as Error)?.message || 'erro'
-    // Já estornado (ex.: o dono fez no painel do Asaas e o aviso ainda não chegou): conta como feito.
-    if (/estornad|refunded|já foi/i.test(erro)) { await concluir(admin, r, por); return { id: r.id, ok: true, jaEstava: true } }
-    await admin.from('reembolsos_pendentes').update({ tentativas: (r.tentativas || 0) + 1, ultima_tentativa_em: agora, ultimo_erro: erro }).eq('id', r.id)
-    return { id: r.id, ok: false, erro }
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return json({ erro: 'método não permitido' }, 405)
@@ -69,9 +53,9 @@ Deno.serve(async (req) => {
     const { data: pend } = await admin.from('reembolsos_pendentes').select('*').eq('status', 'pendente').order('pedido_em')
     const resultados = []
     for (const r of pend || []) {
-      const res = await tentar(r, 'automatico')
+      const res = await avancar(admin, asaas, r, 'automatico')
       resultados.push(res)
-      if (res.ok) continue
+      if (res.feito || res.fase === 'em_andamento') continue // em andamento: o Asaas está processando, nada a fazer
       const ultimo = r.ultimo_alerta_dono_em ? new Date(r.ultimo_alerta_dono_em).getTime() : 0
       if (Date.now() - ultimo >= HORAS_ENTRE_AVISOS * 3600 * 1000) {
         const { data: atual } = await admin.from('reembolsos_pendentes').select('*').eq('id', r.id).maybeSingle()
@@ -96,7 +80,7 @@ Deno.serve(async (req) => {
   if (r.status !== 'pendente') return json({ erro: 'esse reembolso já foi resolvido' }, 400)
 
   if (body?.acao === 'tentar') {
-    const res = await tentar(r, 'painel')
+    const res = await avancar(admin, asaas, r, 'painel')
     await admin.from('admin_log').insert({ admin_id: u.user.id, acao: 'reembolso_tentar', grupo_id: r.grupo_id, detalhe: res }).then(() => {}, () => {})
     return json(res)
   }
