@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   LayoutDashboard, Users, Wallet, Package, Ticket, LifeBuoy, Shield, Webhook, Activity,
   Menu, X, Sun, Moon, LogOut, Loader, ShieldAlert, RefreshCw, TrendingUp, ScrollText, Settings,
-  MessageCircle, FlaskConical, Megaphone, Mail, Sparkles,
+  MessageCircle, FlaskConical, Megaphone, Mail, Sparkles, Undo2,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -16,11 +16,12 @@ import './painel.css'
 import Comunicados from './Comunicados'
 import EmailsAutomaticos from './EmailsAutomaticos'
 import Agencia from './Agencia'
+import Reembolsos from './Reembolsos'
 
 const MENU = [
   { grupo: 'Principal', itens: [{ id: 'visao', nome: 'Visão geral', icon: LayoutDashboard }] },
   { grupo: 'Clientes', itens: [{ id: 'grupos', nome: 'Clientes', icon: Users }] },
-  { grupo: 'Financeiro', itens: [{ id: 'receitas', nome: 'Receitas', icon: TrendingUp }, { id: 'custos', nome: 'Custos', icon: Wallet }, { id: 'servicos', nome: 'Serviços & créditos', icon: Package }] },
+  { grupo: 'Financeiro', itens: [{ id: 'receitas', nome: 'Receitas', icon: TrendingUp }, { id: 'custos', nome: 'Custos', icon: Wallet }, { id: 'servicos', nome: 'Serviços & créditos', icon: Package }, { id: 'reembolsos', nome: 'Reembolsos', icon: Undo2 }] },
   { grupo: 'Crescimento', itens: [{ id: 'cupons', nome: 'Cupons', icon: Ticket }, { id: 'comunicados', nome: 'Comunicados', icon: Megaphone }, { id: 'emails', nome: 'E-mails automáticos', icon: Mail }, { id: 'agencia', nome: 'Agência', icon: Sparkles }] },
   { grupo: 'Atendimento', itens: [{ id: 'suporte', nome: 'Suporte', icon: LifeBuoy }] },
   { grupo: 'Sistema', itens: [{ id: 'admins', nome: 'Administradores', icon: Shield }, { id: 'config', nome: 'Configurações', icon: Settings }, { id: 'auditoria', nome: 'Auditoria', icon: ScrollText }, { id: 'webhooks', nome: 'Webhooks', icon: Webhook }, { id: 'saude', nome: 'Saúde', icon: Activity }] },
@@ -149,6 +150,7 @@ function Painel({ logout, email, isDono }) {
           {aba === 'receitas' && <Receitas />}
           {aba === 'custos' && <Custos />}
           {aba === 'servicos' && <Servicos />}
+          {aba === 'reembolsos' && <Reembolsos />}
           {aba === 'suporte' && <Suporte />}
           {aba === 'config' && <Configuracoes />}
           {aba === 'auditoria' && <Auditoria />}

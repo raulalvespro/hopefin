@@ -39,6 +39,7 @@ const urlTrial = `https://${REF}.supabase.co/functions/v1/fim-de-trial`
 const urlVenc = `https://${REF}.supabase.co/functions/v1/lembrete-vencimento`
 const urlResumo = `https://${REF}.supabase.co/functions/v1/resumo-mensal`
 const urlRenovar = `https://${REF}.supabase.co/functions/v1/renovar-cartao`
+const urlReembolsos = `https://${REF}.supabase.co/functions/v1/reembolsos`
 const urlSaude = `https://${REF}.supabase.co/functions/v1/saude-alerta`
 const urlAvisoChamado = `https://${REF}.supabase.co/functions/v1/suporte-aviso-dono`
 const urlComunicados = `https://${REF}.supabase.co/functions/v1/comunicados-agendados`
@@ -161,6 +162,24 @@ select cron.schedule('hopefin-renovar-cartao', '0 13 * * *', $cron$
   );
 $cron$);
 
+-- Reembolsos pendentes (0129) — de hora em hora, aos 20 min, SÓ quando há algum pendente: tenta estornar de novo
+-- e avisa o dono (~a cada 20 h; "ATRASADO" se passou do prazo prometido ao cliente).
+do $unsched$ begin
+  perform cron.unschedule('hopefin-reembolsos');
+exception when others then null; end $unsched$;
+
+select cron.schedule('hopefin-reembolsos', '20 * * * *', $cron$
+  select net.http_post(
+    url := '${urlReembolsos}',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'apikey', '${ANON}',
+      'x-cron-secret', '${CRON}'
+    ),
+    body := '{}'::jsonb
+  ) where exists (select 1 from public.reembolsos_pendentes where status = 'pendente');
+$cron$);
+
 -- Alerta de saúde — de hora em hora (só manda e-mail quando surge problema novo)
 do $unsched$ begin
   perform cron.unschedule('hopefin-saude-alerta');
@@ -256,6 +275,7 @@ console.log('  • hopefin-digest-diario   (08:00 BRT / 11:00 UTC) — digest de
 console.log('  • hopefin-vencimentos     (08:30 BRT / 11:30 UTC) — lembrete de vencimento')
 console.log('  • hopefin-fim-de-trial    (09:00 BRT / 12:00 UTC) — avisos de fim de trial')
 console.log('  • hopefin-renovar-cartao   (10:00 BRT / 13:00 UTC) — renovação do anual no cartão')
+console.log('  • hopefin-reembolsos       (de hora em hora, aos 20 min, só com pendente) — tenta o estorno e avisa o dono')
 console.log('  • hopefin-saude-alerta     (de hora em hora) — alerta de saúde ao dono quando há problema novo')
 console.log('  • hopefin-suporte-aviso     (a cada 5 min, só quando há chamado novo) — e-mail + push pro dono')
 console.log('  • hopefin-comunicados-agendados (a cada 5 min, só quando há comunicado na hora)')

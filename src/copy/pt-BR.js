@@ -952,6 +952,7 @@ export const copy = {
     cancelarReembolso: 'Cancelar e pedir reembolso',
     cancelarSemReembolso: (d) => d ? 'Cancelar e usar até ' + d : 'Cancelar sem reembolso',
     reembolsoOk: 'Cancelado. O reembolso foi solicitado.',
+    reembolsoPendente: (d) => 'Cancelado. Seu reembolso integral será feito até ' + d + ' — você recebe um e-mail quando o dinheiro voltar.',
     manter: 'Manter assinatura',
     confirmar: 'Sim, cancelar',
     cancelando: 'Cancelando…',

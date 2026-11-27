@@ -42,7 +42,7 @@ export default function AssinaturaCard() {
       return
     }
     setConfirmando(false)
-    toast(res.reembolso ? t.reembolsoOk : t.okCancelada(res.acessoAte ? data(res.acessoAte) : null), 'ok', 6000)
+    toast(res.reembolsoPendente ? t.reembolsoPendente(data(res.prazo)) : res.reembolso ? t.reembolsoOk : t.okCancelada(res.acessoAte ? data(res.acessoAte) : null), 'ok', 9000)
     recarregar()
   }
 

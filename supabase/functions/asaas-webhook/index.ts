@@ -15,6 +15,7 @@
 // Sempre responde 200 rápido (o Asaas re-tenta em erro).
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { concluir } from '../_shared/reembolso.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -71,6 +72,18 @@ Deno.serve(async (req) => {
   if (!sub && pay?.externalReference) {
     sub = (await admin.from('subscriptions').select('*').eq('grupo_id', pay.externalReference).maybeSingle()).data
   }
+  // Estorno confirmado pelo Asaas: fecha o reembolso pendente (0129), venha ele da nossa função ou de um
+  // estorno feito à mão no painel do Asaas. Manda o e-mail "seu reembolso foi feito" (uma vez só).
+  if (event === 'PAYMENT_REFUNDED') {
+    try {
+      const filtros = [pay?.id ? `asaas_payment_id.eq.${pay.id}` : null, pay?.installment ? `asaas_installment_id.eq.${pay.installment}` : null].filter(Boolean)
+      if (filtros.length) {
+        const { data: pend } = await admin.from('reembolsos_pendentes').select('*').eq('status', 'pendente').or(filtros.join(','))
+        for (const r of pend || []) await concluir(admin, r, 'asaas')
+      }
+    } catch (e) { console.error('[asaas-webhook] reembolso pendente:', (e as Error)?.message) }
+  }
+
   // Sem assinatura vinculada não há o que atualizar (ex.: cobrança avulsa de outro tipo).
   if (!sub) { await fecharLog('ignorado: sem subscription'); return json({ ok: true, ignorado: 'sem subscription' }) }
 
