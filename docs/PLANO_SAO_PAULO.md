@@ -40,8 +40,9 @@ Escrito em 27/11/2026. **Nada foi executado.** Este documento serve para o Raul 
 ## Passo a passo proposto
 
 **Fase 0 — Decidir (Raul)**
-- Projeto novo já no **plano Pro** (US$ 25/mês)? O Pro traz backup diário, o projeto não pausa por inatividade e tem
-  o bloqueio de senha vazada (L39), o que fecha também o R17. Recomendo sim, se for mudar.
+- Plano do projeto novo. Em 20/11 o Raul decidiu **plano grátis agora** e o Pro só quando tiver retorno, então o padrão
+  é o grátis. O **Pro** (US$ 25/mês) traz backup diário, o projeto não pausa por inatividade e tem o bloqueio de senha
+  vazada (L39), o que fecha também o R17. Dá pra subir de plano depois sem mudar nada.
 - Data: **antes de abrir a venda (~20/12)**, com poucos clientes. Melhor fazer junto com a troca para o número oficial
   do WhatsApp, porque o webhook da Meta muda de qualquer jeito nessa hora.
 - Precisa do Raul com o **celular funcionando** (Asaas, e a 2FA do Supabase quando ele ligar).
