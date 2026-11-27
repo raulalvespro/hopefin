@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ShieldCheck, Loader, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { ehPrevia } from './host'
-import { Turnstile, ehErroCaptcha } from '../lib/turnstile'
+import { Turnstile, ehErroCaptcha, ehCaptchaFalhou } from '../lib/turnstile'
 import { copy } from '../copy/pt-BR'
 
 // Login DEDICADO do painel do dono — nada a ver com o onboarding/login do app.
@@ -20,7 +20,7 @@ export default function AdminLogin() {
     setErro(''); setCarregando(true)
     const { error } = await login(email.trim(), senha)
     setCarregando(false)
-    if (error) setErro(ehErroCaptcha(error) ? copy.login.erroCaptcha : copy.login.erroCredenciais)
+    if (error) setErro(ehCaptchaFalhou(error) ? copy.login.erroCaptchaFalhou : ehErroCaptcha(error) ? copy.login.erroCaptcha : copy.login.erroCredenciais)
     // Em caso de sucesso, o AuthContext atualiza a sessão e o AdminApp segue pro 2FA/painel.
   }
 

@@ -14,6 +14,9 @@ export const turnstileLigado = !!SITE_KEY
 
 let token = null
 let pediuClique = false // a Cloudflare mostrou o quadrinho "Confirme que é humano" e ninguém marcou ainda
+// 27/11: a verificação deu erro ("Falha na verificação" no quadrinho). Antes o login esperava 15 s + 20 s por um passe
+// que não vinha e o botão ficava em "Entrando…". Agora responde na hora e a tela pede pra recarregar.
+let falhou = false
 let esperando = []
 let widgetId = null
 let carregando = null
@@ -35,6 +38,7 @@ function carregarScript() {
 function receber(t) {
   token = t
   pediuClique = false
+  falhou = false
   const fila = esperando; esperando = []
   fila.forEach((r) => r(t))
 }
@@ -44,6 +48,7 @@ function receber(t) {
 export async function pegarToken(ms = 15000) {
   if (!turnstileLigado) return undefined
   if (token) return token
+  if (falhou || pediuClique) return undefined // não vem passe sozinho: a tela tem que avisar já
   return new Promise((resolve) => {
     esperando.push(resolve)
     setTimeout(() => resolve(token || undefined), ms)
@@ -56,12 +61,28 @@ export function ehErroCaptcha(error) {
   return error.code === 'captcha_failed' || /captcha/i.test(String(error.message || ''))
 }
 
+// A verificação da Cloudflare deu erro neste navegador (não é falta de marcar o quadrinho).
+export function ehCaptchaFalhou(error) {
+  return /verificacao_falhou/.test(String(error?.message || ''))
+}
+
 // Chama o Supabase com o passe; se ele recusar SÓ pelo passe, pede um novo e tenta mais uma vez.
 // `chamar(opcoes)` recebe { captchaToken } (ou {}) e devolve { data, error } do supabase-js.
 export async function comCaptcha(chamar) {
-  // Quadrinho na tela e sem passe: nem manda (o Supabase recusaria) — a tela pede pra marcar.
-  if (turnstileLigado && !token && pediuClique) return { data: null, error: { code: 'captcha_failed', message: 'captcha: marque o quadrinho' } }
-  let r = await chamar(await opcoesCaptcha())
+  // Sem passe e a Cloudflare parou pra pedir o quadrinho (ou deu erro): nem manda (o Supabase recusaria e seriam
+  // ~35 s de "Entrando…" pra nada). Vale também quando o quadrinho aparece DEPOIS do clique, enquanto espera o passe.
+  const semPasse = () => {
+    if (!turnstileLigado || token) return null
+    if (falhou) return { data: null, error: { code: 'captcha_failed', message: 'captcha: verificacao_falhou' } }
+    if (pediuClique) return { data: null, error: { code: 'captcha_failed', message: 'captcha: marque o quadrinho' } }
+    return null
+  }
+  const antes = semPasse()
+  if (antes) return antes
+  const opcoes = await opcoesCaptcha()
+  const depois = !opcoes.captchaToken && semPasse()
+  if (depois) return depois
+  let r = await chamar(opcoes)
   renovarToken()
   if (turnstileLigado && ehErroCaptcha(r?.error)) {
     const t = await pegarToken(20000)
@@ -97,17 +118,26 @@ export function Turnstile() {
         language: 'pt-br',
         'refresh-expired': 'auto',
         callback: receber,
-        'before-interactive-callback': () => { pediuClique = true },
+        'before-interactive-callback': () => {
+          pediuClique = true
+          const fila = esperando; esperando = []
+          fila.forEach((r) => r(undefined)) // quem esperava o passe fica sabendo já que precisa do clique
+        },
         'after-interactive-callback': () => { pediuClique = false },
         'expired-callback': () => { token = null },
         'timeout-callback': () => { token = null; try { window.turnstile.reset(widgetId) } catch { /* saiu */ } },
-        'error-callback': () => { token = null; return false /* deixa a Cloudflare tentar de novo sozinha */ },
+        'error-callback': () => {
+          token = null; falhou = true
+          const fila = esperando; esperando = []
+          fila.forEach((r) => r(undefined)) // quem esperava o passe recebe "sem passe" agora, não daqui a 15 s
+          return false // deixa a Cloudflare tentar de novo sozinha (se der certo, receber() limpa o "falhou")
+        },
       })
     }).catch(() => { /* sem internet pra Cloudflare: o Supabase avisa no envio */ })
     return () => {
       vivo = false
       try { if (window.turnstile && widgetId != null) window.turnstile.remove(widgetId) } catch { /* já saiu */ }
-      widgetId = null; token = null; pediuClique = false
+      widgetId = null; token = null; pediuClique = false; falhou = false
     }
   }, [])
   if (!turnstileLigado) return null

@@ -8,13 +8,20 @@ vi.stubEnv('VITE_TURNSTILE_SITE_KEY', '')
 const { mensagemErroSenha, SENHA_MIN, ehEsperaDeEnvio, ehLinkDeRecuperacao, enviarRecuperacao, ESPERA_REENVIO_SEG } = await import('../src/lib/acesso.js')
 const { normalizarCupom } = await import('../src/lib/cupom.js')
 const { copy } = await import('../src/copy/pt-BR.js')
-const { ehErroCaptcha } = await import('../src/lib/turnstile.js')
+const { ehErroCaptcha, ehCaptchaFalhou } = await import('../src/lib/turnstile.js')
 
 describe('captcha (Turnstile)', () => {
   it('recusa por falta do passe não vira "senha errada"', () => {
     expect(ehErroCaptcha({ code: 'captcha_failed', message: 'captcha protection: request disallowed (no captcha_token found)' })).toBe(true)
     expect(ehErroCaptcha({ code: 'invalid_credentials', message: 'Invalid login credentials' })).toBe(false)
     expect(ehErroCaptcha(null)).toBe(false)
+  })
+  it('verificação que falhou no navegador tem mensagem própria (não "marque o quadrinho")', () => {
+    const falhou = { code: 'captcha_failed', message: 'captcha: verificacao_falhou' }
+    expect(ehErroCaptcha(falhou)).toBe(true)
+    expect(ehCaptchaFalhou(falhou)).toBe(true)
+    expect(ehCaptchaFalhou({ code: 'captcha_failed', message: 'captcha: marque o quadrinho' })).toBe(false)
+    expect(ehCaptchaFalhou(null)).toBe(false)
   })
 })
 

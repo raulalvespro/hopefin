@@ -24,6 +24,7 @@ export const copy = {
     criarConta: 'Criar conta grátis',
     erroCredenciais: 'E-mail ou senha incorretos.',
     erroCaptcha: 'Marque o quadrinho "Confirme que é humano" logo acima do botão e tente de novo.',
+    erroCaptchaFalhou: 'A verificação de segurança não passou neste navegador. Recarregue a página e tente de novo. Se continuar, abra o app em outro navegador.',
 
     // Recuperação de senha (fluxo inline, sem mudar a lógica de auth)
     recTitulo: 'Recuperar senha',
