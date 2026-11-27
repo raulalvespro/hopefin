@@ -518,6 +518,7 @@ export const copy = {
     fotoOk: 'Foto atualizada',
     fotoErro: 'Não foi possível salvar a foto.',
     fotoArquivo: 'Escolha um arquivo de imagem.',
+    fotoLer: 'Não consegui abrir essa foto. Tente outra, ou tire um print dela e escolha o print.',
     secFamilia: 'Minha família',
     grupoTitulo: 'Grupo',
     grupoSub: 'Todo mundo aqui vê e lança no mesmo painel',

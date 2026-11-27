@@ -1,6 +1,7 @@
 import { lerConvite, limparConvite, codigoBonito } from '../lib/convite'
 import { lerCupom, limparCupom } from '../lib/cupom'
 import { SENHA_MIN, mensagemErroSenha, reenviarConfirmacao } from '../lib/acesso'
+import { Turnstile } from '../lib/turnstile'
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
@@ -134,6 +135,7 @@ export default function Cadastro() {
       <div className="entrada">
         <PainelMarca titulo={t.painelTitulo} subtitulo={t.painelTexto} arte={<ArteCadastro preco={preco} />} />
         <section className="entrada-form">
+          <Turnstile />
           <div className="entrada-card hf-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <h2 style={{ margin: 0, fontFamily: "'Syne', system-ui, sans-serif", fontWeight: 700, fontSize: 26, lineHeight: '32px' }}>{t.confirmeTitulo}</h2>
             <p style={{ margin: 0, fontSize: 15, lineHeight: '22px', color: 'var(--text2)' }}>{t.confirmeTexto(confirmar)}</p>
@@ -151,6 +153,7 @@ export default function Cadastro() {
     <div className="entrada">
       <PainelMarca titulo={t.painelTitulo} subtitulo={t.painelTexto} arte={<ArteCadastro preco={preco} />} />
       <section className="entrada-form">
+        <Turnstile />
         <div className="entrada-card hf-in">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>
             <h2 style={{ margin: 0, fontFamily: "'Syne', system-ui, sans-serif", fontWeight: 700, fontSize: 26, lineHeight: '32px' }}>{t.titulo}</h2>

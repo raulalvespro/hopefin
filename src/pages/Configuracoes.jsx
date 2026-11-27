@@ -11,7 +11,7 @@ import WhatsAppCard from '../components/WhatsAppCard'
 import { useFlags } from '../hooks/useFlags'
 import { copy } from '../copy/pt-BR'
 import { SENHA_MIN, mensagemErroSenha } from '../lib/acesso'
-import { redimensionar } from '../lib/foto'
+import { redimensionar, pareceImagem } from '../lib/foto'
 import { Compass, Tags, ChevronRight, Sun, Moon, Monitor, Palette, Database, Sparkles, Camera, Bell, Upload, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
 const OPCOES_TEMA = [
@@ -61,11 +61,14 @@ export default function Configuracoes() {
     const file = ev.target.files?.[0]
     ev.target.value = ''
     if (!file) return
-    if (!file.type.startsWith('image/')) { toast('Escolha um arquivo de imagem.', 'erro'); return }
-    try {
-      const dataUrl = await redimensionar(file)
-      await salvarFoto(dataUrl, 'Foto atualizada')
-    } catch { toast('Não foi possível processar a imagem.', 'erro') }
+    if (!pareceImagem(file)) { toast(copy.minhaConta.fotoArquivo, 'erro'); return }
+    setSalvandoFoto(true)
+    let dataUrl
+    try { dataUrl = await redimensionar(file) } catch (e) {
+      console.error('[foto] não leu a imagem:', e?.message, file.type, file.size)
+      toast(copy.minhaConta.fotoLer, 'erro'); setSalvandoFoto(false); return
+    }
+    await salvarFoto(dataUrl, copy.minhaConta.fotoOk)
   }
 
   return (

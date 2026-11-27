@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
 import { fmtData } from '../lib/format'
-import { redimensionar } from '../lib/foto'
+import { redimensionar, pareceImagem } from '../lib/foto'
 import { statusPush, ativarPush } from '../lib/push'
 import { useAssinatura } from '../hooks/useAssinatura'
 import { useFlags } from '../hooks/useFlags'
@@ -102,15 +102,19 @@ export default function MinhaConta() {
     const file = ev.target.files?.[0]
     ev.target.value = ''
     if (!file) return
-    if (!file.type.startsWith('image/')) { toast(t.fotoArquivo, 'erro'); return }
+    if (!pareceImagem(file)) { toast(t.fotoArquivo, 'erro'); return }
     setSalvandoFoto(true)
+    let url
+    try { url = await redimensionar(file) } catch (e) {
+      console.error('[foto] não leu a imagem:', e?.message, file.type, file.size)
+      toast(t.fotoLer, 'erro'); setSalvandoFoto(false); return
+    }
     try {
-      const url = await redimensionar(file)
       const { error } = await supabase.from('usuarios').update({ foto_url: url }).eq('id', perfil.id)
       if (error) throw error
       await carregarPerfil(user)
       toast(t.fotoOk, 'ok')
-    } catch { toast(t.fotoErro, 'erro') }
+    } catch (e) { console.error('[foto] não salvou:', e?.message); toast(t.fotoErro, 'erro') }
     setSalvandoFoto(false)
   }
 

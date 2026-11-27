@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { normalizarCodigo, limparConvite } from '../lib/convite'
 import { limparCupom } from '../lib/cupom'
+import { opcoesCaptcha, renovarToken } from '../lib/turnstile'
 import { identificar, resetarUsuario } from '../lib/analytics'
 import * as Sentry from '@sentry/react'
 
@@ -135,7 +136,10 @@ export function AuthProvider({ children }) {
   }
 
   async function login(email, senha) {
-    return supabase.auth.signInWithPassword({ email, password: senha })
+    // Turnstile (L39): o passe vai junto quando ligado; depois de usado, pede outro.
+    const r = await supabase.auth.signInWithPassword({ email, password: senha, options: await opcoesCaptcha() })
+    renovarToken()
+    return r
   }
 
   // tipo 'novo'      -> cadastrar(nome, email, senha, null, nomeGrupo)
@@ -149,6 +153,7 @@ export function AuthProvider({ children }) {
       options: {
         // Com a confirmação de e-mail (L40), o link do e-mail volta pra cá (app ou localhost).
         emailRedirectTo: `${window.location.origin}/`,
+        ...(await opcoesCaptcha()),
         data: {
           nome,
           nome_grupo: nomeGrupo || null,
@@ -160,6 +165,7 @@ export function AuthProvider({ children }) {
         },
       },
     })
+    renovarToken()
     if (error) return { error }
     return { data }
   }

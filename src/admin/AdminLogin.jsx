@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ShieldCheck, Loader, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { ehPrevia } from './host'
+import { Turnstile } from '../lib/turnstile'
 
 // Login DEDICADO do painel do dono — nada a ver com o onboarding/login do app.
 // A verificação em 2 etapas (2FA) acontece depois, no Guard2FA (já com sessão).
@@ -24,6 +25,7 @@ export default function AdminLogin() {
 
   return (
     <div className="adm-auth">
+      <Turnstile />
       <form className="adm-auth-card" onSubmit={entrar}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
           <div style={{ width: 40, height: 40, borderRadius: 11, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

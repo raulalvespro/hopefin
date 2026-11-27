@@ -6,6 +6,7 @@ import { Button } from '../components/ui'
 import { Eye, EyeOff } from 'lucide-react'
 import { copy } from '../copy/pt-BR'
 import { reenviarConfirmacao, enviarRecuperacao, ESPERA_REENVIO_SEG } from '../lib/acesso'
+import { Turnstile } from '../lib/turnstile'
 
 const t = copy.login
 const ta = copy.acesso
@@ -73,6 +74,7 @@ export default function Login() {
     <div className="entrada">
       <PainelMarca />
       <section className="entrada-form">
+        <Turnstile />
         <div className="entrada-card hf-in">
 
           {modo === 'login' && (
