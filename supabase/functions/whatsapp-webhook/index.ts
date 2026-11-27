@@ -221,14 +221,19 @@ const TEXTO_TRAVA: Record<string, string> = {
 // ou documento antes do texto, com a instrução a mais de leitura (J.instrucoesMidia).
 type Midia = { b64: string, mime: string }
 async function interpretar(u: any, texto: string, pendente?: Record<string, unknown>, midia?: Midia) {
-  const [{ data: cats }, { data: cartoes }] = await Promise.all([
+  const [{ data: cats }, { data: cartoes }, { data: pes }, { data: mem }] = await Promise.all([
     admin.from('categorias').select('nome').eq('grupo_id', u.grupo_id).order('nome'),
     admin.from('cartoes').select('id, nome').eq('grupo_id', u.grupo_id).eq('ativo', true),
+    // 26/11: "foi da Jack" → gasto de outra pessoa (A receber). Pessoas já cadastradas + quem é da família.
+    admin.from('pessoas').select('nome').eq('grupo_id', u.grupo_id).order('nome').limit(200),
+    admin.from('usuarios').select('nome').eq('grupo_id', u.grupo_id),
   ])
   const categorias = (cats || []).map((c: any) => c.nome)
+  const pessoas = (pes || []).map((p: any) => String(p.nome || '').trim()).filter(Boolean)
+  const membros = (mem || []).map((m: any) => String(m.nome || '').trim()).filter(Boolean)
   const hoje = hojeBRT()
   const system = J.instrucoesIA({ hoje, semana: semanaSP(), categorias }) + (midia ? J.instrucoesMidia() : '')
-  const userMsg = JSON.stringify({ texto, cartoes: (cartoes || []).map((c: any) => ({ id: c.id, nome: c.nome })), ...(pendente ? { pendente } : {}) })
+  const userMsg = JSON.stringify({ texto, cartoes: (cartoes || []).map((c: any) => ({ id: c.id, nome: c.nome })), pessoas, membros, ...(pendente ? { pendente } : {}) })
   const conteudo = midia
     ? [
         midia.mime === 'application/pdf'
@@ -262,7 +267,7 @@ async function interpretar(u: any, texto: string, pendente?: Record<string, unkn
         semJson = true
         throw new Error(`sem JSON (stop: ${out?.stop_reason || '?'}, ${String(textoResp).length} letras)`)
       }
-      const dados = J.limparIA(bruto, { texto, hoje, categorias, cartoes: cartoes || [] })
+      const dados = J.limparIA(bruto, { texto, hoje, categorias, cartoes: cartoes || [], pessoas, membros })
       await registrarIA(u, operacao, MODELO, { tokensIn, tokensOut, ms: Date.now() - t0 })
       return { dados, cartoes: cartoes || [] }
     } catch (e) {

@@ -134,8 +134,8 @@ describe('resposta da IA (nunca confiar cegamente)', () => {
   })
   it('vai pro banco só o que o banco usa', () => {
     const d = limparIA({ acao: 'lancar', tipo: 'gasto', valor: 30, descricao: 'Uber', categoria: 'transporte', confianca: 0.9 }, ctx)
-    expect(Object.keys(paraSalvar(d)).sort()).toEqual(['cartao_id', 'categoria', 'data', 'descricao', 'parcelas', 'tipo', 'tipo_pagamento', 'valor'])
-    expect(pendenteParaIA(d)).toEqual({ tipo: 'gasto', valor: 30, descricao: 'Uber', categoria: 'transporte', cartao_id: null, data: HOJE, parcelas: 1, forma: 'pix' })
+    expect(Object.keys(paraSalvar(d)).sort()).toEqual(['cartao_id', 'categoria', 'data', 'descricao', 'parcelas', 'pessoa_nome', 'tipo', 'tipo_pagamento', 'valor'])
+    expect(pendenteParaIA(d)).toEqual({ tipo: 'gasto', valor: 30, descricao: 'Uber', categoria: 'transporte', cartao_id: null, data: HOJE, parcelas: 1, forma: 'pix', pessoa: null })
   })
   it('forma do gasto sem cartão: dinheiro só quando dito; o resto é Pix (igual ao app)', () => {
     expect(formaDoGasto('dinheiro', '')).toBe('dinheiro')

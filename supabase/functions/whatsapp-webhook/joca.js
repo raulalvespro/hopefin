@@ -58,6 +58,7 @@ export function resumoLancamento(d, hoje) {
     else linhas.push(`💵 ${rotuloForma(d.forma)}`)
   }
   if (d.data && d.data !== hoje) linhas.push(`📅 ${ddmm(d.data)}`)
+  if (!entrada && d.pessoa) linhas.push(`👤 De ${d.pessoa} · vai pro A receber`)
   return linhas.join('\n')
 }
 
@@ -280,17 +281,18 @@ export function instrucoesIA({ hoje, semana, categorias }) {
     `- data: "YYYY-MM-DD". Hoje é ${hoje} (${semana}, America/Sao_Paulo). Entenda "ontem", "sexta", "dia 3". (só em "lancar")`,
     '- parcelas: inteiro >= 1 (1 = à vista) (só em "lancar")',
     '- forma: só em gasto SEM cartão: "dinheiro" quando a pessoa disser dinheiro ou espécie; "pix" em todo o resto (Pix, débito, transferência, boleto ou quando não disser). Com cartão ou em entrada: null.',
+    '- pessoa: SÓ em gasto que é de OUTRA pessoa, que vai te devolver o dinheiro. Ex.: "mercado 120 da Jack", "foi da Jack", "uber 30 pra minha mãe, ela me paga", "comprei pro Raifran". Escreva só o nome como a pessoa falou ("minha mãe" vira "Mãe"). Se o nome bater com um da lista "pessoas" (mesmo sem acento ou com maiúscula diferente), use o nome EXATO da lista. NÃO use pra quem está na lista "membros" (são da própria família no app) nem quando o gasto é da própria pessoa ou da casa. Em entrada: null. Na dúvida: null.',
     '- confianca: de 0 a 1, o quanto você tem certeza da ação e dos campos principais (valor e tipo). Se faltar o valor ou a frase for ambígua, use confiança baixa (abaixo de 0.6).',
-    '- itens: SÓ em "lancar_varios": lista com um objeto por lançamento, cada um com tipo, valor, descricao, categoria, cartao_id, data, parcelas e forma (mesmas regras acima). Nos outros casos, null.',
+    '- itens: SÓ em "lancar_varios": lista com um objeto por lançamento, cada um com tipo, valor, descricao, categoria, cartao_id, data, parcelas, forma e pessoa (mesmas regras acima). Nos outros casos, null.',
     '',
-    'Se vier "pendente" (um lançamento que o Joca perguntou "tá certo?" e ainda NÃO foi salvo) e a mensagem corrigir algo dele (valor, cartão, data, categoria, parcelas ou descrição), use acao "lancar" e devolva o lançamento COMPLETO já corrigido.',
+    'Se vier "pendente" (um lançamento que o Joca perguntou "tá certo?" e ainda NÃO foi salvo) e a mensagem corrigir algo dele (valor, cartão, data, categoria, parcelas, descrição ou de quem é), use acao "lancar" e devolva o lançamento COMPLETO já corrigido.',
   ].join('\n')
 }
 
 // O lançamento que espera o "sim", do jeito que vai pra IA como "pendente".
 export function pendenteParaIA(d) {
   if (!d) return undefined
-  return { tipo: d.tipo, valor: d.valor, descricao: d.descricao, categoria: d.categoria, cartao_id: d.cartao_id, data: d.data, parcelas: d.parcelas, forma: d.forma }
+  return { tipo: d.tipo, valor: d.valor, descricao: d.descricao, categoria: d.categoria, cartao_id: d.cartao_id, data: d.data, parcelas: d.parcelas, forma: d.forma, pessoa: d.pessoa || null }
 }
 
 // Pix ou dinheiro (gasto sem cartão). A IA diz; a frase também vale ("50 em dinheiro" sem a IA
@@ -310,7 +312,18 @@ export function extrairJson(txt) {
 
 // Saneia a resposta da IA: nunca confiar cegamente (cartão só da lista, categoria só das do grupo,
 // valor positivo e com teto, data no formato certo).
-export function limparIA(dados, { texto, hoje, categorias, cartoes }) {
+// Pessoa do "foi de outra pessoa" (26/11/2026): nome curto; se bater com uma pessoa já cadastrada
+// (sem acento/maiúscula), usa o nome do cadastro; se for alguém da família no app (membro), ignora.
+export function pessoaDoGasto(nomeIA, { pessoas = [], membros = [] } = {}) {
+  const n = maiuscula(String(nomeIA || '').replace(/\s+/g, ' ').trim().slice(0, 60))
+  if (!n) return { pessoa: null, pessoa_nova: false }
+  const chave = normalizar(n)
+  if ((membros || []).some((m) => normalizar(m) === chave || normalizar(primeiroNome(m)) === chave)) return { pessoa: null, pessoa_nova: false }
+  const existe = (pessoas || []).find((p) => normalizar(p) === chave)
+  return existe ? { pessoa: String(existe).trim(), pessoa_nova: false } : { pessoa: n, pessoa_nova: true }
+}
+
+export function limparIA(dados, { texto, hoje, categorias, cartoes, pessoas = [], membros = [] }) {
   const d = dados || {}
   const listaCartoes = cartoes || []
   const cartao = listaCartoes.find((c) => c.id === d.cartao_id) || null
@@ -319,6 +332,7 @@ export function limparIA(dados, { texto, hoje, categorias, cartoes }) {
   const conf = Number(d.confianca)
   const parcelas = Number(d.parcelas)
   const tipo = d.tipo === 'entrada' ? 'entrada' : 'gasto'
+  const quem = tipo === 'gasto' ? pessoaDoGasto(d.pessoa, { pessoas, membros }) : { pessoa: null, pessoa_nova: false }
   return {
     acao,
     tipo,
@@ -331,10 +345,12 @@ export function limparIA(dados, { texto, hoje, categorias, cartoes }) {
     data: /^\d{4}-\d{2}-\d{2}$/.test(String(d.data || '')) ? d.data : hoje,
     parcelas: Number.isInteger(parcelas) && parcelas > 1 && parcelas <= 72 ? parcelas : 1,
     confianca: Number.isFinite(conf) ? Math.min(1, Math.max(0, conf)) : 0.5,
+    pessoa: quem.pessoa,
+    pessoa_nova: quem.pessoa_nova,
     // Vários lançamentos numa mensagem (21/11/2026): cada item passa pela MESMA limpeza.
     itens: acao === 'lancar_varios'
       ? (Array.isArray(d.itens) ? d.itens : []).slice(0, 20)
-        .map((i) => limparIA({ ...i, acao: 'lancar' }, { texto: [i?.descricao, i?.forma].filter(Boolean).join(' '), hoje, categorias, cartoes: listaCartoes }))
+        .map((i) => limparIA({ ...i, acao: 'lancar' }, { texto: [i?.descricao, i?.forma].filter(Boolean).join(' '), hoje, categorias, cartoes: listaCartoes, pessoas, membros }))
         .filter((i) => i.valor)
         .map(({ itens: _i, acao: _a, ...resto }) => resto)
       : null,
@@ -342,7 +358,8 @@ export function limparIA(dados, { texto, hoje, categorias, cartoes }) {
 }
 
 // Precisa do "tá certo?" antes de salvar?
-export const emDuvida = (d) => !(Number(d?.confianca) >= LIMIAR_CONFIANCA)
+// Pessoa que ainda não está no cadastro também pergunta (evita "Jack" e "Jak" virarem 2 pessoas).
+export const emDuvida = (d) => !(Number(d?.confianca) >= LIMIAR_CONFIANCA) || !!d?.pessoa_nova
 
 // O que vai pro banco no lançamento (wa_salvar_lancamento) — sem os campos só de tela.
 export function paraSalvar(d) {
@@ -350,6 +367,7 @@ export function paraSalvar(d) {
     tipo: d.tipo, valor: d.valor, descricao: d.descricao, categoria: d.categoria,
     cartao_id: d.cartao_id, data: d.data, parcelas: d.parcelas,
     tipo_pagamento: d.tipo !== 'entrada' && !d.cartao_id ? (d.forma === 'dinheiro' ? 'dinheiro' : 'pix') : null,
+    pessoa_nome: d.tipo !== 'entrada' && d.pessoa ? d.pessoa : null,
   }
 }
 
@@ -425,6 +443,7 @@ export function linhaItem(d, n, hoje) {
   const partes = [`${n}. ${entrada ? '💰' : '💸'} *${brl(d.valor)}* · ${d.descricao}`]
   if (!entrada) partes.push(d.cartao_nome ? `${d.cartao_nome}${d.parcelas > 1 ? ` ${d.parcelas}x` : ''}` : rotuloForma(d.forma))
   if (d.data && d.data !== hoje) partes.push(`📅 ${ddmm(d.data)}`)
+  if (!entrada && d.pessoa) partes.push(`👤 ${d.pessoa}`)
   return partes.join(' · ')
 }
 export const listaItens = (itens, hoje) => itens.map((d, i) => linhaItem(d, i + 1, hoje)).join('\n')
