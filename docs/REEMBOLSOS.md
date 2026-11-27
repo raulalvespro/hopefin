@@ -81,3 +81,26 @@ A conta mostra "100 recebimentos Pix sem taxa por mês", mas o 1º Pix pagou R$ 
 - Estornou direto no painel do Asaas? Não precisa fazer nada no HopeFin: o aviso do Asaas fecha o reembolso sozinho.
 - Peças: tabela `reembolsos_pendentes` (0129), funções `asaas-cancelar` (cria), `reembolsos` (cron e painel) e
   `asaas-webhook` (`PAYMENT_REFUNDED` fecha), e `_shared/reembolso.ts` (prazo, avisos e e-mails).
+
+## Dá pra autorizar estorno sem entrar no Asaas? (pesquisado em 27/11)
+
+- **Estorno de Pix:** sim, provavelmente. É o "**Mecanismo para validação de saque via webhooks**" (Integrações ›
+  Mecanismos de segurança, opção "Ativar autorização de saque para estornos Pix"): o Asaas chama uma URL nossa e a
+  gente responde `APPROVED` ou `REFUSED`. Nós só aprovaríamos estorno que estivesse em `reembolsos_pendentes`, com o
+  mesmo valor e a mesma cobrança. **Falta confirmar com o suporte** se, com isso ligado, a autorização manual some.
+- **Estorno de cartão:** o webhook e a lista de IPs **não cobrem**. Segue manual até o suporte dizer outra coisa.
+- **Lista de IPs:** não serve, porque as funções do Supabase não têm IP fixo.
+- **Por enquanto:** autorização manual no Asaas (é um toque, e protege a conta).
+
+## Cartão parcelado: caixa e antecipação
+
+- Sem antecipação, cada parcela cai **32 dias** depois de cobrada, ao longo de 12 meses.
+- **Antecipação:** custa cerca de 1,25% a 1,70% ao mês por parcela (confirmar no simulador do Asaas) e passa por
+  análise de crédito. Nos 12x de R$ 178,80, antecipar tudo custa uns R$ 14,50 a R$ 19,80. Sobram uns R$ 153 a R$ 158
+  de uma vez, mais que o anual no Pix (R$ 148,91).
+- **Plano:** antecipar **só depois dos 7 dias** de arrependimento. No 8º dia, o app pede a antecipação pela API.
+  Assim, quem desiste não gera antecipação pra desfazer e o estorno só cancela a compra no cartão.
+  **Depende de:** (1) o teste do cartão (L4), que mostra se o estorno nos 7 dias precisa de saldo; (2) a conta estar
+  liberada pra antecipação e a taxa real.
+- Estorno de parcelamento, pela documentação: "o saldo correspondente é debitado da sua conta" e aparece na fatura do
+  cliente em até 10 dias úteis. As taxas não voltam.
