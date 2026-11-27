@@ -1,7 +1,7 @@
 import { lerConvite, limparConvite, codigoBonito } from '../lib/convite'
 import { lerCupom, limparCupom } from '../lib/cupom'
 import { SENHA_MIN, mensagemErroSenha, reenviarConfirmacao } from '../lib/acesso'
-import { Turnstile } from '../lib/turnstile'
+import { Turnstile, ehErroCaptcha } from '../lib/turnstile'
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
@@ -123,6 +123,7 @@ export default function Cadastro() {
   function traduzErro(error) {
     const m = (error?.message || '').toLowerCase()
     if (m.includes('already registered') || m.includes('already been')) return t.erroEmailUsado
+    if (ehErroCaptcha(error)) return copy.login.erroCaptcha
     const senha = mensagemErroSenha(error)
     if (senha) return senha
     if (m.includes('codigo_invalido') || m.includes('invalid')) return t.erroCodigoInvalido

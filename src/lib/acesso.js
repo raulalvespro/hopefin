@@ -3,7 +3,7 @@
 // O servidor confere o mesmo mínimo (password_min_length = 8, scripts/config-auth-seguranca.mjs).
 import { supabase } from './supabase'
 import { copy } from '../copy/pt-BR'
-import { opcoesCaptcha, renovarToken } from './turnstile'
+import { comCaptcha } from './turnstile'
 
 export const SENHA_MIN = 8
 const t = copy.acesso
@@ -28,12 +28,11 @@ export function ehEsperaDeEnvio(error) {
 
 // Reenvia o e-mail de confirmação do cadastro. Devolve { ok, texto } pronto pra mostrar.
 export async function reenviarConfirmacao(email) {
-  const { error } = await supabase.auth.resend({
+  const { error } = await comCaptcha((cap) => supabase.auth.resend({
     type: 'signup',
     email: String(email || '').trim(),
-    options: { emailRedirectTo: `${window.location.origin}/`, ...(await opcoesCaptcha()) },
-  })
-  renovarToken()
+    options: { emailRedirectTo: `${window.location.origin}/`, ...cap },
+  }))
   if (!error) return { ok: true, texto: t.reenviado }
   return { ok: false, texto: ehEsperaDeEnvio(error) ? t.reenviarEspere : t.reenviarErro }
 }
@@ -42,11 +41,10 @@ export async function reenviarConfirmacao(email) {
 // Por segurança a resposta é a mesma exista ou não conta com esse e-mail.
 export const ESPERA_REENVIO_SEG = 60
 export async function enviarRecuperacao(email) {
-  const { error } = await supabase.auth.resetPasswordForEmail(String(email || '').trim(), {
+  const { error } = await comCaptcha((cap) => supabase.auth.resetPasswordForEmail(String(email || '').trim(), {
     redirectTo: `${window.location.origin}/redefinir-senha`,
-    ...(await opcoesCaptcha()),
-  })
-  renovarToken()
+    ...cap,
+  }))
   if (!error) return { ok: true, espera: false, texto: t.recuperacaoReenviada }
   const espera = ehEsperaDeEnvio(error)
   return { ok: false, espera, texto: espera ? t.reenviarEspere : t.recuperacaoErro }

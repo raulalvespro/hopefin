@@ -3,9 +3,20 @@ import { describe, it, expect, vi } from 'vitest'
 
 const resetPasswordForEmail = vi.fn()
 vi.mock('../src/lib/supabase', () => ({ supabase: { auth: { resend: vi.fn(), resetPasswordForEmail } } }))
+// Sem o captcha de verdade no teste (com a chave do .env ele esperaria o passe da Cloudflare e estouraria o tempo).
+vi.stubEnv('VITE_TURNSTILE_SITE_KEY', '')
 const { mensagemErroSenha, SENHA_MIN, ehEsperaDeEnvio, ehLinkDeRecuperacao, enviarRecuperacao, ESPERA_REENVIO_SEG } = await import('../src/lib/acesso.js')
 const { normalizarCupom } = await import('../src/lib/cupom.js')
 const { copy } = await import('../src/copy/pt-BR.js')
+const { ehErroCaptcha } = await import('../src/lib/turnstile.js')
+
+describe('captcha (Turnstile)', () => {
+  it('recusa por falta do passe não vira "senha errada"', () => {
+    expect(ehErroCaptcha({ code: 'captcha_failed', message: 'captcha protection: request disallowed (no captcha_token found)' })).toBe(true)
+    expect(ehErroCaptcha({ code: 'invalid_credentials', message: 'Invalid login credentials' })).toBe(false)
+    expect(ehErroCaptcha(null)).toBe(false)
+  })
+})
 
 describe('senha', () => {
   it('mínimo de 8 caracteres', () => {

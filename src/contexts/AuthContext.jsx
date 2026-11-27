@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { normalizarCodigo, limparConvite } from '../lib/convite'
 import { limparCupom } from '../lib/cupom'
-import { opcoesCaptcha, renovarToken } from '../lib/turnstile'
+import { comCaptcha } from '../lib/turnstile'
 import { identificar, resetarUsuario } from '../lib/analytics'
 import * as Sentry from '@sentry/react'
 
@@ -136,10 +136,8 @@ export function AuthProvider({ children }) {
   }
 
   async function login(email, senha) {
-    // Turnstile (L39): o passe vai junto quando ligado; depois de usado, pede outro.
-    const r = await supabase.auth.signInWithPassword({ email, password: senha, options: await opcoesCaptcha() })
-    renovarToken()
-    return r
+    // Turnstile (L39): o passe vai junto quando ligado; recusou só pelo passe → pega outro e tenta de novo.
+    return comCaptcha((cap) => supabase.auth.signInWithPassword({ email, password: senha, options: cap }))
   }
 
   // tipo 'novo'      -> cadastrar(nome, email, senha, null, nomeGrupo)
@@ -147,13 +145,13 @@ export function AuthProvider({ children }) {
   // A criação/entrada no grupo acontece em carregarPerfil (quando há sessão),
   // usando os metadados abaixo — assim funciona com ou sem confirmação de e-mail.
   async function cadastrar(nome, email, senha, codigoGrupo = null, nomeGrupo = null, extra = {}) {
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await comCaptcha((cap) => supabase.auth.signUp({
       email,
       password: senha,
       options: {
         // Com a confirmação de e-mail (L40), o link do e-mail volta pra cá (app ou localhost).
         emailRedirectTo: `${window.location.origin}/`,
-        ...(await opcoesCaptcha()),
+        ...cap,
         data: {
           nome,
           nome_grupo: nomeGrupo || null,
@@ -164,8 +162,7 @@ export function AuthProvider({ children }) {
           cupom: extra.cupom || null,
         },
       },
-    })
-    renovarToken()
+    }))
     if (error) return { error }
     return { data }
   }

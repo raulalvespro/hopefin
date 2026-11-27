@@ -37,14 +37,33 @@ function receber(t) {
   fila.forEach((r) => r(t))
 }
 
-// O passe atual (espera até 8 s se ainda estiver sendo gerado). Sem Turnstile ligado: undefined.
-export async function pegarToken() {
+// O passe atual (espera até `ms` se ainda estiver sendo gerado). Sem Turnstile ligado: undefined.
+// 27/11: 8 s era pouco em celular/rede lenta — o login saía sem passe e a tela dizia "senha errada".
+export async function pegarToken(ms = 15000) {
   if (!turnstileLigado) return undefined
   if (token) return token
   return new Promise((resolve) => {
     esperando.push(resolve)
-    setTimeout(() => resolve(token || undefined), 8000)
+    setTimeout(() => resolve(token || undefined), ms)
   })
+}
+
+// O Supabase recusou por falta/erro do passe (não é senha errada).
+export function ehErroCaptcha(error) {
+  if (!error) return false
+  return error.code === 'captcha_failed' || /captcha/i.test(String(error.message || ''))
+}
+
+// Chama o Supabase com o passe; se ele recusar SÓ pelo passe, pede um novo e tenta mais uma vez.
+// `chamar(opcoes)` recebe { captchaToken } (ou {}) e devolve { data, error } do supabase-js.
+export async function comCaptcha(chamar) {
+  let r = await chamar(await opcoesCaptcha())
+  renovarToken()
+  if (turnstileLigado && ehErroCaptcha(r?.error)) {
+    const t = await pegarToken(20000)
+    if (t) { r = await chamar({ captchaToken: t }); renovarToken() }
+  }
+  return r
 }
 
 // Depois de usar: o passe vale uma vez só — pede outro.
@@ -75,7 +94,8 @@ export function Turnstile() {
         'refresh-expired': 'auto',
         callback: receber,
         'expired-callback': () => { token = null },
-        'error-callback': () => { token = null },
+        'timeout-callback': () => { token = null; try { window.turnstile.reset(widgetId) } catch { /* saiu */ } },
+        'error-callback': () => { token = null; return false /* deixa a Cloudflare tentar de novo sozinha */ },
       })
     }).catch(() => { /* sem internet pra Cloudflare: o Supabase avisa no envio */ })
     return () => {

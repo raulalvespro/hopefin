@@ -23,6 +23,7 @@ export const copy = {
     semConta: 'Ainda não tem conta?',
     criarConta: 'Criar conta grátis',
     erroCredenciais: 'E-mail ou senha incorretos.',
+    erroCaptcha: 'Não deu pra confirmar que você não é um robô. Se aparecer um quadrinho na tela, marque e tente de novo.',
 
     // Recuperação de senha (fluxo inline, sem mudar a lógica de auth)
     recTitulo: 'Recuperar senha',

@@ -6,7 +6,7 @@ import { Button } from '../components/ui'
 import { Eye, EyeOff } from 'lucide-react'
 import { copy } from '../copy/pt-BR'
 import { reenviarConfirmacao, enviarRecuperacao, ESPERA_REENVIO_SEG } from '../lib/acesso'
-import { Turnstile } from '../lib/turnstile'
+import { Turnstile, ehErroCaptcha } from '../lib/turnstile'
 
 const t = copy.login
 const ta = copy.acesso
@@ -36,7 +36,7 @@ export default function Login() {
     if (!error) { navigate('/'); return }
     const semConfirmar = error.code === 'email_not_confirmed' || /not confirmed/i.test(error.message || '')
     setNaoConfirmado(semConfirmar)
-    setErro(semConfirmar ? t.erroNaoConfirmado : t.erroCredenciais)
+    setErro(semConfirmar ? t.erroNaoConfirmado : ehErroCaptcha(error) ? t.erroCaptcha : t.erroCredenciais)
   }
 
   async function reenviar() {
