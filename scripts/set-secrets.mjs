@@ -52,6 +52,10 @@ const secrets = [
   { name: 'VAPID_PRIVATE_KEY', value: env.VAPID_PRIVATE_KEY },
   { name: 'VAPID_SUBJECT', value: env.VAPID_SUBJECT || 'mailto:raullerickson@gmail.com' },
   { name: 'CRON_SECRET', value: cron },
+  // Token da validação de saque do Asaas (função asaas-validar-saque, 27/11). É nosso, não do Asaas: o mesmo valor
+  // vai no campo "token" quando o Raul ligar o mecanismo no Asaas (docs/REEMBOLSOS.md). Sem ele cadastrado lá,
+  // a função não recebe nada.
+  { name: 'ASAAS_SAQUE_TOKEN', value: gerarEPersistir('ASAAS_SAQUE_TOKEN') },
 ]
 
 // Asaas (billing): só entra se a API key estiver preenchida. O webhook token

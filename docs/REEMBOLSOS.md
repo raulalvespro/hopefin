@@ -92,6 +92,35 @@ A conta mostra "100 recebimentos Pix sem taxa por mês", mas o 1º Pix pagou R$ 
 - **Lista de IPs:** não serve, porque as funções do Supabase não têm IP fixo.
 - **Por enquanto:** autorização manual no Asaas (é um toque, e protege a conta).
 
+### Webhook de validação do estorno Pix — PRONTO, DESLIGADO (27/11)
+
+A função `asaas-validar-saque` já está publicada, mas não faz nada até ser cadastrada no Asaas.
+
+- **Regra:** aprova (`APPROVED`) só estorno Pix (`PIX_REFUND`) de uma cobrança que tem reembolso **aberto** em
+  Painel › Reembolsos, com o **mesmo valor** em centavos, e um estorno por cobrança. Todo o resto é recusado
+  (`REFUSED`), incluindo saque, boleto, QR Code, recarga e split. Erro nosso também vira recusa: o estorno é
+  cancelado e o cron `reembolsos` pede de novo na hora seguinte.
+- Cada decisão vai pro `webhook_log` (origem `asaas-saque`), **sem** conta, CPF nem chave Pix de ninguém.
+- Código: `supabase/functions/asaas-validar-saque/` (regra em `decidir.js`, testes em `tests/validar-saque.test.js`).
+- Testado em 27/11 com pedidos falsos: sem token = 401; saque = recusado; cobrança sem reembolso = recusado; valor
+  diferente = recusado.
+
+**Para ligar** (só depois que o suporte confirmar que, com isso, a autorização por SMS some para estorno Pix):
+1. No Asaas: Menu do usuário › Integrações › **Mecanismos de segurança** › validação de saque via webhook.
+2. URL: `https://oapcjmkklzaodgpuwjsh.supabase.co/functions/v1/asaas-validar-saque`
+3. Token: o valor de `ASAAS_SAQUE_TOKEN` em `supabase/.env.local` (já está nos segredos das funções).
+4. E-mail de erro: `contato@hopefin.com.br`.
+5. Marcar **"Ativar autorização de saque para estornos Pix"**. **NÃO** marcar "incluir operações feitas pela
+   interface web": se marcar, os seus saques pelo site do Asaas também chegam aqui e são recusados.
+6. Teste: pedir um reembolso com conta nova `+alias` e conferir em Painel › Reembolsos e no `webhook_log`.
+
+**Cuidados com isso ligado:**
+- O Asaas pode mandar **saques feitos pela API** pra cá, e eles são recusados. O app nunca saca, então está certo.
+- Um estorno Pix que você fizer **à mão no Asaas**, sem pedido no app, é recusado. Nesse caso, desligue o mecanismo
+  na hora ou peça ao Claude pra registrar o reembolso antes.
+- Para desligar: desmarcar no Asaas. Sem o token, a função responde 401 e o Asaas cancela o estorno, então desligue
+  sempre pelo Asaas.
+
 ## Cartão parcelado: caixa e antecipação
 
 - Sem antecipação, cada parcela cai **32 dias** depois de cobrada, ao longo de 12 meses.
