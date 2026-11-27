@@ -3,6 +3,7 @@
 // O servidor confere o mesmo mínimo (password_min_length = 8, scripts/config-auth-seguranca.mjs).
 import { supabase } from './supabase'
 import { copy } from '../copy/pt-BR'
+import { opcoesCaptcha, renovarToken } from './turnstile'
 
 export const SENHA_MIN = 8
 const t = copy.acesso
@@ -30,8 +31,9 @@ export async function reenviarConfirmacao(email) {
   const { error } = await supabase.auth.resend({
     type: 'signup',
     email: String(email || '').trim(),
-    options: { emailRedirectTo: `${window.location.origin}/` },
+    options: { emailRedirectTo: `${window.location.origin}/`, ...(await opcoesCaptcha()) },
   })
+  renovarToken()
   if (!error) return { ok: true, texto: t.reenviado }
   return { ok: false, texto: ehEsperaDeEnvio(error) ? t.reenviarEspere : t.reenviarErro }
 }
@@ -42,7 +44,9 @@ export const ESPERA_REENVIO_SEG = 60
 export async function enviarRecuperacao(email) {
   const { error } = await supabase.auth.resetPasswordForEmail(String(email || '').trim(), {
     redirectTo: `${window.location.origin}/redefinir-senha`,
+    ...(await opcoesCaptcha()),
   })
+  renovarToken()
   if (!error) return { ok: true, espera: false, texto: t.recuperacaoReenviada }
   const espera = ehEsperaDeEnvio(error)
   return { ok: false, espera, texto: espera ? t.reenviarEspere : t.recuperacaoErro }
