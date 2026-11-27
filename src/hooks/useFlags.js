@@ -35,3 +35,7 @@ export function useFlags() {
   }, [])
   return flags
 }
+
+// Microfone do app (A8.26, chave lancar_voz, nasce pra todos). Enquanto as chaves carregam, mostra (é o normal);
+// some só quando a resposta chega sem a chave (o Raul trocou a audiência no painel).
+export const vozLigada = (flags) => flags === null || !!flags?.lancar_voz

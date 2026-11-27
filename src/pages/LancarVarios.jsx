@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext'
 import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { useVoz, textoErroIa } from '../hooks/useVoz'
 import { useAssinatura } from '../hooks/useAssinatura'
+import { useFlags, vozLigada } from '../hooks/useFlags'
 import { supabase } from '../lib/supabase'
 import { hojeISO, fmt } from '../lib/format'
 import { primeiroVencimentoParcelado } from '../lib/motor'
@@ -52,6 +53,7 @@ export default function LancarVarios() {
   }, [perfil?.grupo_id])
 
   // A voz vai somando ao texto (dá pra falar em partes).
+  const flags = useFlags()
   const { gravando, parcial, suportado, iniciar, parar } = useVoz((falado) => setTexto(v => (v ? `${v}\n${falado}` : falado)))
 
   async function separar() {
@@ -132,7 +134,7 @@ export default function LancarVarios() {
             style={{ width: '100%', resize: 'vertical', fontSize: 15, lineHeight: 1.5 }} />
           {gravando && parcial && <p style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6 }}>{parcial}…</p>}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
-            {suportado && <MicButton ouvindo={gravando} onClick={gravando ? parar : iniciar} size={48} aria-label={t.falar} />}
+            {suportado && vozLigada(flags) && <MicButton ouvindo={gravando} onClick={gravando ? parar : iniciar} size={48} aria-label={t.falar} />}
             <button className="btn-primary" onClick={separar} disabled={!texto.trim() || interpretando}
               style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48 }}>
               {interpretando ? <><Loader size={16} className="spin" /> {t.separando}</> : <><Sparkles size={16} /> {t.separar}</>}

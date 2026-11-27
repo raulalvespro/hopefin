@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useCategorias, rotuloCategoria } from '../hooks/useCategorias'
 import { useDb } from '../hooks/useDb'
 import { useAssinatura } from '../hooks/useAssinatura'
+import { useFlags, vozLigada } from '../hooks/useFlags'
 import { supabase } from '../lib/supabase'
 import { hojeISO, fmt, fmtData } from '../lib/format'
 import { copy } from '../copy/pt-BR'
@@ -23,6 +24,7 @@ const ONDA = [0, .1, .25, .05, .3, .15, .4, .2, .35, .1, .25, .05, .3]
 // no formulário já preenchido — ele pode corrigir qualquer campo antes.
 export default function BotaoVoz({ onSalvo }) {
   const { perfil } = useAuth()
+  const flags = useFlags()
   const { categorias } = useCategorias()
   const run = useDb()
   const [aberto, setAberto] = useState(false)
@@ -203,6 +205,8 @@ export default function BotaoVoz({ onSalvo }) {
   }
 
   const valorOk = parseFloat(form?.valor) > 0
+
+  if (!vozLigada(flags)) return null // A8.26: o Raul tirou o microfone do app pelo painel
 
   return (
     <>
