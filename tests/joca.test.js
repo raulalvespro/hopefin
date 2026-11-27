@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
 import {
   TEXTOS, brl, ddmm, rotuloCategoria, resumoLancamento, msgLancado, ehSim, ehNao, normalizar,
   respostaRapida, limparIA, emDuvida, instrucoesIA, extrairJson, paraSalvar, comoVaiSalvar,
-  custoAudioUsd, LIMIAR_CONFIANCA, pendenteParaIA, formaDoGasto, resumoUltimo,
+  custoAudioUsd, LIMIAR_CONFIANCA, pendenteParaIA, formaDoGasto, resumoUltimo, ultimosDias,
 } from '../supabase/functions/whatsapp-webhook/joca.js'
 
 const HOJE = '2026-11-20'
@@ -215,4 +215,19 @@ describe('fatura e último lançamento', () => {
     expect(custoAudioUsd(60)).toBeCloseTo(0.006, 6)
     expect(custoAudioUsd(-3)).toBe(0)
   })
+})
+
+describe('dia da semana sozinho é o que já passou (bateria 26/11)', () => {
+  it('lista os 7 dias antes de hoje com o nome certo', () => {
+    const [linha] = ultimosDias('2026-11-26') // quinta
+    expect(linha).toContain('quarta = 2026-11-25 (ontem)')
+    expect(linha).toContain('sexta = 2026-11-20')
+    expect(linha).toContain('sábado = 2026-11-21')
+    expect(linha).toContain('quinta = 2026-11-19')
+    expect(linha).not.toContain('2026-11-26')
+  })
+  it('vai nas instruções da IA', () => {
+    expect(instrucoesIA({ hoje: '2026-11-26', semana: 'quinta', categorias: ['outros'] })).toContain('segunda = 2026-11-23')
+  })
+  it('data inválida não quebra', () => { expect(ultimosDias('')).toEqual([]) })
 })

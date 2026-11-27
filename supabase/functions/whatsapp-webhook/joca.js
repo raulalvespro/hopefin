@@ -278,15 +278,36 @@ export function instrucoesIA({ hoje, semana, categorias }) {
     '- descricao: texto curto e natural (só em "lancar")',
     `- categoria: UMA destas (ou "outros"): ${(categorias || []).join(', ') || 'outros'}`,
     '- cartao_id: id de um cartão da lista (em "lancar", se foi no cartão; em "pagar_fatura", o cartão da fatura), ou null',
+    '  Se a pessoa disser que foi no cartão/crédito mas NÃO disser qual: se a lista tiver um cartão só, é ele; se tiver mais de um, cartao_id null e confiança abaixo de 0.6 (o Joca pergunta). Nunca chute o cartão.',
+    '  Compare o nome do cartão sem ligar pra maiúscula, acento ou erro de digitação ("NO INTER", "itau", "nubak" batem com Inter, Itaú, Nubank).',
     `- data: "YYYY-MM-DD". Hoje é ${hoje} (${semana}, America/Sao_Paulo). Entenda "ontem", "sexta", "dia 3". (só em "lancar")`,
+    ...ultimosDias(hoje),
     '- parcelas: inteiro >= 1 (1 = à vista) (só em "lancar")',
     '- forma: só em gasto SEM cartão: "dinheiro" quando a pessoa disser dinheiro ou espécie; "pix" em todo o resto (Pix, débito, transferência, boleto ou quando não disser). Com cartão ou em entrada: null.',
     '- pessoa: SÓ em gasto que é de OUTRA pessoa, que vai te devolver o dinheiro. Ex.: "mercado 120 da Jack", "foi da Jack", "uber 30 pra minha mãe, ela me paga", "comprei pro Raifran". Escreva só o nome como a pessoa falou ("minha mãe" vira "Mãe"). Se o nome bater com um da lista "pessoas" (mesmo sem acento ou com maiúscula diferente), use o nome EXATO da lista. NÃO use pra quem está na lista "membros" (são da própria família no app) nem quando o gasto é da própria pessoa ou da casa. Em entrada: null. Na dúvida: null.',
     '- confianca: de 0 a 1, o quanto você tem certeza da ação e dos campos principais (valor e tipo). Se faltar o valor ou a frase for ambígua, use confiança baixa (abaixo de 0.6).',
+    '  Use 0.9 ou mais quando a frase diz claramente O QUE foi e QUANTO, mesmo com gíria de dinheiro ("15 conto", "50 pila", "2k", "3 mil" = reais).',
+    '  Use abaixo de 0.6 quando: tiver dois valores possíveis ("50 ou 60"); não der pra saber o que foi (só um número, só o nome de um cartão como "nubank 200", ou só o nome de uma pessoa como "Jack 50"); ou for transferência/Pix pra alguém da lista "membros" (o dinheiro fica na família, talvez nem seja gasto).',
     '- itens: SÓ em "lancar_varios": lista com um objeto por lançamento, cada um com tipo, valor, descricao, categoria, cartao_id, data, parcelas, forma e pessoa (mesmas regras acima). Nos outros casos, null.',
     '',
     'Se vier "pendente" (um lançamento que o Joca perguntou "tá certo?" e ainda NÃO foi salvo) e a mensagem corrigir algo dele (valor, cartão, data, categoria, parcelas, descrição ou de quem é), use acao "lancar" e devolva o lançamento COMPLETO já corrigido.',
   ].join('\n')
+}
+
+// Os 7 dias antes de hoje com o dia da semana (bateria 26/11/2026: "pizza 80 sexta" numa quinta
+// virava a sexta que VEM). Dia da semana sozinho = o que já passou.
+const DIAS_SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
+export function ultimosDias(hoje) {
+  const t = Date.parse(`${hoje}T12:00:00Z`)
+  if (!Number.isFinite(t)) return []
+  const dias = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(t - (i + 1) * 864e5)
+    return `${DIAS_SEMANA[d.getUTCDay()]} = ${d.toISOString().slice(0, 10)}${i === 0 ? ' (ontem)' : ''}`
+  })
+  return [
+    `  Dias que já passaram: ${dias.join(', ')}.`,
+    '  Dia da semana sozinho ("sexta", "no sábado") é o que JÁ PASSOU (dessa lista). Data no futuro só se a pessoa disser ("sexta que vem", "dia 30 vou pagar").',
+  ]
 }
 
 // O lançamento que espera o "sim", do jeito que vai pra IA como "pendente".

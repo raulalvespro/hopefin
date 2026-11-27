@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "cf:dev": "npm run build && wrangler dev",
     "cf:deploy": "npm run build && wrangler deploy",
-    "test": "vitest run"
+    "test": "vitest run",
+    "joca:bateria": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/joca-bateria.mjs"
   },
   "dependencies": {
     "@sentry/react": "^11.11.0",
