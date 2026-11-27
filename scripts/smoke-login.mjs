@@ -27,7 +27,26 @@ const login = await fetch(`${URL}/auth/v1/token?grant_type=password`, {
   method: 'POST', headers: { apikey: ANON, 'Content-Type': 'application/json' },
   body: JSON.stringify({ email: env.TESTE_EMAIL, password: env.TESTE_SENHA }),
 })
-const sessao = await login.json()
+let sessao = await login.json()
+// Turnstile ligado no Supabase (L39, 26/11/2026): login com senha sem o "passe" do captcha é recusado.
+// O smoke então entra por um link mágico gerado pelo servidor (chave service_role lida na hora pela
+// Management API, nunca gravada) — o /verify não pede captcha. A conta e as leituras seguem as mesmas.
+if (!sessao.access_token && /captcha/i.test(JSON.stringify(sessao))) {
+  const ks = await fetch(`https://api.supabase.com/v1/projects/${env.SUPABASE_PROJECT_REF}/api-keys?reveal=true`, { headers: { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}` } }).then(r => r.json())
+  const SR = (Array.isArray(ks) ? ks : []).find(k => k.name === 'service_role')?.api_key
+  if (!SR) falhar('captcha ligado e não consegui a chave do servidor pra entrar sem senha')
+  const link = await fetch(`${URL}/auth/v1/admin/generate_link`, {
+    method: 'POST', headers: { apikey: SR, Authorization: `Bearer ${SR}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'magiclink', email: env.TESTE_EMAIL }),
+  }).then(r => r.json())
+  const th = link.hashed_token || link.properties?.hashed_token
+  if (!th) falhar('link mágico da conta de teste: ' + JSON.stringify(link).slice(0, 200))
+  sessao = await fetch(`${URL}/auth/v1/verify`, {
+    method: 'POST', headers: { apikey: ANON, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'magiclink', token_hash: th }),
+  }).then(r => r.json())
+  if (sessao.access_token) console.log('✔ login da conta de teste (captcha ligado: entrou pelo link mágico)')
+}
 if (!sessao.access_token) falhar('login da conta de teste: ' + JSON.stringify(sessao).slice(0, 200))
 const H = { apikey: ANON, Authorization: `Bearer ${sessao.access_token}`, 'Content-Type': 'application/json' }
 
