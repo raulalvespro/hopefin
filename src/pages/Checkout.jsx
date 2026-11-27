@@ -305,18 +305,18 @@ export default function Checkout() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
         <input placeholder="Nome completo" value={form.nome} onChange={e => set('nome', e.target.value)} autoComplete="name" style={inputStyle} />
         <input placeholder="E-mail" type="email" value={form.email} onChange={e => set('email', e.target.value)} autoComplete="email" style={inputStyle} />
-        <input placeholder="CPF (só números)" inputMode="numeric" value={form.cpf} onChange={e => set('cpf', e.target.value.replace(/\D/g, ''))} style={inputStyle} />
-        <input placeholder="WhatsApp com DDD" inputMode="numeric" value={form.telefone} onChange={e => set('telefone', e.target.value)} style={inputStyle} />
+        <input placeholder="CPF (só números)" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={14} value={form.cpf} onChange={e => set('cpf', e.target.value.replace(/\D/g, '').slice(0, 14))} style={inputStyle} />
+        <input placeholder="WhatsApp com DDD" type="tel" inputMode="tel" autoComplete="tel-national" value={form.telefone} onChange={e => set('telefone', e.target.value)} style={inputStyle} />
       </div>
 
       {/* Cartão */}
       {metodo === 'cartao' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
-          <input placeholder="Nome impresso no cartão" value={form.cartaoNome} onChange={e => set('cartaoNome', e.target.value)} style={inputStyle} />
-          <input placeholder="Número do cartão" inputMode="numeric" value={form.numero} onChange={e => set('numero', e.target.value)} style={inputStyle} />
+          <input placeholder="Nome impresso no cartão" autoComplete="cc-name" autoCapitalize="characters" value={form.cartaoNome} onChange={e => set('cartaoNome', e.target.value)} style={inputStyle} />
+          <input placeholder="Número do cartão" type="text" inputMode="numeric" autoComplete="cc-number" maxLength={23} value={form.numero} onChange={e => set('numero', e.target.value.replace(/\D/g, '').slice(0, 19).replace(/(\d{4})(?=\d)/g, '$1 '))} style={inputStyle} />
           <div style={{ display: 'flex', gap: 10 }}>
-            <input placeholder="Validade MM/AA" value={form.validade} onChange={e => set('validade', e.target.value)} style={{ ...inputStyle, flex: 1 }} />
-            <input placeholder="CVV" inputMode="numeric" value={form.ccv} onChange={e => set('ccv', e.target.value.replace(/\D/g, ''))} style={{ ...inputStyle, flex: 1 }} />
+            <input placeholder="Validade MM/AA" type="text" inputMode="numeric" autoComplete="cc-exp" maxLength={5} value={form.validade} onChange={e => { const d = e.target.value.replace(/\D/g, '').slice(0, 4); set('validade', d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d) }} style={{ ...inputStyle, flex: 1 }} />
+            <input placeholder="CVV" type="text" inputMode="numeric" pattern="[0-9]*" autoComplete="cc-csc" maxLength={4} value={form.ccv} onChange={e => set('ccv', e.target.value.replace(/\D/g, '').slice(0, 4))} style={{ ...inputStyle, flex: 1 }} />
           </div>
           {anualCartao && (
             <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 }}>
@@ -324,8 +324,8 @@ export default function Checkout() {
             </p>
           )}
           <div style={{ display: 'flex', gap: 10 }}>
-            <input placeholder="CEP" inputMode="numeric" value={form.cep} onChange={e => set('cep', e.target.value.replace(/\D/g, ''))} style={{ ...inputStyle, flex: 1 }} />
-            <input placeholder="Nº" inputMode="numeric" value={form.numeroEnd} onChange={e => set('numeroEnd', e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+            <input placeholder="CEP" type="text" inputMode="numeric" pattern="[0-9]*" autoComplete="postal-code" maxLength={8} value={form.cep} onChange={e => set('cep', e.target.value.replace(/\D/g, '').slice(0, 8))} style={{ ...inputStyle, flex: 1 }} />
+            <input placeholder="Nº" type="text" inputMode="numeric" value={form.numeroEnd} onChange={e => set('numeroEnd', e.target.value)} style={{ ...inputStyle, flex: 1 }} />
           </div>
         </div>
       )}
