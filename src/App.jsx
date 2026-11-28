@@ -54,10 +54,8 @@ function deveMostrarSplash() {
 function marcarSplash() {
   try { localStorage.setItem('hopefin_splash', hojeStr()) } catch { /* ignore */ }
 }
-// Onboarding: já visto? (default true em erro, pra nunca prender o usuário num loop)
-function jaViuOnboarding() {
-  try { return localStorage.getItem('hopefin_onboarded') === '1' } catch { return true }
-}
+// As 3 telas de apresentação (/onboarding) não abrem mais sozinhas antes do login (28/11/2026):
+// quem chega em app.hopefin.com.br vai direto pro login. A rota continua existindo.
 
 // Tela que só existe pra quem tem a chave de recurso (Área de desenvolvimento do /admin).
 // Enquanto as chaves carregam não mostra nada; sem a chave, volta pra `senao`.
@@ -70,7 +68,7 @@ function SoComChave({ chave, senao = '/', children }) {
 function RotaProtegida({ children }) {
   const { user, loading, precisaGrupo } = useAuth()
   if (loading) return <Carregando />
-  if (!user) return <Navigate to={jaViuOnboarding() ? '/login' : '/onboarding'} replace />
+  if (!user) return <Navigate to="/login" replace />
   if (precisaGrupo) return <EscolhaGrupo />
   return children
 }
