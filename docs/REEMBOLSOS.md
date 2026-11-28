@@ -71,7 +71,15 @@ Com desconto até **04/02/2027**; depois, o valor entre parênteses.
 | Cartão 2 a 6x | 2,49% + R$ 0,49 (3,49% + R$ 0,49) | 32 dias por parcela |
 | Cartão 7 a 12x | 2,99% + R$ 0,49 (3,99% + R$ 0,49) | 32 dias por parcela |
 
-A conta mostra "100 recebimentos Pix sem taxa por mês", mas o 1º Pix pagou R$ 0,99. Vale perguntar ao Asaas.
+**Respostas do Asaas em 28/11/2026, com atendimento humano:**
+- **Os "100 Pix sem taxa por mês"** valem só para Pix recebido por chave ou QR Code estático. A cobrança com Pix que o app
+  gera paga a taxa de cobrança (R$ 0,99 na condição atual).
+- **Depois de 04/02/2027** acaba a condição atual. Com mais movimento, dá para pedir renegociação ao comercial.
+- **Antecipação:** sempre passa por análise (até 2 dias úteis no cartão), e a taxa fica em Taxas › Antecipações:
+  1,25% ao mês à vista e 1,7% ao mês parcelado.
+- **De CPF para CNPJ:** assinaturas, parcelamentos e clientes ativos continuam. A troca é feita em Minha Conta › Dados
+  Comerciais, e quem tem o CPF precisa ser sócio do CNPJ.
+- **Estorno sem autorização manual (webhook) e cartão:** foi passado para outro atendente, ainda sem resposta.
 
 ## Cuidados
 
